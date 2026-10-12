@@ -6,6 +6,11 @@
 require_once '../config.php';
 require_once '../auth.php';
 require_once __DIR__ . '/../lib/vat_mode.php';
+// Expenses auto-posting library. If it is missing / broken the Disbursement still works (entries just
+// are not posted to Expenses) instead of the whole page failing with HTTP 500.
+$expSyncLib = __DIR__ . '/../lib/expense_sync.php';
+$expSyncReady = false;
+if (is_file($expSyncLib)) { require_once $expSyncLib; $expSyncReady = true; }
 requireLogin();
 
 // Only Recovery branch + management can access
@@ -111,6 +116,19 @@ foreach (["Accounts Payable","EWT Payable"] as $t) {
 // ── VAT treatment per Account Title (set on the Account Titles page) ──
 vatModeEnsureColumn($pdo, 'recovery_acc_titles');
 
+// ── Expenses auto-posting (Recovery branch): every entry is posted to recovery_expenses
+//    through the "Expenses column" set on its Account Title (see lib/expense_sync.php) ──
+if ($expSyncReady) {
+    try {
+        expSyncCreateExpenses($pdo, 'recovery_expenses');
+        expSyncEnsure($pdo, 'recovery_acc_titles', 'recovery_expenses', EXP_SYNC_DEFAULTS);
+    } catch (Throwable $e) { $expSyncReady = false; }
+}
+function hPostToExpenses(PDO $pdo, int $id): string {
+    try { return expSyncOne($pdo, 'recovery_disbursement', 'recovery_expenses', 'recovery_acc_titles', $id); }
+    catch (Throwable $e) { return 'error'; }
+}
+
 // ── AJAX: Vendor lookup ────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['vendor_lookup'])) {
     header('Content-Type: application/json');
@@ -138,7 +156,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
     try {
         $sql = "INSERT INTO recovery_disbursement (" . implode(',', array_map(fn($f)=>"`$f`", $fields)) . ") VALUES (" . implode(',', array_fill(0, count($fields), '?')) . ")";
         $pdo->prepare($sql)->execute(array_values($data));
-        echo json_encode(['ok' => true, 'id' => $pdo->lastInsertId(),
+        $newId = (int)$pdo->lastInsertId();
+        $posted = hPostToExpenses($pdo, $newId);
+        echo json_encode(['ok' => true, 'id' => $newId, 'posted' => $posted,
             'input_tax' => number_format($data['input_tax'], 2, '.', ''), 'net_of_vat' => number_format($data['net_of_vat'], 2, '.', '')]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
@@ -165,7 +185,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_update'])) {
     $vals[] = $id;
     try {
         $pdo->prepare("UPDATE recovery_disbursement SET " . implode(',', $sets) . " WHERE id=?")->execute($vals);
-        echo json_encode(['ok' => true, 'input_tax' => number_format($taxVal, 2, '.', ''), 'net_of_vat' => number_format($netVal, 2, '.', '')]);
+        $posted = hPostToExpenses($pdo, $id);
+        echo json_encode(['ok' => true, 'posted' => $posted, 'input_tax' => number_format($taxVal, 2, '.', ''), 'net_of_vat' => number_format($netVal, 2, '.', '')]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
     }
@@ -178,6 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
     $id = (int)($_POST['id'] ?? 0);
     try {
         $pdo->prepare("DELETE FROM recovery_disbursement WHERE id=?")->execute([$id]);
+        try { expSyncDelete($pdo, 'recovery_expenses', $id); } catch (Throwable $ignored) {}
         echo json_encode(['ok' => true]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
@@ -370,6 +392,11 @@ include '../layout.php';
 .bsv.saving { opacity:.5; pointer-events:none; }
 .bsv.ok  { background:#dcfce7; color:#15803d; }
 .bsv.err { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.rs { display:block; font-family:var(--font-m); font-size:.56rem; font-weight:700; margin-bottom:3px; white-space:nowrap; }
+.rs-ok    { color:#15803d; }
+.rs-dirty { color:#b45309; }
+.rs-new   { color:#6b7280; }
+.rs-err   { color:#be123c; }
 .bdel {
   padding: 3px 7px; font-size: .58rem;
   font-family: var(--font-m); font-weight: 700;
@@ -482,7 +509,6 @@ include '../layout.php';
   <?php if ($fSearch): ?>
   <a href="recovery_disbursement.php?month=<?= urlencode($fMonth) ?>" class="btn btn-ghost btn-sm">Reset</a>
   <?php endif; ?>
-  <button type="button" class="btn-add-row" onclick="addRow()">+ Add Entry</button>
   <a href="recovery_disbursement.php?export_csv=1&month=<?= urlencode($fMonth) ?>"
      class="btn btn-ghost btn-sm" style="color:#388E3C;border-color:rgba(76,175,80,.3);background:rgba(76,175,80,.06)">
     ⬇ Export XLSX
@@ -503,6 +529,26 @@ include '../layout.php';
     <strong><?= count($rows) ?></strong> entr<?= count($rows) !== 1 ? 'ies' : 'y' ?>
   </span>
 </form>
+
+<?php
+// Titles used on this page that are not posted to Expenses (no Expenses column set)
+$__expMap = []; try { $__expMap = expSyncTitleMap($pdo, 'recovery_acc_titles'); } catch (Throwable $e) {}
+$__unposted = [];
+foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($__expMap[$t] ?? '') === '') $__unposted[$t] = ($__unposted[$t] ?? 0) + 1; }
+?>
+<?php if (!$expSyncReady): ?>
+<div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;font-family:var(--font-m);font-size:.68rem;color:#991B1B">
+  ⚠ Auto-posting to Expenses is OFF: <strong>lib/expense_sync.php</strong> is missing or failed to load on this server. Entries still save here, but are not posted to Expenses.
+</div>
+<?php endif; ?>
+<div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#EFF6FF;border:1px solid #BFDBFE;font-family:var(--font-m);font-size:.68rem;color:#1E3A8A;line-height:1.6">
+  🔗 Entries are posted <strong>automatically to Recovery Expenses</strong> (gross amount, into the column set for each Account Title).
+  Expenses is view-only — edit here.
+  <?php if ($__unposted): ?>
+  <br><span style="color:#92400E">⚠ Not posted (no Expenses column): <strong><?= htmlspecialchars(implode(', ', array_map(fn($t,$n)=>"$t ($n)", array_keys($__unposted), $__unposted))) ?></strong>
+  — <a href="recovery_acc_title.php" style="color:#92400E;font-weight:700">set one in Account Titles</a>.</span>
+  <?php endif; ?>
+</div>
 
 <!-- Table -->
 <div class="dsb-outer">
@@ -542,13 +588,13 @@ include '../layout.php';
       <?php endforeach; ?>
     <?php else: ?>
       <tr id="empty-row">
-        <td colspan="11" class="empty-state">No entries for <?= htmlspecialchars(date('F Y', strtotime($fMonth . '-01'))) ?> — click <strong>+ Add Entry</strong></td>
+        <td colspan="12" class="empty-state">No entries for <?= htmlspecialchars(date('F Y', strtotime($fMonth . '-01'))) ?> — type in the row below and press <strong>Enter</strong></td>
       </tr>
     <?php endif; ?>
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="6" style="text-align:right;padding:8px 12px;font-weight:800;font-family:var(--font-m);font-size:.65rem;">
+        <td colspan="7" style="text-align:right;padding:8px 12px;font-weight:800;font-family:var(--font-m);font-size:.65rem;">
           TOTAL (<span id="dsb-count"><?= count($rows) ?></span> entries)
         </td>
         <td class="num" id="tfoot-gross"><?= number_format((float)$totals['g'], 2) ?></td>
@@ -560,8 +606,8 @@ include '../layout.php';
   </table>
 </div>
 
-<div style="margin-top:12px">
-  <button class="btn-add-row" onclick="addRow()">+ Add Entry</button>
+<div style="margin-top:10px;font-family:var(--font-m);font-size:.68rem;color:var(--subtext2)">
+  ⏎ Fill in the last (blank) row and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd> — the entry is saved and a new blank row opens. To change a saved entry, edit it and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd>.
 </div>
 
 <?php
@@ -606,7 +652,7 @@ function renderRow(array $r, array $acctOpts): string {
     $h .= '<td><input type="text" class="di num" data-col="net_of_vat" value="' . $fmt($r['net_of_vat']). '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
     $h .= '<td><input type="text" class="di" data-col="particular"     value="' . $d('particular')      . '" placeholder="—" oninput="markDirty(this)"></td>';
     $h .= '<td class="td-act-sticky" style="padding:4px 5px;text-align:center">
-             <button class="bsv" onclick="saveRow(this)">Update</button>
+             <span class="rs rs-ok">✓ saved</span>
              <button class="bdel" onclick="deleteRow(this)">Del</button></td>';
     return $h;
 }
@@ -626,8 +672,18 @@ let acTimer = null;
 // ── Dirty flag ─────────────────────────────────────────────
 function markDirty(el) {
     const row = el.closest('tr');
-    const btn = row?.querySelector('.bsv');
-    if (btn) { btn.textContent = row.dataset.id ? 'Update*' : 'Save'; btn.className = 'bsv'; }
+    if (!row) return;
+    row.dataset.dirty = '1';
+    setRowState(row, row.dataset.id ? 'dirty' : 'new');
+}
+
+// Small status text in the Action cell (there is no Save button — Enter saves)
+function setRowState(row, state) {
+    const rs = row.querySelector('.rs');
+    if (!rs) return;
+    const map = { ok:['✓ saved','rs-ok'], dirty:['edited · Enter','rs-dirty'], 'new':['Enter to save','rs-new'], saving:['saving…','rs-new'], err:['not saved','rs-err'] };
+    const m = map[state] || map['new'];
+    rs.textContent = m[0]; rs.className = 'rs ' + m[1];
 }
 
 // ── Auto-calculate: gross → input_tax (12%) → net_of_vat ──
@@ -715,11 +771,11 @@ function acctOptionsHtml() {
 }
 
 // ── Add row ────────────────────────────────────────────────
-function addRow() {
+function addRow(focus = true, dateVal = '') {
     const empty = document.getElementById('empty-row');
     if (empty) empty.remove();
     const tbody = document.getElementById('dsb-tbody');
-    const today = new Date().toISOString().split('T')[0];
+    const today = dateVal || new Date().toISOString().split('T')[0];
     const tr = document.createElement('tr');
     tr.id = 'new_' + (++newRowCounter); tr.dataset.id = '';
     tr.innerHTML = `
@@ -730,23 +786,30 @@ function addRow() {
       <td><input type="text" class="di" data-col="address"       value="" placeholder="—" oninput="markDirty(this)"></td>
       <td><input type="text" class="di mono" data-col="invoice_no"    value="" placeholder="—" oninput="markDirty(this)"></td>
       <td><select class="di-sel acct-sel" data-col="account_title" onchange="markDirty(this)">${acctOptionsHtml()}</select></td>
-      <td><input type="text" class="di num" data-col="gross"      value="0.00" oninput="markDirty(this);calcRow(this)"></td>
-      <td><input type="text" class="di num" data-col="input_tax"  value="0.00" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
-      <td><input type="text" class="di num" data-col="net_of_vat" value="0.00" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
+      <td><input type="text" class="di num" data-col="gross"      value="" placeholder="" oninput="markDirty(this);calcRow(this)"></td>
+      <td><input type="text" class="di num" data-col="input_tax"  value="" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
+      <td><input type="text" class="di num" data-col="net_of_vat" value="" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
       <td><input type="text" class="di" data-col="particular"     value="" placeholder="—" oninput="markDirty(this)"></td>
       <td class="td-act-sticky" style="padding:4px 5px;text-align:center">
-        <button class="bsv" onclick="saveRow(this)">Save</button>
+        <span class="rs rs-new">Enter to save</span>
       </td>`;
     tbody.appendChild(tr);
-    tr.querySelector('[data-col="tin"]')?.focus();
+    if (focus) tr.querySelector('[data-col="tin"]')?.focus();
     updateTotals();
 }
 
-// ── Save row ───────────────────────────────────────────────
-async function saveRow(btn) {
-    const row = btn.closest('tr');
-    const id  = row.dataset.id;
-    btn.textContent = '…'; btn.className = 'bsv saving';
+// ── Save row (triggered by Enter — there is no Save button) ──
+// Returns true when the row was saved.
+async function saveRow(row) {
+    if (row._saving) return false;
+    const id = row.dataset.id;
+    const g  = parseFloat((row.querySelector('[data-col="gross"]').value || '0').replace(/,/g, '')) || 0;
+    const acct = row.querySelector('[data-col="account_title"]').value;
+    if (!id) {                       // brand-new row: needs the basics before it is saved
+        if (!acct) { showToast('Choose an Account Title first', 'error'); row.querySelector('[data-col="account_title"]').focus(); return false; }
+        if (g <= 0) { showToast('Enter the Gross amount first', 'error'); row.querySelector('[data-col="gross"]').focus(); return false; }
+    }
+    row._saving = true; setRowState(row, 'saving');
     const fd = new FormData();
     fd.append(id ? 'ajax_update' : 'ajax_add', '1');
     if (id) fd.append('id', id);
@@ -757,7 +820,6 @@ async function saveRow(btn) {
         const res  = await fetch('recovery_disbursement.php', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.ok) {
-            btn.textContent = 'Update'; btn.className = 'bsv ok';
             // Show Input Tax / Net of VAT exactly as the server saved them
             if (data.input_tax !== undefined) {
                 const tEl = row.querySelector('[data-col="input_tax"]');
@@ -770,21 +832,43 @@ async function saveRow(btn) {
                 const del = document.createElement('button');
                 del.className = 'bdel'; del.textContent = 'Del';
                 del.onclick = function(){ deleteRow(this); };
-                btn.parentElement.appendChild(del);
+                row.querySelector('.rs').after(del);
             }
-            setTimeout(() => { if (btn.className.includes('ok')) btn.className = 'bsv'; }, 2000);
-            showToast('✓ Entry saved', 'success');
+            row.dataset.dirty = '';
+            setRowState(row, 'ok');
+            if (data.posted === 'unmapped') showToast('✓ Entry saved — but its Account Title has no Expenses column, so it was NOT posted to Expenses (set one in Account Titles)', 'error');
+            else if (data.posted === 'error') showToast('✓ Entry saved — but posting to Expenses failed', 'error');
+            else showToast('✓ Entry saved and posted to Expenses', 'success');
             updateTotals();
-        } else {
-            btn.textContent = 'Error'; btn.className = 'bsv err';
-            showToast('❌ ' + data.msg, 'error');
-            setTimeout(() => { btn.textContent = id ? 'Update' : 'Save'; btn.className = 'bsv'; }, 3000);
+            row._saving = false;
+            return true;
         }
+        setRowState(row, 'err');
+        showToast('❌ ' + data.msg, 'error');
     } catch(e) {
-        btn.textContent = 'Error'; btn.className = 'bsv err';
+        setRowState(row, 'err');
         showToast('❌ Network error', 'error');
     }
+    row._saving = false;
+    return false;
 }
+
+// ── Enter = save. On the blank (new) row it also opens the next blank row. ──
+document.addEventListener('keydown', async function (e) {
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    const el = e.target;
+    const row = el.closest ? el.closest('#dsb-tbody tr') : null;
+    if (!row || el.tagName === 'SELECT' || el.tagName === 'BUTTON') return;
+    if (el.classList.contains('ac-pick')) return;
+    if (!row.dataset.id) {                 // new row → save, then a fresh blank row
+        e.preventDefault(); e.stopPropagation();
+        document.querySelectorAll('.ac-list').forEach(l => l.classList.remove('open'));
+        const dateVal = row.querySelector('[data-col="entry_date"]').value;
+        if (await saveRow(row)) addRow(true, dateVal);
+    } else if (row.dataset.dirty === '1') { // saved row that was edited → save, then normal Enter-moves-down
+        saveRow(row);
+    }
+}, true);
 
 // ── Delete row ─────────────────────────────────────────────
 async function deleteRow(btn) {
@@ -807,7 +891,7 @@ async function deleteRow(btn) {
 // ── Live totals ────────────────────────────────────────────
 function updateTotals() {
     let g = 0, t = 0, n = 0;
-    document.querySelectorAll('#dsb-tbody tr[data-id]').forEach(row => {
+    document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').forEach(row => {
         g += parseFloat(row.querySelector('[data-col="gross"]')?.value?.replace(/,/g,'') || 0);
         t += parseFloat(row.querySelector('[data-col="input_tax"]')?.value?.replace(/,/g,'') || 0);
         n += parseFloat(row.querySelector('[data-col="net_of_vat"]')?.value?.replace(/,/g,'') || 0);
@@ -815,9 +899,15 @@ function updateTotals() {
     document.getElementById('tfoot-gross').textContent = g.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     document.getElementById('tfoot-itax').textContent  = t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     document.getElementById('tfoot-nvat').textContent  = n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
-    const count = document.querySelectorAll('#dsb-tbody tr[data-id]').length;
+    const count = document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').length;
     document.getElementById('dsb-count').textContent = count;
 }
+
+// Always keep one blank row at the bottom, ready to type into (no "+ Add Entry" button).
+document.addEventListener('DOMContentLoaded', function () {
+    addRow(false);
+    updateTotals();
+});
 
 function showToast(msg, type) {
     const t = document.createElement('div');

@@ -119,6 +119,14 @@ try {
     $pdo->exec("ALTER TABLE `dois_expenses` ADD COLUMN `selected_for_cf` tinyint(1) NOT NULL DEFAULT 0 AFTER `row_total`");
 } catch (Throwable $ignored) {} // column already exists — ignore
 
+// Disbursement → Expenses auto-posting: link column (see lib/expense_sync.php)
+if (!is_file(__DIR__ . '/../lib/expense_sync.php')) {
+    http_response_code(500);
+    die('Missing file: lib/expense_sync.php — upload it to the "lib" folder next to "h" (same level as lib/vat_mode.php).');
+}
+require_once __DIR__ . '/../lib/expense_sync.php';
+expSyncEnsure($pdo, 'dois_acc_titles', 'dois_expenses');
+
 // ── Numeric columns list ──────────────────────────────────
 $NUM_COLS = [
     'amount_w_vat','vat','amount_wo_vat','non_vat','total_amount',
@@ -133,53 +141,45 @@ $TXT_COLS = ['voucher_no','tin','company_name','address','particulars','document
 // Checkbox/flag columns saved as 0 or 1 (not summed into any monetary totals)
 $FLAG_COLS = ['selected_for_cf'];
 
-// ── AJAX: Add new row ─────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
+// ── This ledger is VIEW-ONLY: rows are posted automatically from Dois Disbursement ──
+//    (gross amount → the column set on the Account Title). Block every write.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['ajax_add']) || isset($_POST['ajax_update']) || isset($_POST['ajax_delete']))) {
     header('Content-Type: application/json');
-    $data = ['expense_date' => $_POST['expense_date'] ?? date('Y-m-d')];
-    foreach ($TXT_COLS as $f) $data[$f] = trim($_POST[$f] ?? '');
-    foreach ($NUM_COLS as $f) $data[$f] = (float)($_POST[$f] ?? 0);
-    foreach ($FLAG_COLS as $f) $data[$f] = !empty($_POST[$f]) ? 1 : 0;
-    $data['saved_by'] = $user['name'];
-    $fields = array_keys($data);
+    echo json_encode(['ok'=>false,'msg'=>'Dois Expenses is view-only — it is filled automatically from Dois Disbursement. Add, edit or delete the entry there.']);
+    exit;
+}
+
+// ── AJAX: Rebuild one month from Disbursement ──
+//    Deletes the old manually-typed ("legacy") rows of that month — they were keyed by hand, can
+//    duplicate Disbursement entries and recompute VAT on Non-VAT purchases — then re-posts every
+//    Disbursement entry of that month (gross into the column set on its Account Title).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_rebuild_month'])) {
+    header('Content-Type: application/json');
+    $ry = (int)($_POST['year'] ?? 0); $rm = (int)($_POST['month'] ?? 0);
+    if ($ry < 2000 || $rm < 1 || $rm > 12) { echo json_encode(['ok'=>false,'msg'=>'Bad month']); exit; }
+    $from = sprintf('%04d-%02d-01', $ry, $rm);
+    $to   = date('Y-m-d', strtotime($from . ' +1 month'));
     try {
-        $sql = "INSERT INTO dois_expenses (" . implode(',', array_map(fn($f)=>"`$f`",$fields)) . ") VALUES (" . implode(',', array_fill(0,count($fields),'?')) . ")";
-        $pdo->prepare($sql)->execute(array_values($data));
-        echo json_encode(['ok'=>true,'id'=>$pdo->lastInsertId()]);
+        $del = $pdo->prepare("DELETE FROM dois_expenses WHERE disbursement_id IS NULL AND expense_date >= ? AND expense_date < ?");
+        $del->execute([$from, $to]);
+        $n = expSyncMany($pdo, 'dois_disbursement', 'dois_expenses', 'dois_acc_titles', null, $from, $to);
+        echo json_encode(['ok'=>true,'removed'=>$del->rowCount(),'posted'=>$n['synced'],'skipped'=>$n['unmapped']]);
     } catch (Throwable $e) {
         echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
     }
     exit;
 }
 
-// ── AJAX: Update row ──────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_update'])) {
+// ── AJAX: tick / untick rows for the "Selected Totals" VAT card (the only thing editable here) ──
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_set_checks'])) {
     header('Content-Type: application/json');
-    $id = (int)($_POST['id'] ?? 0);
-    if (!$id) { echo json_encode(['ok'=>false,'msg'=>'Missing ID']); exit; }
-    $sets = [];
-    $vals = [];
-    foreach ($TXT_COLS as $f) { $sets[] = "`$f`=?"; $vals[] = trim($_POST[$f] ?? ''); }
-    foreach ($NUM_COLS as $f) { $sets[] = "`$f`=?"; $vals[] = (float)($_POST[$f] ?? 0); }
-    foreach ($FLAG_COLS as $f) { $sets[] = "`$f`=?"; $vals[] = !empty($_POST[$f]) ? 1 : 0; }
-    $sets[] = '`saved_by`=?'; $vals[] = $user['name'];
-    $sets[] = '`expense_date`=?'; $vals[] = $_POST['expense_date'] ?? date('Y-m-d');
-    $vals[] = $id;
+    $ids = array_values(array_filter(array_map('intval', explode(',', (string)($_POST['ids'] ?? '')))));
+    $val = !empty($_POST['checked']) ? 1 : 0;
     try {
-        $pdo->prepare("UPDATE dois_expenses SET ".implode(',',$sets)." WHERE id=?")->execute($vals);
-        echo json_encode(['ok'=>true]);
-    } catch (Throwable $e) {
-        echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
-    }
-    exit;
-}
-
-// ── AJAX: Delete row ──────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
-    header('Content-Type: application/json');
-    $id = (int)($_POST['id'] ?? 0);
-    try {
-        $pdo->prepare("DELETE FROM dois_expenses WHERE id=?")->execute([$id]);
+        if ($ids) {
+            $in = implode(',', array_fill(0, count($ids), '?'));
+            $pdo->prepare("UPDATE dois_expenses SET selected_for_cf=? WHERE id IN ($in)")->execute(array_merge([$val], $ids));
+        }
         echo json_encode(['ok'=>true]);
     } catch (Throwable $e) {
         echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
@@ -255,6 +255,9 @@ $monthNames = ['','January','February','March','April','May','June','July','Augu
 $stmt = $pdo->prepare("SELECT * FROM dois_expenses WHERE YEAR(expense_date)=? AND MONTH(expense_date)=? ORDER BY expense_date ASC, id ASC");
 $stmt->execute([$fYear, $fMonth]);
 $rows = $stmt->fetchAll();
+
+$legacyCount = 0;
+foreach ($rows as $__r) { if (empty($__r['disbursement_id'])) $legacyCount++; }
 
 // ── Column totals for summary card ────────────────────────
 $expCols = [
@@ -486,7 +489,6 @@ include '../layout.php';
     <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
     <?php endfor; ?>
   </select>
-  <button type="button" class="btn-add-row" onclick="addRow()">+ Add Row</button>
   <a href="#" class="btn btn-ghost btn-sm" style="color:var(--accent3);border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)" onclick="doExport(event)">⬇ Download CSV</a>
 </form>
 
@@ -753,7 +755,7 @@ $summaryGroups = [
   <tbody id="se-tbody">
   <?php foreach ($rows as $r): ?>
   <?php $rid = 'row'.$r['id']; ?>
-  <tr id="<?=$rid?>" data-id="<?=$r['id']?>">
+  <tr id="<?=$rid?>" data-id="<?=$r['id']?>"<?= !empty($r['disbursement_id']) ? ' data-locked="1"' : '' ?>>
     <?= renderRow($r, $rid) ?>
   </tr>
   <?php endforeach; ?>
@@ -780,20 +782,28 @@ $summaryGroups = [
 </table>
 </div>
 
+<?php if ($legacyCount > 0): ?>
+<div style="margin-top:12px;padding:10px 14px;border-radius:8px;background:#FFFBEB;border:1px solid #FCD34D;font-family:var(--font-m);font-size:.7rem;color:#92400E;line-height:1.6">
+  ⚠ <strong><?= $legacyCount ?> manual (legacy) row<?= $legacyCount===1?'':'s' ?></strong> in <?= $monthNames[$fMonth] ?> <?= $fYear ?> were typed in by hand before auto-posting.
+  They still recompute VAT themselves (so a Non-VAT purchase can show a VAT/net split and a CHECK difference) and can duplicate Disbursement entries.
+  <button type="button" onclick="rebuildMonth()" style="margin-left:6px;padding:4px 12px;border:1px solid #D97706;border-radius:6px;background:#fff;color:#92400E;font-weight:700;cursor:pointer;font-size:.68rem">↻ Rebuild <?= $monthNames[$fMonth] ?> from Disbursement</button>
+</div>
+<?php endif; ?>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
-  <button class="btn-add-row" onclick="addRow()">+ Add Row</button>
+  <span style="font-family:var(--font-m);font-size:.68rem;color:var(--subtext2)">🔒 View-only · rows with 🔗 are posted automatically from <a href="dois_disbursement.php" style="color:#1565C0;font-weight:700">Dois Disbursement</a> (gross amount, column chosen per <a href="dois_acc_title.php" style="color:#1565C0;font-weight:700">Account Title</a>).</span>
 </div>
 
 <?php
 function renderRow(array $r, string $rid): string {
     $d = function($k) use ($r) {
         $v = $r[$k] ?? '';
-        if (is_numeric($v)) return (float)$v != 0 ? number_format((float)$v,2,'.','') : '';
+        if (is_numeric($v) && !in_array($k, ['voucher_no','tin','document_no','document_type','company_name','address','particulars'], true)) return (float)$v != 0 ? number_format((float)$v,2,'.','') : '';
         return htmlspecialchars($v);
     };
     $date = $r['expense_date'] ?? date('Y-m-d');
     $dateDisp = $date ? date('d-M', strtotime($date)) : '';
     $isSelected = !empty($r['selected_for_cf']);
+    $linked = !empty($r['disbursement_id']);
 
     $html  = '<td class="td-chk"><input type="checkbox" class="row-chk" data-col="selected_for_cf" '.($isSelected?'checked':'').' onchange="onRowCheck(this)"></td>';
     $html .= '<td class="td-date">';
@@ -814,13 +824,13 @@ function renderRow(array $r, string $rid): string {
     // Amount w/ VAT — manual input only
     $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei" data-col="amount_w_vat" value="'.$d('amount_w_vat').'" placeholder="0.00" oninput="rowChanged(this)"></td>';
     // VAT = Amount w/ VAT / 1.12 * 0.12  (auto-calc — always recalculated by JS)
-    $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei calc" data-col="vat" value="" readonly tabindex="-1"></td>';
+    $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei calc" data-col="vat" value="'.($linked?$d('vat'):'').'" readonly tabindex="-1"></td>';
     // Amount w/out VAT = Amount w/ VAT - VAT  (auto-calc — always recalculated by JS)
-    $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei calc" data-col="amount_wo_vat" value="" readonly tabindex="-1"></td>';
+    $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei calc" data-col="amount_wo_vat" value="'.($linked?$d('amount_wo_vat'):'').'" readonly tabindex="-1"></td>';
     // Non Vat — manual input
     $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei" data-col="non_vat" value="'.$d('non_vat').'" placeholder="0.00" oninput="rowChanged(this)"></td>';
     // Total Amount = Amount w/out VAT + Non Vat  (auto-calc — always recalculated by JS)
-    $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei calc" data-col="total_amount" value="" readonly tabindex="-1"></td>';
+    $html .= '<td class="c-vat"><input type="number" step="0.01" class="sei calc" data-col="total_amount" value="'.($linked?$d('total_amount'):'').'" readonly tabindex="-1"></td>';
 
     // Category cols
     $cats = ['purchases','salaries','rent','medicine','lpg','repairs_maintenance','fuel_trans','communication','transportation','light','drinking_water','water','sss_phic_hdmf','taxes_licences','office_supplies','kitchen_supplies','bio_pest_control','representation','miscellaneous','sir_budoy_nikki','staff_meal','pest_control_bio_aug','commission_fees','exhaust_cleaning','bank_fees','admin_salary_shares','marketing','sales_discounts','pdc','ca','withdrawal','depreciation_expense'];
@@ -829,7 +839,7 @@ function renderRow(array $r, string $rid): string {
     }
 
     // Row total (auto-calc) — always recalculated by JS, never pre-populated from DB
-    $html .= '<td class="c-total"><input type="number" step="0.01" class="sei calc bold" data-col="row_total" value="" readonly tabindex="-1"></td>';
+    $html .= '<td class="c-total"><input type="number" step="0.01" class="sei calc bold" data-col="row_total" value="'.($linked?$d('row_total'):'').'" readonly tabindex="-1"></td>';
 
     // Check cell (TOTAL - TOTAL AMOUNT) — auto-calc by JS
     // Actions (CHECK + buttons merged into single sticky cell)
@@ -837,13 +847,14 @@ function renderRow(array $r, string $rid): string {
     // Check cell
     $html .= '<td class="c-check-cell" style="position:sticky;right:80px;z-index:9;min-width:80px;text-align:right;padding:6px 8px;border:1px solid #e3e6ea;background:#fff"><span class="chk-val" style="font-family:var(--font-m);font-size:.72rem;font-weight:700">—</span></td>';
 
-    // Actions
-    $html .= '<td class="td-act">';
-    $html .= '<button class="bsv" onclick="saveRow(this)">'.($isNew?'Save':'Update').'</button>';
-    if (!$isNew) {
-        $html .= '<button class="bdel" onclick="deleteRow(this)">Del</button>';
-    }
-    $html .= '</td>';
+    // Actions — view-only: just show where the row came from
+    $html .= '<td class="td-act" style="font-family:var(--font-m);font-size:.58rem;text-align:center;color:#6b7280">'
+          .  ($linked ? '<span title="Posted automatically from Dois Disbursement entry #'.(int)$r['disbursement_id'].'">🔗 #'.(int)$r['disbursement_id'].'</span>' : '<span title="Entered manually before auto-posting">legacy</span>')
+          .  '</td>';
+
+    // View-only: make every input read-only (the row tick-box stays usable)
+    $html = str_replace([' oninput="rowChanged(this);triggerAC(this)"',' oninput="rowChanged(this)"'], '', $html);
+    $html = preg_replace('/<input (?=[^>]*class="sei)/', '<input readonly ', $html);
 
     return $html;
 }
@@ -862,6 +873,14 @@ function gv(row, col) {
 }
 
 function recalcRow(row) {
+  const locked = row.dataset.locked === '1';
+  if (locked) {   // posted from Disbursement: show the stored figures, only refresh CHECK
+    const rt = parseFloat(row.querySelector('[data-col="row_total"]')?.value) || 0;
+    const ta = parseFloat(row.querySelector('[data-col="total_amount"]')?.value) || 0;
+    const ck = row.querySelector('.chk-val'), df = Math.round((rt - ta) * 100) / 100;
+    if (ck) { ck.textContent = df === 0 ? '0.00' : (df > 0 ? '+' : '') + df.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); ck.style.color = df === 0 ? '#15803d' : '#be123c'; }
+    return;
+  }
   const awv = gv(row,'amount_w_vat');
   const nv  = gv(row,'non_vat');
 
@@ -940,9 +959,17 @@ function onRowCheck(cb) {
   row?.classList.toggle('row-selected', cb.checked);
   updateSelectAllState();
   recalcSelectedTotals();
-  // Mark unsaved — checking a box doesn't persist until Save/Update is clicked
-  const btn = row?.querySelector('.bsv');
-  if (btn) { btn.textContent = row.dataset.id ? 'Update' : 'Save'; btn.className = 'bsv'; }
+  persistChecks(row?.dataset.id ? [row.dataset.id] : [], cb.checked);
+}
+
+// Tick state is the only thing saved from this page — straight to the database.
+function persistChecks(ids, checked) {
+  if (!ids.length) return;
+  const fd = new FormData();
+  fd.append('ajax_set_checks', '1');
+  fd.append('ids', ids.join(','));
+  fd.append('checked', checked ? '1' : '0');
+  fetch('dois_expenses.php', {method:'POST', body:fd}).catch(() => {});
 }
 
 function toggleSelectAll(master) {
@@ -950,6 +977,7 @@ function toggleSelectAll(master) {
     cb.checked = master.checked;
     cb.closest('tr')?.classList.toggle('row-selected', master.checked);
   });
+  persistChecks([...document.querySelectorAll('#set tbody tr[data-id]')].map(r => r.dataset.id).filter(Boolean), master.checked);
   recalcSelectedTotals();
 }
 
@@ -960,6 +988,7 @@ function clearSelection() {
   });
   const master = document.getElementById('selectAllChk');
   if (master) { master.checked = false; master.indeterminate = false; }
+  persistChecks([...document.querySelectorAll('#set tbody tr[data-id]')].map(r => r.dataset.id).filter(Boolean), false);
   recalcSelectedTotals();
 }
 
@@ -1191,6 +1220,17 @@ async function deleteRow(btn) {
       showToast('❌ ' + data.msg, 'error');
     }
   } catch(e) { showToast('❌ Network error','error'); }
+}
+
+async function rebuildMonth() {
+  if (!confirm('Rebuild this month from Dois Disbursement?\n\n• the manually-typed (legacy) rows of this month are DELETED\n• every Disbursement entry of this month is posted again (gross amount, column per Account Title)\n\nThis cannot be undone.')) return;
+  const fd = new FormData();
+  fd.append('ajax_rebuild_month', '1'); fd.append('year', F_YEAR); fd.append('month', F_MONTH);
+  try {
+    const data = await (await fetch('dois_expenses.php', {method:'POST', body:fd})).json();
+    if (data.ok) { showToast('✓ ' + data.removed + ' legacy row(s) removed, ' + data.posted + ' entries posted' + (data.skipped ? ' (' + data.skipped + ' skipped: no Expenses column)' : ''), 'success'); setTimeout(() => location.reload(), 900); }
+    else showToast('❌ ' + data.msg, 'error');
+  } catch (e) { showToast('❌ Network error', 'error'); }
 }
 
 function doExport(e) {

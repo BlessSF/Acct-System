@@ -194,8 +194,9 @@ function expSyncDelete(PDO $pdo, string $expTable, int $disbId): void {
 }
 
 /** The H Expenses table (same definition as h/h_expenses.php) so Disbursement can post to it before the Expenses page was ever opened. */
-function expSyncCreateHExpenses(PDO $pdo): void {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `h_expenses` (
+function expSyncCreateExpenses(PDO $pdo, string $table = 'h_expenses'): void {
+    $table = preg_replace('/[^a-z0-9_]/i', '', $table);
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `$table` (
     `id`                    int(11) NOT NULL AUTO_INCREMENT,
     `expense_date`          date NOT NULL,
     `voucher_no`            varchar(100) DEFAULT '',
@@ -250,3 +251,8 @@ function expSyncCreateHExpenses(PDO $pdo): void {
     KEY `idx_date` (`expense_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 }
+
+// Backwards-compatible wrapper (H branch).
+function expSyncCreateHExpenses(PDO $pdo): void { expSyncCreateExpenses($pdo, 'h_expenses'); }
+// Same default title → column map is used by every branch.
+const EXP_SYNC_DEFAULTS = EXP_SYNC_H_DEFAULTS;

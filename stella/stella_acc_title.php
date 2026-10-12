@@ -7,6 +7,11 @@
 require_once '../config.php';
 require_once '../auth.php';
 require_once __DIR__ . '/../lib/vat_mode.php';
+if (!is_file(__DIR__ . '/../lib/expense_sync.php')) {
+    http_response_code(500);
+    die('Missing file: lib/expense_sync.php — upload it to the "lib" folder next to "h" (same level as lib/vat_mode.php).');
+}
+require_once __DIR__ . '/../lib/expense_sync.php';
 require_once __DIR__ . '/../lib/audit_log.php';
 requireLogin();
 
@@ -99,6 +104,14 @@ if ((int)$countStmt->fetchColumn() === 0) {
 vatModeEnsureColumn($pdo, 'stella_acc_titles');
 $AUDIT_BRANCH = 'Stella';
 
+// ── Expenses column per title (Disbursement → Expenses auto-posting) ──
+expSyncCreateExpenses($pdo, 'stella_expenses');
+expSyncEnsure($pdo, 'stella_acc_titles', 'stella_expenses', EXP_SYNC_DEFAULTS);
+function hRepost(PDO $pdo, ?string $title = null): array {
+    try { return expSyncMany($pdo, 'stella_disbursement', 'stella_expenses', 'stella_acc_titles', $title); }
+    catch (Throwable $e) { return ['synced'=>0,'unmapped'=>0,'removed'=>0]; }
+}
+
 // ── AJAX: Add ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
     header('Content-Type: application/json');
@@ -106,12 +119,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
     $section = $_POST['section'] ?? 'expenses';
     if (!in_array($section, ['assets','expenses','other'], true)) $section = 'expenses';
     $vatMode = vatModeClean($_POST['vat_mode'] ?? 'both');
+    $expCol  = expSyncColClean($_POST['expense_col'] ?? '');
     if ($title === '') { echo json_encode(['ok' => false, 'msg' => 'Title cannot be empty']); exit; }
     try {
         $maxOrd = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),0) FROM `stella_acc_titles`")->fetchColumn();
-        $stmt = $pdo->prepare("INSERT INTO `stella_acc_titles` (`title`,`section`,`vat_mode`,`sort_order`,`saved_by`) VALUES (?,?,?,?,?)");
-        $stmt->execute([$title, $section, $vatMode, $maxOrd + 1, $user['name']]);
-        echo json_encode(['ok' => true, 'id' => $pdo->lastInsertId(), 'title' => $title, 'section' => $section, 'vat_mode' => $vatMode]);
+        $stmt = $pdo->prepare("INSERT INTO `stella_acc_titles` (`title`,`section`,`vat_mode`,`expense_col`,`sort_order`,`saved_by`) VALUES (?,?,?,?,?,?)");
+        $stmt->execute([$title, $section, $vatMode, $expCol, $maxOrd + 1, $user['name']]);
+        echo json_encode(['ok' => true, 'id' => $pdo->lastInsertId(), 'title' => $title, 'section' => $section, 'vat_mode' => $vatMode, 'expense_col' => $expCol]);
     } catch (Throwable $e) {
         $msg = str_contains($e->getMessage(), 'uniq_title') ? 'That account title already exists' : $e->getMessage();
         echo json_encode(['ok' => false, 'msg' => $msg]);
@@ -146,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_edit'])) {
                 ->execute([$newTitle, $oldTitle]);
         }
         $pdo->commit();
+        if ($oldTitle !== $newTitle) hRepost($pdo, $newTitle);
         echo json_encode(['ok' => true, 'title' => $newTitle, 'section' => $useSection]);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -213,6 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_recalc_vat_all']
                     'Recalculated Input Tax on ' . $n . ($n === 1 ? ' entry' : ' entries') . ' under "' . $t['title'] . '" (' . VAT_MODE_LABELS[$mode] . ')');
             }
         }
+        if ($total > 0) hRepost($pdo);
         echo json_encode(['ok' => true, 'updated' => $total, 'per_title' => $per]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
@@ -237,10 +253,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_recalc_vat'])) {
             logAudit($pdo, $AUDIT_BRANCH, 'Account Titles', 'updated', null,
                 'Recalculated Input Tax on ' . $n . ($n === 1 ? ' entry' : ' entries') . ' under "' . $row['title'] . '" (' . VAT_MODE_LABELS[$mode] . ')');
         }
+        if ($n > 0) hRepost($pdo, $row['title']);
         echo json_encode(['ok' => true, 'updated' => $n]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
     }
+    exit;
+}
+
+// ── AJAX: Set the Expenses column of a title; its Disbursement entries are re-posted ──
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_set_expcol'])) {
+    header('Content-Type: application/json');
+    $id  = (int)($_POST['id'] ?? 0);
+    $col = expSyncColClean($_POST['expense_col'] ?? '');
+    if (!$id) { echo json_encode(['ok' => false, 'msg' => 'Missing ID']); exit; }
+    try {
+        $cur = $pdo->prepare("SELECT `title`, `expense_col` FROM `stella_acc_titles` WHERE id=?");
+        $cur->execute([$id]);
+        $row = $cur->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { echo json_encode(['ok' => false, 'msg' => 'Account title not found']); exit; }
+        $pdo->prepare("UPDATE `stella_acc_titles` SET `expense_col`=?, `saved_by`=? WHERE id=?")->execute([$col, $user['name'], $id]);
+        $n = hRepost($pdo, $row['title']);
+        if ((string)$row['expense_col'] !== $col) {
+            logAudit($pdo, $AUDIT_BRANCH, 'Account Titles', 'updated', null,
+                'Expenses column of "' . $row['title'] . '": ' . (EXP_SYNC_COLUMNS[(string)$row['expense_col']] ?? 'not posted') . ' → ' . (EXP_SYNC_COLUMNS[$col] ?? 'not posted'));
+        }
+        echo json_encode(['ok' => true, 'expense_col' => $col, 'posted' => $n['synced'], 'removed' => $n['unmapped'] + $n['removed']]);
+    } catch (Throwable $e) {
+        echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ── AJAX: Re-post every Disbursement entry to Expenses ──
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_repost_all'])) {
+    header('Content-Type: application/json');
+    $n = hRepost($pdo);
+    echo json_encode(['ok' => true, 'posted' => $n['synced'], 'skipped' => $n['unmapped']]);
     exit;
 }
 
@@ -249,7 +298,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
     header('Content-Type: application/json');
     $id = (int)($_POST['id'] ?? 0);
     try {
+        $dt = $pdo->prepare("SELECT `title` FROM `stella_acc_titles` WHERE id=?"); $dt->execute([$id]); $delTitle = $dt->fetchColumn();
         $pdo->prepare("DELETE FROM `stella_acc_titles` WHERE id=?")->execute([$id]);
+        if ($delTitle !== false) hRepost($pdo, $delTitle);
         echo json_encode(['ok' => true]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
@@ -271,6 +322,13 @@ foreach ($titles as $t) {
     if ($n > 0) $pendingFix[$t['title']] = $n;
 }
 
+function expColOptions(string $sel): string {
+    $h = '<option value=""' . ($sel === '' ? ' selected' : '') . '>— not posted —</option>';
+    foreach (EXP_SYNC_COLUMNS as $c => $lbl) $h .= '<option value="' . $c . '"' . ($sel === $c ? ' selected' : '') . '>→ ' . htmlspecialchars($lbl) . '</option>';
+    return $h;
+}
+$EXP_OPTS_HTML = expColOptions('');
+
 $pageTitle  = 'Stella Account Titles';
 $activePage = 'stella_disbursement';
 include '../layout.php';
@@ -278,7 +336,7 @@ include '../layout.php';
 
 <style>
 .at-outer {
-  width: 100%; max-width: 860px;
+  width: 100%; max-width: 1060px;
   border: 2px solid #6D4C41; border-radius: var(--radius);
   background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,.10);
   overflow: hidden;
@@ -424,6 +482,12 @@ include '../layout.php';
     <span style="color:#2E7D32;font-weight:700">Input tax only</span> always carries input tax;
     <span style="color:#C62828;font-weight:700">Non-VAT only</span> never carries input tax, even for a VAT-registered supplier (e.g. Purchases - Non-Vat).
   </div>
+  <div class="at-vat-legend" style="padding:8px 16px;background:#FBF7F4;border-bottom:1px solid #e5e0dc;font-family:var(--font-m);font-size:.66rem;color:#6b7280;line-height:1.6">
+    <strong>Expenses column</strong> decides where the <strong>gross</strong> amount of a Disbursement entry under that title is posted in
+    <a href="stella_expenses.php" style="color:#1565C0;font-weight:700">Stella Expenses</a> (view-only, filled automatically).
+    <em>— not posted —</em> means entries under that title do not appear in Expenses.
+    <button type="button" onclick="repostAll()" style="margin-left:6px;padding:3px 10px;border:1px solid #d7ccc8;border-radius:6px;background:#fff;color:#6D4C41;font-weight:700;cursor:pointer;font-size:.64rem">↻ Re-post all entries</button>
+  </div>
   <div class="at-add-row">
     <input type="text" id="at-new-title" placeholder="New account title…" maxlength="255"
            onkeydown="if(event.key==='Enter'){event.preventDefault();addTitle();}">
@@ -436,6 +500,9 @@ include '../layout.php';
       <option value="both" selected>VAT or Non-VAT</option>
       <option value="vat">Input tax only</option>
       <option value="none">Non-VAT only</option>
+    </select>
+    <select id="at-new-expcol" class="at-sec-sel" style="flex:0 0 170px;width:170px" title="Expenses column this title posts to">
+      <?= expColOptions('') ?>
     </select>
     <button class="at-add-btn" id="at-add-btn" onclick="addTitle()">+ Add</button>
   </div>
@@ -451,6 +518,10 @@ include '../layout.php';
             <?php foreach ($VAT_LABELS as $val => $lbl): ?>
             <option value="<?= $val ?>"<?= $vm === $val ? ' selected' : '' ?>><?= $lbl ?></option>
             <?php endforeach; ?>
+          </select>
+          <select class="at-vat-sel" style="width:175px" id="at-exp-<?= $t['id'] ?>" data-val="<?= htmlspecialchars((string)expSyncColClean($t['expense_col'] ?? '')) ?>"
+                  title="Expenses column: where the gross of Disbursement entries under this title is posted" onchange="setExpCol(<?= $t['id'] ?>, this)">
+            <?= expColOptions(expSyncColClean($t['expense_col'] ?? '')) ?>
           </select>
           <select class="at-sec-badge-sel sec-<?= htmlspecialchars($t['section']) ?>" id="at-sec-<?= $t['id'] ?>"
                   onchange="setSection(<?= $t['id'] ?>, this)">
@@ -484,6 +555,7 @@ async function addTitle() {
     fd.append('title', title);
     fd.append('section', section);
     fd.append('vat_mode', document.getElementById('at-new-vat').value);
+    fd.append('expense_col', document.getElementById('at-new-expcol').value);
     const res  = await fetch('stella_acc_title.php', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.ok) {
@@ -501,6 +573,7 @@ async function addTitle() {
             <option value="vat"${data.vat_mode==='vat'?' selected':''}>Input tax only</option>
             <option value="none"${data.vat_mode==='none'?' selected':''}>Non-VAT only</option>
           </select>
+          <select class="at-vat-sel" style="width:175px" id="at-exp-${data.id}" data-val="${data.expense_col}" title="Expenses column" onchange="setExpCol(${data.id}, this)">${EXP_OPTS.replace('value="'+data.expense_col+'"','value="'+data.expense_col+'" selected')}</select>
           <select class="at-sec-badge-sel sec-${data.section}" id="at-sec-${data.id}" onchange="setSection(${data.id}, this)">
             <option value="expenses"${data.section==='expenses'?' selected':''}>Expenses</option>
             <option value="assets"${data.section==='assets'?' selected':''}>Assets</option>
@@ -521,6 +594,38 @@ async function addTitle() {
   }
   btn.disabled = false; btn.textContent = '+ Add';
   inp.focus();
+}
+
+const EXP_OPTS = <?= json_encode($EXP_OPTS_HTML, JSON_UNESCAPED_UNICODE) ?>;
+
+async function setExpCol(id, sel) {
+  const prev = sel.dataset.val;
+  sel.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('ajax_set_expcol', '1');
+    fd.append('id', id);
+    fd.append('expense_col', sel.value);
+    const res  = await fetch('stella_acc_title.php', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!data.ok) { sel.value = prev; showToast('❌ ' + data.msg, 'error'); }
+    else {
+      sel.dataset.val = data.expense_col;
+      showToast(data.expense_col
+        ? '✓ Expenses column set — ' + data.posted + (data.posted === 1 ? ' entry' : ' entries') + ' posted to Expenses'
+        : '✓ Not posted to Expenses — ' + data.removed + ' linked row(s) removed', 'success');
+    }
+  } catch (e) { sel.value = prev; showToast('❌ Network error', 'error'); }
+  sel.disabled = false;
+}
+
+async function repostAll() {
+  if (!confirm('Re-post every Disbursement entry to Expenses using the current settings?\n\nLinked Expenses rows are rebuilt; manually-entered old rows are not touched.')) return;
+  const fd = new FormData(); fd.append('ajax_repost_all', '1');
+  try {
+    const data = await (await fetch('stella_acc_title.php', { method: 'POST', body: fd })).json();
+    showToast(data.ok ? '✓ ' + data.posted + ' entries posted to Expenses (' + data.skipped + ' skipped: no column set)' : '❌ ' + data.msg, data.ok ? 'success' : 'error');
+  } catch (e) { showToast('❌ Network error', 'error'); }
 }
 
 async function setSection(id, sel) {
