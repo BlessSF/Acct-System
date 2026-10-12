@@ -373,6 +373,11 @@ include '../layout.php';
 .bsv.saving { opacity:.5; pointer-events:none; }
 .bsv.ok  { background:#dcfce7; color:#15803d; }
 .bsv.err { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.rs { display:block; font-family:var(--font-m); font-size:.56rem; font-weight:700; margin-bottom:3px; white-space:nowrap; }
+.rs-ok    { color:#15803d; }
+.rs-dirty { color:#b45309; }
+.rs-new   { color:#6b7280; }
+.rs-err   { color:#be123c; }
 .bdel {
   padding: 3px 7px; font-size: .58rem;
   font-family: var(--font-m); font-weight: 700;
@@ -485,7 +490,6 @@ include '../layout.php';
   <?php if ($fSearch): ?>
   <a href="h_disbursement.php?month=<?= urlencode($fMonth) ?>" class="btn btn-ghost btn-sm">Reset</a>
   <?php endif; ?>
-  <button type="button" class="btn-add-row" onclick="addRow()">+ Add Entry</button>
   <a href="h_disbursement.php?export_csv=1&month=<?= urlencode($fMonth) ?>"
      class="btn btn-ghost btn-sm" style="color:#388E3C;border-color:rgba(76,175,80,.3);background:rgba(76,175,80,.06)">
     ⬇ Export XLSX
@@ -560,7 +564,7 @@ foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($_
       <?php endforeach; ?>
     <?php else: ?>
       <tr id="empty-row">
-        <td colspan="11" class="empty-state">No entries for <?= htmlspecialchars(date('F Y', strtotime($fMonth . '-01'))) ?> — click <strong>+ Add Entry</strong></td>
+        <td colspan="11" class="empty-state">No entries for <?= htmlspecialchars(date('F Y', strtotime($fMonth . '-01'))) ?> — type in the row below and press <strong>Enter</strong></td>
       </tr>
     <?php endif; ?>
     </tbody>
@@ -578,8 +582,8 @@ foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($_
   </table>
 </div>
 
-<div style="margin-top:12px">
-  <button class="btn-add-row" onclick="addRow()">+ Add Entry</button>
+<div style="margin-top:10px;font-family:var(--font-m);font-size:.68rem;color:var(--subtext2)">
+  ⏎ Fill in the last (blank) row and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd> — the entry is saved and a new blank row opens. To change a saved entry, edit it and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd>.
 </div>
 
 <?php
@@ -624,7 +628,7 @@ function renderRow(array $r, array $acctOpts): string {
     $h .= '<td><input type="text" class="di num" data-col="net_of_vat" value="' . $fmt($r['net_of_vat']). '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
     $h .= '<td><input type="text" class="di" data-col="particular"     value="' . $d('particular')      . '" placeholder="—" oninput="markDirty(this)"></td>';
     $h .= '<td class="td-act-sticky" style="padding:4px 5px;text-align:center">
-             <button class="bsv" onclick="saveRow(this)">Update</button>
+             <span class="rs rs-ok">✓ saved</span>
              <button class="bdel" onclick="deleteRow(this)">Del</button></td>';
     return $h;
 }
@@ -644,8 +648,18 @@ let acTimer = null;
 // ── Dirty flag ─────────────────────────────────────────────
 function markDirty(el) {
     const row = el.closest('tr');
-    const btn = row?.querySelector('.bsv');
-    if (btn) { btn.textContent = row.dataset.id ? 'Update*' : 'Save'; btn.className = 'bsv'; }
+    if (!row) return;
+    row.dataset.dirty = '1';
+    setRowState(row, row.dataset.id ? 'dirty' : 'new');
+}
+
+// Small status text in the Action cell (there is no Save button — Enter saves)
+function setRowState(row, state) {
+    const rs = row.querySelector('.rs');
+    if (!rs) return;
+    const map = { ok:['✓ saved','rs-ok'], dirty:['edited · Enter','rs-dirty'], 'new':['Enter to save','rs-new'], saving:['saving…','rs-new'], err:['not saved','rs-err'] };
+    const m = map[state] || map['new'];
+    rs.textContent = m[0]; rs.className = 'rs ' + m[1];
 }
 
 // ── Auto-calculate: gross → input_tax (12%) → net_of_vat ──
@@ -773,11 +787,11 @@ function acctOptionsHtml() {
 }
 
 // ── Add row ────────────────────────────────────────────────
-function addRow() {
+function addRow(focus = true, dateVal = '') {
     const empty = document.getElementById('empty-row');
     if (empty) empty.remove();
     const tbody = document.getElementById('dsb-tbody');
-    const today = new Date().toISOString().split('T')[0];
+    const today = dateVal || new Date().toISOString().split('T')[0];
     const tr = document.createElement('tr');
     tr.id = 'new_' + (++newRowCounter); tr.dataset.id = '';
     tr.innerHTML = `
@@ -793,18 +807,25 @@ function addRow() {
       <td><input type="text" class="di num" data-col="net_of_vat" value="0.00" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
       <td><input type="text" class="di" data-col="particular"     value="" placeholder="—" oninput="markDirty(this)"></td>
       <td class="td-act-sticky" style="padding:4px 5px;text-align:center">
-        <button class="bsv" onclick="saveRow(this)">Save</button>
+        <span class="rs rs-new">Enter to save</span>
       </td>`;
     tbody.appendChild(tr);
-    tr.querySelector('[data-col="tin"]')?.focus();
+    if (focus) tr.querySelector('[data-col="tin"]')?.focus();
     updateTotals();
 }
 
-// ── Save row ───────────────────────────────────────────────
-async function saveRow(btn) {
-    const row = btn.closest('tr');
-    const id  = row.dataset.id;
-    btn.textContent = '…'; btn.className = 'bsv saving';
+// ── Save row (triggered by Enter — there is no Save button) ──
+// Returns true when the row was saved.
+async function saveRow(row) {
+    if (row._saving) return false;
+    const id = row.dataset.id;
+    const g  = parseFloat((row.querySelector('[data-col="gross"]').value || '0').replace(/,/g, '')) || 0;
+    const acct = row.querySelector('[data-col="account_title"]').value;
+    if (!id) {                       // brand-new row: needs the basics before it is saved
+        if (!acct) { showToast('Choose an Account Title first', 'error'); row.querySelector('[data-col="account_title"]').focus(); return false; }
+        if (g <= 0) { showToast('Enter the Gross amount first', 'error'); row.querySelector('[data-col="gross"]').focus(); return false; }
+    }
+    row._saving = true; setRowState(row, 'saving');
     const fd = new FormData();
     fd.append(id ? 'ajax_update' : 'ajax_add', '1');
     if (id) fd.append('id', id);
@@ -815,7 +836,6 @@ async function saveRow(btn) {
         const res  = await fetch('h_disbursement.php', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.ok) {
-            btn.textContent = 'Update'; btn.className = 'bsv ok';
             // Show Input Tax / Net of VAT exactly as the server saved them
             if (data.input_tax !== undefined) {
                 const tEl = row.querySelector('[data-col="input_tax"]');
@@ -828,23 +848,43 @@ async function saveRow(btn) {
                 const del = document.createElement('button');
                 del.className = 'bdel'; del.textContent = 'Del';
                 del.onclick = function(){ deleteRow(this); };
-                btn.parentElement.appendChild(del);
+                row.querySelector('.rs').after(del);
             }
-            setTimeout(() => { if (btn.className.includes('ok')) btn.className = 'bsv'; }, 2000);
+            row.dataset.dirty = '';
+            setRowState(row, 'ok');
             if (data.posted === 'unmapped') showToast('✓ Entry saved — but its Account Title has no Expenses column, so it was NOT posted to Expenses (set one in Account Titles)', 'error');
             else if (data.posted === 'error') showToast('✓ Entry saved — but posting to Expenses failed', 'error');
             else showToast('✓ Entry saved and posted to Expenses', 'success');
             updateTotals();
-        } else {
-            btn.textContent = 'Error'; btn.className = 'bsv err';
-            showToast('❌ ' + data.msg, 'error');
-            setTimeout(() => { btn.textContent = id ? 'Update' : 'Save'; btn.className = 'bsv'; }, 3000);
+            row._saving = false;
+            return true;
         }
+        setRowState(row, 'err');
+        showToast('❌ ' + data.msg, 'error');
     } catch(e) {
-        btn.textContent = 'Error'; btn.className = 'bsv err';
+        setRowState(row, 'err');
         showToast('❌ Network error', 'error');
     }
+    row._saving = false;
+    return false;
 }
+
+// ── Enter = save. On the blank (new) row it also opens the next blank row. ──
+document.addEventListener('keydown', async function (e) {
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    const el = e.target;
+    const row = el.closest ? el.closest('#dsb-tbody tr') : null;
+    if (!row || el.tagName === 'SELECT' || el.tagName === 'BUTTON') return;
+    if (el.classList.contains('ac-pick')) return;
+    if (!row.dataset.id) {                 // new row → save, then a fresh blank row
+        e.preventDefault(); e.stopPropagation();
+        document.querySelectorAll('.ac-list').forEach(l => l.classList.remove('open'));
+        const dateVal = row.querySelector('[data-col="entry_date"]').value;
+        if (await saveRow(row)) addRow(true, dateVal);
+    } else if (row.dataset.dirty === '1') { // saved row that was edited → save, then normal Enter-moves-down
+        saveRow(row);
+    }
+}, true);
 
 // ── Delete row ─────────────────────────────────────────────
 async function deleteRow(btn) {
@@ -867,7 +907,7 @@ async function deleteRow(btn) {
 // ── Live totals ────────────────────────────────────────────
 function updateTotals() {
     let g = 0, t = 0, n = 0;
-    document.querySelectorAll('#dsb-tbody tr[data-id]').forEach(row => {
+    document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').forEach(row => {
         g += parseFloat(row.querySelector('[data-col="gross"]')?.value?.replace(/,/g,'') || 0);
         t += parseFloat(row.querySelector('[data-col="input_tax"]')?.value?.replace(/,/g,'') || 0);
         n += parseFloat(row.querySelector('[data-col="net_of_vat"]')?.value?.replace(/,/g,'') || 0);
@@ -875,9 +915,15 @@ function updateTotals() {
     document.getElementById('tfoot-gross').textContent = g.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     document.getElementById('tfoot-itax').textContent  = t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     document.getElementById('tfoot-nvat').textContent  = n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
-    const count = document.querySelectorAll('#dsb-tbody tr[data-id]').length;
+    const count = document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').length;
     document.getElementById('dsb-count').textContent = count;
 }
+
+// Always keep one blank row at the bottom, ready to type into (no "+ Add Entry" button).
+document.addEventListener('DOMContentLoaded', function () {
+    addRow(false);
+    updateTotals();
+});
 
 function showToast(msg, type) {
     const t = document.createElement('div');

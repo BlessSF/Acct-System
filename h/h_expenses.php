@@ -145,6 +145,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['ajax_add']) || isset
     exit;
 }
 
+// ── AJAX: Rebuild one month from Disbursement ──
+//    Deletes the old manually-typed ("legacy") rows of that month — they were keyed by hand, can
+//    duplicate Disbursement entries and recompute VAT on Non-VAT purchases — then re-posts every
+//    Disbursement entry of that month (gross into the column set on its Account Title).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_rebuild_month'])) {
+    header('Content-Type: application/json');
+    $ry = (int)($_POST['year'] ?? 0); $rm = (int)($_POST['month'] ?? 0);
+    if ($ry < 2000 || $rm < 1 || $rm > 12) { echo json_encode(['ok'=>false,'msg'=>'Bad month']); exit; }
+    $from = sprintf('%04d-%02d-01', $ry, $rm);
+    $to   = date('Y-m-d', strtotime($from . ' +1 month'));
+    try {
+        $del = $pdo->prepare("DELETE FROM h_expenses WHERE disbursement_id IS NULL AND expense_date >= ? AND expense_date < ?");
+        $del->execute([$from, $to]);
+        $n = expSyncMany($pdo, 'h_disbursement', 'h_expenses', 'h_acc_titles', null, $from, $to);
+        echo json_encode(['ok'=>true,'removed'=>$del->rowCount(),'posted'=>$n['synced'],'skipped'=>$n['unmapped']]);
+    } catch (Throwable $e) {
+        echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
+    }
+    exit;
+}
+
 // ── AJAX: tick / untick rows for the "Selected Totals" VAT card (the only thing editable here) ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_set_checks'])) {
     header('Content-Type: application/json');
@@ -230,6 +251,9 @@ $monthNames = ['','January','February','March','April','May','June','July','Augu
 $stmt = $pdo->prepare("SELECT * FROM h_expenses WHERE YEAR(expense_date)=? AND MONTH(expense_date)=? ORDER BY expense_date ASC, id ASC");
 $stmt->execute([$fYear, $fMonth]);
 $rows = $stmt->fetchAll();
+
+$legacyCount = 0;
+foreach ($rows as $__r) { if (empty($__r['disbursement_id'])) $legacyCount++; }
 
 // ── Column totals for summary card ────────────────────────
 $expCols = [
@@ -770,6 +794,13 @@ $summaryGroups = [
 </table>
 </div>
 
+<?php if ($legacyCount > 0): ?>
+<div style="margin-top:12px;padding:10px 14px;border-radius:8px;background:#FFFBEB;border:1px solid #FCD34D;font-family:var(--font-m);font-size:.7rem;color:#92400E;line-height:1.6">
+  ⚠ <strong><?= $legacyCount ?> manual (legacy) row<?= $legacyCount===1?'':'s' ?></strong> in <?= $monthNames[$fMonth] ?> <?= $fYear ?> were typed in by hand before auto-posting.
+  They still recompute VAT themselves (so a Non-VAT purchase can show a VAT/net split and a CHECK difference) and can duplicate Disbursement entries.
+  <button type="button" onclick="rebuildMonth()" style="margin-left:6px;padding:4px 12px;border:1px solid #D97706;border-radius:6px;background:#fff;color:#92400E;font-weight:700;cursor:pointer;font-size:.68rem">↻ Rebuild <?= $monthNames[$fMonth] ?> from Disbursement</button>
+</div>
+<?php endif; ?>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
   <span style="font-family:var(--font-m);font-size:.68rem;color:var(--subtext2)">🔒 View-only · rows with 🔗 are posted automatically from <a href="h_disbursement.php" style="color:#1565C0;font-weight:700">H Disbursement</a> (gross amount, column chosen per <a href="h_acc_title.php" style="color:#1565C0;font-weight:700">Account Title</a>).</span>
 </div>
@@ -1218,6 +1249,17 @@ async function deleteRow(btn) {
       showToast('❌ ' + data.msg, 'error');
     }
   } catch(e) { showToast('❌ Network error','error'); }
+}
+
+async function rebuildMonth() {
+  if (!confirm('Rebuild this month from H Disbursement?\n\n• the manually-typed (legacy) rows of this month are DELETED\n• every Disbursement entry of this month is posted again (gross amount, column per Account Title)\n\nThis cannot be undone.')) return;
+  const fd = new FormData();
+  fd.append('ajax_rebuild_month', '1'); fd.append('year', F_YEAR); fd.append('month', F_MONTH);
+  try {
+    const data = await (await fetch('h_expenses.php', {method:'POST', body:fd})).json();
+    if (data.ok) { showToast('✓ ' + data.removed + ' legacy row(s) removed, ' + data.posted + ' entries posted' + (data.skipped ? ' (' + data.skipped + ' skipped: no Expenses column)' : ''), 'success'); setTimeout(() => location.reload(), 900); }
+    else showToast('❌ ' + data.msg, 'error');
+  } catch (e) { showToast('❌ Network error', 'error'); }
 }
 
 function doExport(e) {
