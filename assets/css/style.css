@@ -1,0 +1,1590 @@
+/* ============================================================
+ *  style.css — Shared stylesheet for all branch Sales Report pages
+ *
+ *  Extracted from the per-page <style> blocks that used to live
+ *  inline inside each *_sales_report.php file. Each branch's rules
+ *  are scoped under the body class layout.php now renders
+ *  (body.page-<activePage>), so every branch keeps its exact look —
+ *  nothing is shared/merged across branches except by scoping.
+ *
+ *  demicmain and demiclab_jaro were intentionally left untouched
+ *  and are NOT included here.
+ * ============================================================ */
+
+/* ------------------------------------------------------------
+ *  Commissary — Sales Report   (body.page-commissary_sales_report)
+ * ------------------------------------------------------------ */
+.page-commissary_sales_report .sr-header-card {
+  background: linear-gradient(135deg, #1e3060 0%, #0f2045 100%);
+  border-radius: var(--radius); padding: 20px 26px 16px;
+  margin-bottom: 18px; display: flex; align-items: flex-start;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.page-commissary_sales_report .sr-header-card .eyebrow { font-family:var(--font-m); font-size:.58rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.45); margin-bottom:4px; }
+.page-commissary_sales_report .sr-header-card .title { font-size:1.2rem; font-weight:800; color:#fff; letter-spacing:-.02em; }
+.page-commissary_sales_report .sr-header-card .subtitle { font-family:var(--font-m); font-size:.67rem; color:rgba(255,255,255,.5); margin-top:4px; }
+
+.page-commissary_sales_report .sr-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.page-commissary_sales_report .sr-save-status { font-family:var(--font-m); font-size:.72rem; color:var(--subtext); }
+
+/* ── Section blocks ── */
+.page-commissary_sales_report .sr-section {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06);
+  overflow:hidden; margin-bottom:22px;
+}
+.page-commissary_sales_report .sr-section-title {
+  padding:10px 16px; font-family:var(--font-m); font-size:.75rem;
+  font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#fff;
+}
+.page-commissary_sales_report .sr-section-title.dark-red { background:#6b1530; }
+.page-commissary_sales_report .sr-section-title.dark-green { background:#1b4332; }
+
+/* ── DINE IN table ── */
+.page-commissary_sales_report .di-table { width:100%; border-collapse:collapse; }
+.page-commissary_sales_report .di-table th {
+  background:#7a2233; color:#fff; padding:7px 8px;
+  font-family:var(--font-m); font-size:.62rem; text-transform:uppercase;
+  letter-spacing:.06em; text-align:center; white-space:nowrap; border:1px solid #4a1020;
+}
+.page-commissary_sales_report .di-table th.sub { background:#4b5563; font-size:.58rem; }
+.page-commissary_sales_report .di-table td { padding:5px 7px; border:1px solid #e5e7eb; font-size:.77rem; vertical-align:middle; }
+.page-commissary_sales_report .di-table tfoot td { background:#e8b64c; font-family:var(--font-m); font-weight:800; font-size:.78rem; padding:7px 8px; border:1px solid #c99a2e; }
+.page-commissary_sales_report .di-table tfoot td.total-label { background:#223a70; color:#fff; font-size:.78rem; }
+.page-commissary_sales_report .di-table tfoot td.grand-total { background:#223a70; color:#fff; font-family:var(--font-m); font-weight:800; }
+
+.page-commissary_sales_report .di-inp { width:100%; border:none; background:transparent; font-family:var(--font-m); font-size:.77rem; text-align:right; outline:none; }
+.page-commissary_sales_report .di-inp:focus { background:#fffbeb; border-radius:3px; }
+.page-commissary_sales_report .di-inp.txt { text-align:left; }
+.page-commissary_sales_report .di-inp-name { width:90px; }
+.page-commissary_sales_report .di-inp-amt { width:70px; }
+.page-commissary_sales_report .btn-add-row { margin:8px 12px; padding:4px 12px; background:#1b4332; color:#fff; border:none; border-radius:5px; font-size:.7rem; font-weight:700; cursor:pointer; }
+.page-commissary_sales_report .btn-add-row:hover { background:#123d26; }
+.page-commissary_sales_report .btn-del-row { background:#fee2e2; border:none; color:#991b1b; border-radius:4px; padding:2px 6px; font-size:.65rem; cursor:pointer; }
+
+/* ── Sub-section grid ── */
+.page-commissary_sales_report .sub-grid { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--border); }
+.page-commissary_sales_report .sub-grid.three-col { grid-template-columns:repeat(3,1fr); }
+.page-commissary_sales_report .sub-col { border-right:1px solid #e5e7eb; }
+.page-commissary_sales_report .sub-col:last-child { border-right:none; }
+.page-commissary_sales_report .sub-col-title {
+  background:#6b1530; color:#fff; padding:7px 10px;
+  font-family:var(--font-m); font-size:.68rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em; text-align:center;
+}
+.page-commissary_sales_report .sub-col-hdr {
+  display:grid; grid-template-columns:1fr 90px 28px;
+  background:#e5e7eb; border-bottom:1px solid #bbb;
+}
+.page-commissary_sales_report .sub-col-hdr span { padding:5px 8px; font-family:var(--font-m); font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#333; border-right:1px solid #bbb; }
+.page-commissary_sales_report .sub-col-hdr span:last-child { border-right:none; }
+.page-commissary_sales_report .sub-row { display:grid; grid-template-columns:1fr 90px 28px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.page-commissary_sales_report .sub-row:hover { background:#fafbfc; }
+.page-commissary_sales_report .sub-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-family:var(--font-m); font-size:.75rem; outline:none; padding:5px 6px; cursor:text; }
+.page-commissary_sales_report .sub-inp.num { text-align:right; }
+.page-commissary_sales_report .sub-inp:focus { background:#fffbeb; border-color:#e8b64c; box-shadow:0 0 0 2px rgba(245,197,66,.15); }
+.page-commissary_sales_report .sub-footer { display:grid; grid-template-columns:1fr 90px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-commissary_sales_report .sub-footer span { padding:6px 8px; font-family:var(--font-m); font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; }
+.page-commissary_sales_report .sub-footer span:last-child { text-align:right; border-right:none; }
+
+/* ── Summary card (existing) ── */
+.page-commissary_sales_report .sr-wrap { max-width:680px; margin:0 auto; }
+.page-commissary_sales_report .sr-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06); overflow:hidden; }
+.page-commissary_sales_report .sr-title-row { background:#1f6b3f; padding:14px 28px; text-align:center; }
+.page-commissary_sales_report .sr-title-row .sr-main-title { font-size:1rem; font-weight:800; color:#fff; letter-spacing:.06em; text-transform:uppercase; font-family:var(--font-m); }
+.page-commissary_sales_report .sr-row { display:flex; align-items:center; padding:10px 28px; border-bottom:1px solid #f0f2f5; min-height:44px; gap:10px; }
+.page-commissary_sales_report .sr-row.green { background:#3f7050; }
+.page-commissary_sales_report .sr-row.green .sr-label { color:#fff; font-weight:700; }
+.page-commissary_sales_report .sr-row.gray-hdr { background:#e5e7eb; }
+.page-commissary_sales_report .sr-row.gray-hdr .sr-label { color:#333; font-weight:700; }
+.page-commissary_sales_report .sr-row.pink-val .sr-value-wrap input { background:#f3d9e4; border-color:#e3bccf; }
+.page-commissary_sales_report .sr-row.net { background:#e8b64c; }
+.page-commissary_sales_report .sr-row.net .sr-label { color:#3e2f00; font-weight:800; font-style:italic; }
+.page-commissary_sales_report .sr-row.coh { background:#1f2d42; }
+.page-commissary_sales_report .sr-row.coh .sr-label { color:#fff; font-weight:800; font-style:italic; }
+.page-commissary_sales_report .sr-row.short { background:#dc3545; }
+.page-commissary_sales_report .sr-row.short .sr-label { color:#fff; font-weight:800; }
+.page-commissary_sales_report .sr-label { flex:1; font-size:.84rem; color:var(--text); font-weight:600; text-align:right; padding-right:14px; }
+.page-commissary_sales_report .sr-note { font-family:var(--font-h); font-style:italic; font-size:.68rem; color:var(--subtext); white-space:nowrap; }
+.page-commissary_sales_report .sr-value-wrap { width:160px; flex-shrink:0; }
+.page-commissary_sales_report .sr-input { width:100%; padding:7px 12px; text-align:center; font-family:var(--font-m); font-size:.84rem; font-weight:700; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:6px; outline:none; transition:border-color .15s; }
+.page-commissary_sales_report input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+.page-commissary_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-commissary_sales_report input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.page-commissary_sales_report .sr-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-commissary_sales_report .sr-input.readout { background:rgba(255,255,255,.9); font-size:1rem; font-weight:800; cursor:default; color:#1a1d23; border-color:transparent; }
+.page-commissary_sales_report .sr-row.net   .sr-input.readout { background:#fff; color:#7a5c00; }
+.page-commissary_sales_report .sr-row.coh   .sr-input { background:#fff; }
+.page-commissary_sales_report .sr-row.short .sr-input.readout { background:#fff; color:#b71c1c; }
+.page-commissary_sales_report .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:320px; animation:fadeSlideDown .3s ease; }
+
+/* ── Visual polish pass ── */
+.page-commissary_sales_report .sr-header-card { position:relative; overflow:hidden; }
+.page-commissary_sales_report .sr-header-card::before {
+  content:''; position:absolute; top:-60%; right:-8%;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.page-commissary_sales_report .sr-section { transition:box-shadow .2s ease; }
+.page-commissary_sales_report .sr-section:hover { box-shadow:0 4px 20px rgba(0,0,0,.09); }
+.page-commissary_sales_report .btn-add-row {
+  border-radius:8px !important;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.page-commissary_sales_report .btn-add-row:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.16); }
+.page-commissary_sales_report .btn-del-row { border-radius:6px !important; transition:background .15s ease, transform .15s ease; }
+.page-commissary_sales_report .btn-del-row:hover { transform:scale(1.06); }
+.page-commissary_sales_report .sub-row:hover { background:#f4f7fb !important; }
+.page-commissary_sales_report .di-inp,
+.page-commissary_sales_report .sub-inp,
+.page-commissary_sales_report .sr-input,
+.page-commissary_sales_report .sr-cashier-bar input {
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.page-commissary_sales_report .sub-inp { border-radius:6px !important; }
+
+/* ------------------------------------------------------------
+ *  Dois — Sales Report   (body.page-dois_sales_report)
+ * ------------------------------------------------------------ */
+/* ────────────────────────────────────────────────────────────
+   DOIS SALES REPORT – styles matching Excel layout
+──────────────────────────────────────────────────────────── */
+.page-dois_sales_report .sr-page { font-family:var(--font-h,'Inter',sans-serif); }
+
+.page-dois_sales_report .sr-header-card {
+  background:linear-gradient(135deg,#1e3060,#0f2045);
+  border-radius:var(--radius,8px); padding:18px 24px;
+  margin-bottom:16px; display:flex; align-items:center;
+  justify-content:space-between; flex-wrap:wrap; gap:10px;
+}
+.page-dois_sales_report .sr-header-card .eyebrow { font-size:.56rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.45); margin-bottom:3px; }
+.page-dois_sales_report .sr-header-card .title { font-size:1.1rem; font-weight:800; color:#fff; }
+.page-dois_sales_report .sr-header-card .subtitle { font-size:.64rem; color:rgba(255,255,255,.5); margin-top:3px; }
+.page-dois_sales_report .sr-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+.page-dois_sales_report .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:320px; animation:fadeSlideDown .3s ease; }
+
+/* ── 3-col sub-section grid (top area) ── */
+.page-dois_sales_report .sub-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:0; border:1px solid #ccc; border-radius:8px; overflow:hidden; margin-bottom:14px; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.07); }
+.page-dois_sales_report .sub-grid-3 .sub-col { border-right:1px solid #ddd; }
+.page-dois_sales_report .sub-grid-3 .sub-col:last-child { border-right:none; }
+
+/* column title bar */
+.page-dois_sales_report .sub-col-title {
+  padding:8px 12px; font-size:.65rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.07em; color:#fff; text-align:center;
+}
+.page-dois_sales_report .sub-col-title.orange { background:#E65100; }
+.page-dois_sales_report .sub-col-title.pink { background:#c2185b; }
+.page-dois_sales_report .sub-col-title.appigo { background:#9c27b0; }
+.page-dois_sales_report .sub-col-title.green { background:#1f6b3f; }
+.page-dois_sales_report .sub-col-title.gcred { background:#d32f2f; }
+.page-dois_sales_report .sub-col-title.gccard { background:#388e3c; }
+
+/* column header row */
+.page-dois_sales_report .sub-col-hdr { display:grid; grid-template-columns:1fr 100px 26px; background:#eee; border-bottom:1px solid #ccc; }
+.page-dois_sales_report .sub-col-hdr span { padding:4px 7px; font-size:.58rem; font-weight:700; text-transform:uppercase; color:#444; border-right:1px solid #ccc; }
+.page-dois_sales_report .sub-col-hdr span:last-child { border-right:none; }
+
+/* data rows */
+.page-dois_sales_report .sub-data-row { display:grid; grid-template-columns:1fr 100px 26px; border-bottom:1px solid #f0f2f5; align-items:center; min-height:30px; }
+.page-dois_sales_report .sub-data-row:hover { background:#fafbfc; }
+.page-dois_sales_report .sub-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:3px; font-size:.73rem; padding:4px 6px; outline:none; }
+.page-dois_sales_report .sub-inp.num { text-align:right; }
+.page-dois_sales_report .sub-inp:focus { background:#fffbeb; border-color:#e8b64c; }
+.page-dois_sales_report .sub-footer-row { display:grid; grid-template-columns:1fr 100px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-dois_sales_report .sub-footer-row span { padding:5px 8px; font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; font-family:var(--font-m,'Inter',sans-serif); }
+.page-dois_sales_report .sub-footer-row span:last-child { text-align:right; border-right:none; }
+.page-dois_sales_report .btn-add-sub { margin:5px 8px; padding:3px 9px; background:#1b4332; color:#fff; border:none; border-radius:4px; font-size:.63rem; font-weight:700; cursor:pointer; }
+.page-dois_sales_report .btn-add-sub:hover { background:#123d26; }
+.page-dois_sales_report .btn-del-sub { background:#fee2e2; border:none; color:#991b1b; border-radius:3px; padding:2px 4px; font-size:.6rem; cursor:pointer; }
+
+/* ── Dine-in table ── */
+.page-dois_sales_report .dinein-wrap { background:#fff; border:1px solid #ccc; border-radius:8px; overflow:hidden; margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,.07); }
+.page-dois_sales_report .dinein-title { background:#223a70; color:#fff; padding:9px 14px; font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.07em; }
+.page-dois_sales_report .di-table { width:100%; border-collapse:collapse; font-size:.74rem; }
+.page-dois_sales_report .di-table th { background:#d32f2f; color:#fff; padding:7px 8px; font-size:.6rem; text-transform:uppercase; letter-spacing:.05em; text-align:center; border:1px solid #b71c1c; white-space:nowrap; }
+.page-dois_sales_report .di-table th.sub2 { background:#555; font-size:.57rem; }
+.page-dois_sales_report .di-table td { padding:4px 6px; border:1px solid #e5e9f0; vertical-align:middle; }
+.page-dois_sales_report .di-table tfoot td { background:#e8b64c; font-weight:800; border:1px solid #c99a2e; font-size:.76rem; padding:6px 8px; }
+.page-dois_sales_report .di-table tfoot td.lbl { background:#223a70; color:#fff; }
+.page-dois_sales_report .di-table tfoot td.grand { background:#223a70; color:#fff; font-weight:800; }
+.page-dois_sales_report .di-inp { width:100%; border:none; background:transparent; font-family:var(--font-m,'Inter',sans-serif); font-size:.73rem; text-align:right; outline:none; }
+.page-dois_sales_report .di-inp:focus { background:#fffbeb; border-radius:2px; }
+.page-dois_sales_report .di-inp.txt { text-align:left; }
+.page-dois_sales_report .btn-add-di { margin:6px 10px; padding:3px 10px; background:#1b4332; color:#fff; border:none; border-radius:4px; font-size:.65rem; font-weight:700; cursor:pointer; }
+.page-dois_sales_report .btn-del-di { background:#fee2e2; border:none; color:#991b1b; border-radius:3px; padding:2px 5px; font-size:.62rem; cursor:pointer; }
+
+/* ── Summary card ── */
+.page-dois_sales_report .summary-wrap { max-width:640px; margin:0 auto 20px; }
+.page-dois_sales_report .summary-card { background:#fff; border:1px solid #ccc; border-radius:8px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.08); }
+.page-dois_sales_report .summary-title { background:#1f6b3f; padding:13px 24px; text-align:center; font-size:.92rem; font-weight:800; color:#fff; letter-spacing:.06em; text-transform:uppercase; }
+.page-dois_sales_report .sr-row { display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid #f0f2f5; min-height:40px; gap:8px; }
+.page-dois_sales_report .sr-row:last-child { border-bottom:none; }
+.page-dois_sales_report .sr-row.orange-hdr { background:#E65100; }
+.page-dois_sales_report .sr-row.orange-hdr .sr-lbl { color:#fff; font-weight:800; }
+.page-dois_sales_report .sr-row.orange-sub { background:#FF7043; }
+.page-dois_sales_report .sr-row.orange-sub .sr-lbl { color:#fff; font-weight:600; font-size:.78rem; }
+.page-dois_sales_report .sr-row.green-row { background:#1f6b3f; }
+.page-dois_sales_report .sr-row.green-row .sr-lbl { color:#fff; font-weight:700; }
+.page-dois_sales_report .sr-row.white-row { background:#fff; }
+.page-dois_sales_report .sr-row.pink-row { background:#fce4ec; }
+.page-dois_sales_report .sr-row.gray-row { background:#f0f0f0; }
+.page-dois_sales_report .sr-row.net-row { background:#e8b64c; }
+.page-dois_sales_report .sr-row.net-row .sr-lbl { color:#3e2f00; font-weight:800; font-style:italic; }
+.page-dois_sales_report .sr-row.coh-row { background:#1e3060; }
+.page-dois_sales_report .sr-row.coh-row .sr-lbl { color:#fff; font-weight:800; font-style:italic; }
+.page-dois_sales_report .sr-row.short-row { background:#dc3545; }
+.page-dois_sales_report .sr-row.short-row .sr-lbl { color:#fff; font-weight:800; }
+.page-dois_sales_report .sr-row.remarks-row { background:#f9f9f9; min-height:52px; align-items:flex-start; padding-top:10px; }
+.page-dois_sales_report .sr-lbl { flex:1; font-size:.82rem; color:#1a1d23; font-weight:600; text-align:right; padding-right:12px; }
+.page-dois_sales_report .sr-note { font-size:.63rem; color:rgba(255,255,255,.65); white-space:nowrap; font-style:italic; }
+.page-dois_sales_report .sr-note.dk { color:#888; }
+.page-dois_sales_report .sr-val { width:150px; flex-shrink:0; }
+.page-dois_sales_report .sr-inp { width:100%; padding:6px 10px; text-align:center; font-family:var(--font-m,'Inter',sans-serif); font-size:.82rem; font-weight:700; color:#1a1d23; background:#fff; border:1px solid #dde; border-radius:5px; outline:none; }
+.page-dois_sales_report .sr-inp:focus { border-color:#223a70; box-shadow:0 0 0 2px rgba(26,58,138,.1); }
+.page-dois_sales_report .sr-inp.ro { background:rgba(255,255,255,.9); cursor:default; border-color:transparent; font-size:.88rem; font-weight:800; }
+.page-dois_sales_report .sr-row.net-row .sr-inp.ro { background:#fff; color:#7a5c00; }
+.page-dois_sales_report .sr-row.coh-row .sr-inp { background:#fff; }
+.page-dois_sales_report .sr-row.short-row .sr-inp.ro { background:#fff; }
+.page-dois_sales_report .sr-inp.remarks-inp { text-align:left; font-weight:400; font-size:.78rem; resize:vertical; }
+
+/* ── Visual polish pass ── */
+.page-dois_sales_report .sr-header-card { position:relative; overflow:hidden; }
+.page-dois_sales_report .sr-header-card::before {
+  content:''; position:absolute; top:-60%; right:-8%;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.page-dois_sales_report .sr-section { transition:box-shadow .2s ease; }
+.page-dois_sales_report .sr-section:hover { box-shadow:0 4px 20px rgba(0,0,0,.09); }
+.page-dois_sales_report .btn-add-row {
+  border-radius:8px !important;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.page-dois_sales_report .btn-add-row:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.16); }
+.page-dois_sales_report .btn-del-row { border-radius:6px !important; transition:background .15s ease, transform .15s ease; }
+.page-dois_sales_report .btn-del-row:hover { transform:scale(1.06); }
+.page-dois_sales_report .sub-row:hover { background:#f4f7fb !important; }
+.page-dois_sales_report .di-inp,
+.page-dois_sales_report .sub-inp,
+.page-dois_sales_report .sr-input,
+.page-dois_sales_report .sr-cashier-bar input {
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.page-dois_sales_report .sub-inp { border-radius:6px !important; }
+
+/* ------------------------------------------------------------
+ *  H — Sales Report   (body.page-h_sales_report)
+ * ------------------------------------------------------------ */
+.page-h_sales_report .sr-header-card {
+  background: linear-gradient(135deg, #1e3060 0%, #0f2045 100%);
+  border-radius: var(--radius); padding: 20px 26px 16px;
+  margin-bottom: 18px; display: flex; align-items: flex-start;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.page-h_sales_report .sr-header-card .eyebrow { font-family:var(--font-m); font-size:.58rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.45); margin-bottom:4px; }
+.page-h_sales_report .sr-header-card .title { font-size:1.2rem; font-weight:800; color:#fff; letter-spacing:-.02em; }
+.page-h_sales_report .sr-header-card .subtitle { font-family:var(--font-m); font-size:.67rem; color:rgba(255,255,255,.5); margin-top:4px; }
+
+.page-h_sales_report .sr-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.page-h_sales_report .sr-oc-bar { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); flex-wrap:wrap; }
+.page-h_sales_report .sr-oc-bar .sr-oc-field { display:flex; align-items:center; gap:12px; flex:1; min-width:220px; }
+.page-h_sales_report .sr-oc-bar label { font-family:var(--font-m); font-size:.85rem; font-weight:800; color:var(--text); white-space:nowrap; }
+.page-h_sales_report .sr-oc-bar input { flex:1; min-width:0; padding:10px 14px; font-family:var(--font-m); font-size:.95rem; font-weight:700; text-align:left; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:8px; outline:none; transition:border-color .15s; }
+.page-h_sales_report .sr-oc-bar input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-h_sales_report .sr-save-status { font-family:var(--font-m); font-size:.72rem; color:var(--subtext); }
+
+/* ── Section blocks ── */
+.page-h_sales_report .sr-section {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06);
+  overflow:hidden; margin-bottom:22px;
+}
+.page-h_sales_report .sr-section-title {
+  padding:10px 16px; font-family:var(--font-m); font-size:.75rem;
+  font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#fff;
+}
+.page-h_sales_report .sr-section-title.dark-red { background:#6b1530; }
+.page-h_sales_report .sr-section-title.dark-green { background:#1b4332; }
+
+/* ── Extra sections row (Advance Deposit / Bar side-by-side) ── */
+.page-h_sales_report .extra-sections-row {
+  display:flex; gap:16px; margin-bottom:22px; align-items:flex-start;
+}
+.page-h_sales_report .extra-sections-row .extra-section-col {
+  flex:1 1 0; min-width:0; margin-bottom:0;
+}
+.page-h_sales_report .extra-section-col .di-table th,
+.page-h_sales_report .extra-section-col .di-table td { padding:5px 6px; font-size:.7rem; }
+.page-h_sales_report .extra-section-col .di-inp { font-size:.7rem; }
+.page-h_sales_report .extra-section-col .di-table th:first-child,
+.page-h_sales_report .extra-section-col .di-table td:first-child { text-align:left; }
+@media (max-width:900px) {
+  .page-h_sales_report .extra-sections-row { flex-direction:column; }
+}
+
+/* ── DINE IN table ── */
+.page-h_sales_report .di-table { width:100%; border-collapse:collapse; }
+.page-h_sales_report .di-table th {
+  background:#7a2233; color:#fff; padding:7px 8px;
+  font-family:var(--font-m); font-size:.62rem; text-transform:uppercase;
+  letter-spacing:.06em; text-align:center; white-space:nowrap; border:1px solid #4a1020;
+}
+.page-h_sales_report .di-table th.sub { background:#4b5563; font-size:.58rem; }
+.page-h_sales_report .di-table td { padding:5px 7px; border:1px solid #e5e7eb; font-size:.77rem; vertical-align:middle; }
+.page-h_sales_report .di-table tfoot td { background:#e8b64c; font-family:var(--font-m); font-weight:800; font-size:.78rem; padding:7px 8px; border:1px solid #c99a2e; }
+.page-h_sales_report .di-table tfoot td.total-label { background:#223a70; color:#fff; font-size:.78rem; }
+.page-h_sales_report .di-table tfoot td.grand-total { background:#223a70; color:#fff; font-family:var(--font-m); font-weight:800; }
+
+.page-h_sales_report .di-inp { width:100%; border:none; background:transparent; font-family:var(--font-m); font-size:.77rem; text-align:right; outline:none; }
+.page-h_sales_report .di-inp:focus { background:#fffbeb; border-radius:3px; }
+.page-h_sales_report .di-inp.txt { text-align:left; }
+.page-h_sales_report .di-inp-name { width:90px; }
+.page-h_sales_report .di-inp-amt { width:70px; }
+.page-h_sales_report .btn-add-row { margin:8px 12px; padding:4px 12px; background:#1b4332; color:#fff; border:none; border-radius:5px; font-size:.7rem; font-weight:700; cursor:pointer; }
+.page-h_sales_report .btn-add-row:hover { background:#123d26; }
+.page-h_sales_report .btn-del-row { background:#fee2e2; border:none; color:#991b1b; border-radius:4px; padding:2px 6px; font-size:.65rem; cursor:pointer; }
+
+/* ── Sub-section grid ── */
+.page-h_sales_report .sub-grid { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--border); }
+.page-h_sales_report .sub-grid.three-col { grid-template-columns:repeat(3,1fr); }
+.page-h_sales_report .sub-col { border-right:1px solid #e5e7eb; }
+.page-h_sales_report .sub-col:last-child { border-right:none; }
+.page-h_sales_report .sub-col-title {
+  background:#6b1530; color:#fff; padding:7px 10px;
+  font-family:var(--font-m); font-size:.68rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em; text-align:center;
+}
+.page-h_sales_report .sub-col-hdr {
+  display:grid; grid-template-columns:1fr 90px 28px;
+  background:#e5e7eb; border-bottom:1px solid #bbb;
+}
+.page-h_sales_report .sub-col-hdr span { padding:5px 8px; font-family:var(--font-m); font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#333; border-right:1px solid #bbb; }
+.page-h_sales_report .sub-col-hdr span:last-child { border-right:none; }
+.page-h_sales_report .sub-row { display:grid; grid-template-columns:1fr 90px 28px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.page-h_sales_report .sub-row:hover { background:#fafbfc; }
+.page-h_sales_report .sub-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-family:var(--font-m); font-size:.75rem; outline:none; padding:5px 6px; cursor:text; }
+.page-h_sales_report .sub-inp.num { text-align:right; }
+.page-h_sales_report .sub-inp:focus { background:#fffbeb; border-color:#e8b64c; box-shadow:0 0 0 2px rgba(245,197,66,.15); }
+.page-h_sales_report .sub-footer { display:grid; grid-template-columns:1fr 90px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-h_sales_report .sub-footer span { padding:6px 8px; font-family:var(--font-m); font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; }
+.page-h_sales_report .sub-footer span:last-child { text-align:right; border-right:none; }
+
+/* ── Summary card (existing) ── */
+.page-h_sales_report .sr-wrap { max-width:680px; margin:0 auto; }
+.page-h_sales_report .sr-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06); overflow:hidden; }
+.page-h_sales_report .sr-title-row { background:#1f6b3f; padding:14px 28px; text-align:center; }
+.page-h_sales_report .sr-title-row .sr-main-title { font-size:1rem; font-weight:800; color:#fff; letter-spacing:.06em; text-transform:uppercase; font-family:var(--font-m); }
+.page-h_sales_report .sr-row { display:flex; align-items:center; padding:10px 28px; border-bottom:1px solid #f0f2f5; min-height:44px; gap:10px; }
+.page-h_sales_report .sr-row.green { background:#3f7050; }
+.page-h_sales_report .sr-row.green .sr-label { color:#fff; font-weight:700; }
+.page-h_sales_report .sr-row.gray-hdr { background:#e5e7eb; }
+.page-h_sales_report .sr-row.gray-hdr .sr-label { color:#333; font-weight:700; }
+.page-h_sales_report .sr-row.pink-val .sr-value-wrap input { background:#f3d9e4; border-color:#e3bccf; }
+.page-h_sales_report .sr-row.net { background:#e8b64c; }
+.page-h_sales_report .sr-row.net .sr-label { color:#3e2f00; font-weight:800; font-style:italic; }
+.page-h_sales_report .sr-row.coh { background:#1f2d42; }
+.page-h_sales_report .sr-row.coh .sr-label { color:#fff; font-weight:800; font-style:italic; }
+.page-h_sales_report .sr-row.short { background:#dc3545; }
+.page-h_sales_report .sr-row.short .sr-label { color:#fff; font-weight:800; }
+.page-h_sales_report .sr-label { flex:1; font-size:.84rem; color:var(--text); font-weight:600; text-align:right; padding-right:14px; }
+.page-h_sales_report .sr-note { font-family:var(--font-h); font-style:italic; font-size:.68rem; color:var(--subtext); white-space:nowrap; }
+.page-h_sales_report .sr-value-wrap { width:160px; flex-shrink:0; }
+.page-h_sales_report .sr-input { width:100%; padding:7px 12px; text-align:center; font-family:var(--font-m); font-size:.84rem; font-weight:700; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:6px; outline:none; transition:border-color .15s; }
+.page-h_sales_report input[type=number] { appearance:textfield; -moz-appearance:textfield; }
+.page-h_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-h_sales_report input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.page-h_sales_report .sr-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-h_sales_report .sr-input.readout { background:rgba(255,255,255,.9); font-size:1rem; font-weight:800; cursor:default; color:#1a1d23; border-color:transparent; }
+.page-h_sales_report .sr-row.net   .sr-input.readout { background:#fff; color:#7a5c00; }
+.page-h_sales_report .sr-row.coh   .sr-input { background:#fff; }
+.page-h_sales_report .sr-row.short .sr-input.readout { background:#fff; color:#b71c1c; }
+.page-h_sales_report .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:320px; animation:fadeSlideDown .3s ease; }
+
+/* ── Locked banner + read-only state ── */
+.page-h_sales_report .locked-banner {
+  display:flex; align-items:center; gap:8px;
+  background:#fff1f2; border:1px solid #fecdd3; color:#9f1239;
+  padding:10px 16px; border-radius:8px; margin-bottom:16px;
+  font-family:var(--font-m); font-size:.76rem; font-weight:600;
+}
+.page-h_sales_report input[disabled],
+.page-h_sales_report .sr-input[disabled] { opacity:.65; cursor:not-allowed !important; }
+
+/* ── Lock button + popover ── */
+.page-h_sales_report .lock-wrap { position:relative; display:inline-block; }
+.page-h_sales_report .btn-lock {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:8px; cursor:pointer;
+  font-family:var(--font-m); font-size:.78rem; font-weight:700;
+  border:1px solid var(--border); background:#fff; color:var(--text);
+  transition:all .15s;
+}
+.page-h_sales_report .btn-lock:hover { background:#f8f9fb; }
+.page-h_sales_report .btn-lock.is-locked { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.page-h_sales_report .btn-lock.is-locked:hover { background:#ffe4e6; }
+.page-h_sales_report .lock-badge-static {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:8px;
+  font-family:var(--font-m); font-size:.78rem; font-weight:700;
+  border:1px solid var(--border); background:#f8f9fb; color:var(--subtext);
+}
+.page-h_sales_report .lock-popover {
+  display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:200;
+  width:280px; background:#fff; border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.14); padding:16px; text-align:left;
+}
+.page-h_sales_report .lock-popover-title { font-family:var(--font-m); font-size:.85rem; font-weight:800; color:var(--text); margin-bottom:6px; }
+.page-h_sales_report .lock-popover-date { font-family:var(--font-m); font-size:.8rem; font-weight:700; color:var(--accent); margin-bottom:8px; }
+.page-h_sales_report .lock-popover-desc { font-family:var(--font-h); font-size:.75rem; color:var(--subtext); line-height:1.45; margin-bottom:14px; }
+.page-h_sales_report .lock-popover-actions { display:flex; justify-content:flex-end; gap:8px; }
+.page-h_sales_report .lock-popover-actions button {
+  padding:7px 14px; border-radius:6px; font-family:var(--font-m); font-size:.72rem; font-weight:700;
+  cursor:pointer; border:1px solid var(--border); background:#fff; color:var(--text);
+}
+.page-h_sales_report .lock-popover-actions .btn-confirm { background:#be123c; border-color:#be123c; color:#fff; }
+.page-h_sales_report .lock-popover-actions .btn-confirm:hover { background:#9f1239; }
+.page-h_sales_report .lock-popover-actions .btn-confirm.unlock { background:#0f7b5c; border-color:#0f7b5c; }
+.page-h_sales_report .lock-popover-actions .btn-confirm.unlock:hover { background:#0b5f47; }
+.page-h_sales_report .lock-popover-actions .btn-cancel:hover { background:#f8f9fb; }
+
+/* ── Locked banner + lock button/popover — shared across every branch's
+     Sales Report page (Dois, Stella, Commissary, Pub Express, Recovery,
+     DemicLab-Main, DemicLab-Jaro). Same rules as .page-h_sales_report
+     above, just reused via a shared selector list instead of duplicated
+     per page. ── */
+.page-dois_sales_report .locked-banner,
+.page-stella_sales_report .locked-banner,
+.page-commissary_sales_report .locked-banner,
+.page-pub_express_sales_report .locked-banner,
+.page-recovery_sales_report .locked-banner,
+.page-demiclab_sales_report .locked-banner,
+.page-demiclab_jaro_sales_report .locked-banner {
+  display:flex; align-items:center; gap:8px;
+  background:#fff1f2; border:1px solid #fecdd3; color:#9f1239;
+  padding:10px 16px; border-radius:8px; margin-bottom:16px;
+  font-family:var(--font-m); font-size:.76rem; font-weight:600;
+}
+.page-dois_sales_report input[disabled], .page-dois_sales_report .sr-input[disabled],
+.page-stella_sales_report input[disabled], .page-stella_sales_report .sr-input[disabled],
+.page-commissary_sales_report input[disabled], .page-commissary_sales_report .sr-input[disabled],
+.page-pub_express_sales_report input[disabled], .page-pub_express_sales_report .sr-input[disabled],
+.page-recovery_sales_report input[disabled], .page-recovery_sales_report .sr-input[disabled],
+.page-demiclab_sales_report input[disabled], .page-demiclab_sales_report .sr-input[disabled],
+.page-demiclab_jaro_sales_report input[disabled], .page-demiclab_jaro_sales_report .sr-input[disabled] { opacity:.65; cursor:not-allowed !important; }
+
+.page-dois_sales_report .lock-wrap,
+.page-stella_sales_report .lock-wrap,
+.page-commissary_sales_report .lock-wrap,
+.page-pub_express_sales_report .lock-wrap,
+.page-recovery_sales_report .lock-wrap,
+.page-demiclab_sales_report .lock-wrap,
+.page-demiclab_jaro_sales_report .lock-wrap { position:relative; display:inline-block; }
+
+.page-dois_sales_report .btn-lock,
+.page-stella_sales_report .btn-lock,
+.page-commissary_sales_report .btn-lock,
+.page-pub_express_sales_report .btn-lock,
+.page-recovery_sales_report .btn-lock,
+.page-demiclab_sales_report .btn-lock,
+.page-demiclab_jaro_sales_report .btn-lock {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:8px; cursor:pointer;
+  font-family:var(--font-m); font-size:.78rem; font-weight:700;
+  border:1px solid var(--border); background:#fff; color:var(--text);
+  transition:all .15s;
+}
+.page-dois_sales_report .btn-lock:hover,
+.page-stella_sales_report .btn-lock:hover,
+.page-commissary_sales_report .btn-lock:hover,
+.page-pub_express_sales_report .btn-lock:hover,
+.page-recovery_sales_report .btn-lock:hover,
+.page-demiclab_sales_report .btn-lock:hover,
+.page-demiclab_jaro_sales_report .btn-lock:hover { background:#f8f9fb; }
+
+.page-dois_sales_report .btn-lock.is-locked,
+.page-stella_sales_report .btn-lock.is-locked,
+.page-commissary_sales_report .btn-lock.is-locked,
+.page-pub_express_sales_report .btn-lock.is-locked,
+.page-recovery_sales_report .btn-lock.is-locked,
+.page-demiclab_sales_report .btn-lock.is-locked,
+.page-demiclab_jaro_sales_report .btn-lock.is-locked { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.page-dois_sales_report .btn-lock.is-locked:hover,
+.page-stella_sales_report .btn-lock.is-locked:hover,
+.page-commissary_sales_report .btn-lock.is-locked:hover,
+.page-pub_express_sales_report .btn-lock.is-locked:hover,
+.page-recovery_sales_report .btn-lock.is-locked:hover,
+.page-demiclab_sales_report .btn-lock.is-locked:hover,
+.page-demiclab_jaro_sales_report .btn-lock.is-locked:hover { background:#ffe4e6; }
+
+.page-dois_sales_report .lock-badge-static,
+.page-stella_sales_report .lock-badge-static,
+.page-commissary_sales_report .lock-badge-static,
+.page-pub_express_sales_report .lock-badge-static,
+.page-recovery_sales_report .lock-badge-static,
+.page-demiclab_sales_report .lock-badge-static,
+.page-demiclab_jaro_sales_report .lock-badge-static {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:8px;
+  font-family:var(--font-m); font-size:.78rem; font-weight:700;
+  border:1px solid var(--border); background:#f8f9fb; color:var(--subtext);
+}
+.page-dois_sales_report .lock-popover,
+.page-stella_sales_report .lock-popover,
+.page-commissary_sales_report .lock-popover,
+.page-pub_express_sales_report .lock-popover,
+.page-recovery_sales_report .lock-popover,
+.page-demiclab_sales_report .lock-popover,
+.page-demiclab_jaro_sales_report .lock-popover {
+  display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:200;
+  width:280px; background:#fff; border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.14); padding:16px; text-align:left;
+}
+.page-dois_sales_report .lock-popover-title, .page-stella_sales_report .lock-popover-title,
+.page-commissary_sales_report .lock-popover-title, .page-pub_express_sales_report .lock-popover-title,
+.page-recovery_sales_report .lock-popover-title, .page-demiclab_sales_report .lock-popover-title,
+.page-demiclab_jaro_sales_report .lock-popover-title { font-family:var(--font-m); font-size:.85rem; font-weight:800; color:var(--text); margin-bottom:6px; }
+.page-dois_sales_report .lock-popover-date, .page-stella_sales_report .lock-popover-date,
+.page-commissary_sales_report .lock-popover-date, .page-pub_express_sales_report .lock-popover-date,
+.page-recovery_sales_report .lock-popover-date, .page-demiclab_sales_report .lock-popover-date,
+.page-demiclab_jaro_sales_report .lock-popover-date { font-family:var(--font-m); font-size:.8rem; font-weight:700; color:var(--accent); margin-bottom:8px; }
+.page-dois_sales_report .lock-popover-desc, .page-stella_sales_report .lock-popover-desc,
+.page-commissary_sales_report .lock-popover-desc, .page-pub_express_sales_report .lock-popover-desc,
+.page-recovery_sales_report .lock-popover-desc, .page-demiclab_sales_report .lock-popover-desc,
+.page-demiclab_jaro_sales_report .lock-popover-desc { font-family:var(--font-h); font-size:.75rem; color:var(--subtext); line-height:1.45; margin-bottom:14px; }
+.page-dois_sales_report .lock-popover-actions, .page-stella_sales_report .lock-popover-actions,
+.page-commissary_sales_report .lock-popover-actions, .page-pub_express_sales_report .lock-popover-actions,
+.page-recovery_sales_report .lock-popover-actions, .page-demiclab_sales_report .lock-popover-actions,
+.page-demiclab_jaro_sales_report .lock-popover-actions { display:flex; justify-content:flex-end; gap:8px; }
+.page-dois_sales_report .lock-popover-actions button, .page-stella_sales_report .lock-popover-actions button,
+.page-commissary_sales_report .lock-popover-actions button, .page-pub_express_sales_report .lock-popover-actions button,
+.page-recovery_sales_report .lock-popover-actions button, .page-demiclab_sales_report .lock-popover-actions button,
+.page-demiclab_jaro_sales_report .lock-popover-actions button {
+  padding:7px 14px; border-radius:6px; font-family:var(--font-m); font-size:.72rem; font-weight:700;
+  cursor:pointer; border:1px solid var(--border); background:#fff; color:var(--text);
+}
+.page-dois_sales_report .lock-popover-actions .btn-confirm, .page-stella_sales_report .lock-popover-actions .btn-confirm,
+.page-commissary_sales_report .lock-popover-actions .btn-confirm, .page-pub_express_sales_report .lock-popover-actions .btn-confirm,
+.page-recovery_sales_report .lock-popover-actions .btn-confirm, .page-demiclab_sales_report .lock-popover-actions .btn-confirm,
+.page-demiclab_jaro_sales_report .lock-popover-actions .btn-confirm { background:#be123c; border-color:#be123c; color:#fff; }
+.page-dois_sales_report .lock-popover-actions .btn-confirm:hover, .page-stella_sales_report .lock-popover-actions .btn-confirm:hover,
+.page-commissary_sales_report .lock-popover-actions .btn-confirm:hover, .page-pub_express_sales_report .lock-popover-actions .btn-confirm:hover,
+.page-recovery_sales_report .lock-popover-actions .btn-confirm:hover, .page-demiclab_sales_report .lock-popover-actions .btn-confirm:hover,
+.page-demiclab_jaro_sales_report .lock-popover-actions .btn-confirm:hover { background:#9f1239; }
+.page-dois_sales_report .lock-popover-actions .btn-confirm.unlock, .page-stella_sales_report .lock-popover-actions .btn-confirm.unlock,
+.page-commissary_sales_report .lock-popover-actions .btn-confirm.unlock, .page-pub_express_sales_report .lock-popover-actions .btn-confirm.unlock,
+.page-recovery_sales_report .lock-popover-actions .btn-confirm.unlock, .page-demiclab_sales_report .lock-popover-actions .btn-confirm.unlock,
+.page-demiclab_jaro_sales_report .lock-popover-actions .btn-confirm.unlock { background:#0f7b5c; border-color:#0f7b5c; }
+.page-dois_sales_report .lock-popover-actions .btn-confirm.unlock:hover, .page-stella_sales_report .lock-popover-actions .btn-confirm.unlock:hover,
+.page-commissary_sales_report .lock-popover-actions .btn-confirm.unlock:hover, .page-pub_express_sales_report .lock-popover-actions .btn-confirm.unlock:hover,
+.page-recovery_sales_report .lock-popover-actions .btn-confirm.unlock:hover, .page-demiclab_sales_report .lock-popover-actions .btn-confirm.unlock:hover,
+.page-demiclab_jaro_sales_report .lock-popover-actions .btn-confirm.unlock:hover { background:#0b5f47; }
+.page-dois_sales_report .lock-popover-actions .btn-cancel:hover, .page-stella_sales_report .lock-popover-actions .btn-cancel:hover,
+.page-commissary_sales_report .lock-popover-actions .btn-cancel:hover, .page-pub_express_sales_report .lock-popover-actions .btn-cancel:hover,
+.page-recovery_sales_report .lock-popover-actions .btn-cancel:hover, .page-demiclab_sales_report .lock-popover-actions .btn-cancel:hover,
+.page-demiclab_jaro_sales_report .lock-popover-actions .btn-cancel:hover { background:#f8f9fb; }
+
+/* ── Visual polish pass ── */
+.page-h_sales_report .sr-header-card { position:relative; overflow:hidden; }
+.page-h_sales_report .sr-header-card::before {
+  content:''; position:absolute; top:-60%; right:-8%;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.page-h_sales_report .sr-section { transition:box-shadow .2s ease; }
+.page-h_sales_report .sr-section:hover { box-shadow:0 4px 20px rgba(0,0,0,.09); }
+.page-h_sales_report .btn-add-row {
+  border-radius:8px !important;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.page-h_sales_report .btn-add-row:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.16); }
+.page-h_sales_report .btn-del-row { border-radius:6px !important; transition:background .15s ease, transform .15s ease; }
+.page-h_sales_report .btn-del-row:hover { transform:scale(1.06); }
+.page-h_sales_report .sub-row:hover { background:#f4f7fb !important; }
+.page-h_sales_report .di-inp,
+.page-h_sales_report .sub-inp,
+.page-h_sales_report .sr-input,
+.page-h_sales_report .sr-cashier-bar input {
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.page-h_sales_report .sub-inp { border-radius:6px !important; }
+
+/* ------------------------------------------------------------
+ *  H — Carwash Sales Report   (body.page-h_carwash_sales_report)
+ * ------------------------------------------------------------ */
+.page-h_carwash_sales_report .cw-header-card {
+  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+  border-radius: var(--radius); padding: 20px 26px 16px;
+  margin-bottom: 18px; display: flex; align-items: flex-start;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.page-h_carwash_sales_report .cw-header-card .eyebrow { font-family:var(--font-m); font-size:.58rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.55); margin-bottom:4px; }
+.page-h_carwash_sales_report .cw-header-card .title { font-size:1.2rem; font-weight:800; color:#fff; letter-spacing:-.02em; }
+.page-h_carwash_sales_report .cw-header-card .subtitle { font-family:var(--font-m); font-size:.67rem; color:rgba(255,255,255,.6); margin-top:4px; }
+
+.page-h_carwash_sales_report .sr-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.page-h_carwash_sales_report .sr-oc-bar { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); flex-wrap:wrap; }
+.page-h_carwash_sales_report .sr-oc-bar .sr-oc-field { display:flex; align-items:center; gap:12px; flex:1; min-width:220px; }
+.page-h_carwash_sales_report .sr-oc-bar label { font-family:var(--font-m); font-size:.85rem; font-weight:800; color:var(--text); white-space:nowrap; }
+.page-h_carwash_sales_report .sr-oc-bar input { flex:1; min-width:0; padding:10px 14px; font-family:var(--font-m); font-size:.95rem; font-weight:700; text-align:left; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:8px; outline:none; transition:border-color .15s; }
+.page-h_carwash_sales_report .sr-oc-bar input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-h_carwash_sales_report .sr-save-status { font-family:var(--font-m); font-size:.72rem; color:var(--subtext); }
+
+.page-h_carwash_sales_report .sr-section {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06);
+  overflow:hidden; margin-bottom:22px;
+}
+.page-h_carwash_sales_report .sr-section-title {
+  padding:10px 16px; font-family:var(--font-m); font-size:.75rem;
+  font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#fff;
+}
+.page-h_carwash_sales_report .sr-section-title.dark-red { background:#6b1530; }
+.page-h_carwash_sales_report .sr-section-title.dark-gold { background:#8a6d00; }
+
+/* ── Two-column main layout: Cash Breakdown+Summary | Transactions+Sections ── */
+.page-h_carwash_sales_report .cw-main-grid { display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start; }
+@media (max-width:1100px) { .page-h_carwash_sales_report .cw-main-grid { grid-template-columns:1fr; } }
+
+/* ── Shared table look (mirrors di-table from H Sales Report) ── */
+.page-h_carwash_sales_report .di-table { width:100%; border-collapse:collapse; }
+.page-h_carwash_sales_report .di-table th {
+  background:#7a2233; color:#fff; padding:7px 8px;
+  font-family:var(--font-m); font-size:.62rem; text-transform:uppercase;
+  letter-spacing:.06em; text-align:center; white-space:nowrap; border:1px solid #4a1020;
+}
+.page-h_carwash_sales_report .di-table td { padding:5px 7px; border:1px solid #e5e7eb; font-size:.77rem; vertical-align:middle; }
+.page-h_carwash_sales_report .di-table tfoot td { background:#e8b64c; font-family:var(--font-m); font-weight:800; font-size:.78rem; padding:7px 8px; border:1px solid #c99a2e; }
+.page-h_carwash_sales_report .di-table tfoot td.total-label { background:#223a70; color:#fff; font-size:.78rem; }
+.page-h_carwash_sales_report .di-table tfoot td.grand-total { background:#223a70; color:#fff; font-family:var(--font-m); font-weight:800; }
+
+.page-h_carwash_sales_report .di-inp { width:100%; border:none; background:transparent; font-family:var(--font-m); font-size:.77rem; text-align:right; outline:none; }
+.page-h_carwash_sales_report .di-inp:focus { background:#fffbeb; border-radius:3px; }
+.page-h_carwash_sales_report .di-inp.txt { text-align:left; }
+.page-h_carwash_sales_report .di-inp select.di-inp { text-align:left; }
+.page-h_carwash_sales_report .btn-add-row { margin:8px 12px; padding:4px 12px; background:#1b4332; color:#fff; border:none; border-radius:5px; font-size:.7rem; font-weight:700; cursor:pointer; }
+.page-h_carwash_sales_report .btn-add-row:hover { background:#123d26; }
+.page-h_carwash_sales_report .btn-del-row { background:#fee2e2; border:none; color:#991b1b; border-radius:4px; padding:2px 6px; font-size:.65rem; cursor:pointer; }
+
+/* ── Cash breakdown table ── */
+.page-h_carwash_sales_report .cash-table td:nth-child(1) input,
+.page-h_carwash_sales_report .cash-table td:nth-child(2) input { text-align:right; }
+.page-h_carwash_sales_report .cash-table td:nth-child(3) { text-align:right; font-family:var(--font-m); font-weight:700; }
+
+/* ── Total commission callout ── */
+.page-h_carwash_sales_report .total-commission-box {
+  display:inline-flex; align-items:center; gap:10px; background:#fef9c3; border:1px solid #eab308;
+  border-radius:8px; padding:10px 16px; margin:10px 0; font-family:var(--font-m);
+}
+.page-h_carwash_sales_report .total-commission-box .label { font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#713f12; }
+.page-h_carwash_sales_report .total-commission-box .value { font-size:.95rem; font-weight:800; color:#713f12; }
+
+/* ── Sub-section grid (Expenses | Unpaids | Marketing) ── */
+.page-h_carwash_sales_report .sub-grid { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--border); }
+.page-h_carwash_sales_report .sub-grid.marketing-grid { grid-template-columns:1fr; }
+.page-h_carwash_sales_report .sub-col { border-right:1px solid #e5e7eb; }
+.page-h_carwash_sales_report .sub-col:last-child { border-right:none; }
+.page-h_carwash_sales_report .sub-col-title {
+  background:#6b1530; color:#fff; padding:7px 10px;
+  font-family:var(--font-m); font-size:.68rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em; text-align:center;
+}
+.page-h_carwash_sales_report .sub-col-hdr {
+  display:grid; grid-template-columns:1fr 90px 28px;
+  background:#e5e7eb; border-bottom:1px solid #bbb;
+}
+.page-h_carwash_sales_report .sub-col-hdr span { padding:5px 8px; font-family:var(--font-m); font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#333; border-right:1px solid #bbb; }
+.page-h_carwash_sales_report .sub-col-hdr span:last-child { border-right:none; }
+.page-h_carwash_sales_report .sub-row { display:grid; grid-template-columns:1fr 90px 28px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.page-h_carwash_sales_report .sub-row:hover { background:#fafbfc; }
+.page-h_carwash_sales_report .sub-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-family:var(--font-m); font-size:.75rem; outline:none; padding:5px 6px; cursor:text; }
+.page-h_carwash_sales_report .sub-inp.num { text-align:right; }
+.page-h_carwash_sales_report .sub-inp:focus { background:#fffbeb; border-color:#e8b64c; box-shadow:0 0 0 2px rgba(245,197,66,.15); }
+.page-h_carwash_sales_report .sub-footer { display:grid; grid-template-columns:1fr 90px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-h_carwash_sales_report .sub-footer span { padding:6px 8px; font-family:var(--font-m); font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; }
+.page-h_carwash_sales_report .sub-footer span:last-child { text-align:right; border-right:none; }
+
+/* Marketing table (its own row layout: particular, amount, staff, commission) */
+.page-h_carwash_sales_report .mkt-row { display:grid; grid-template-columns:1fr 90px 100px 90px 28px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.page-h_carwash_sales_report .mkt-hdr { display:grid; grid-template-columns:1fr 90px 100px 90px 28px; background:#e5e7eb; border-bottom:1px solid #bbb; }
+.page-h_carwash_sales_report .mkt-hdr span { padding:5px 8px; font-family:var(--font-m); font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#333; border-right:1px solid #bbb; }
+.page-h_carwash_sales_report .mkt-hdr span:last-child { border-right:none; }
+.page-h_carwash_sales_report .mkt-footer { display:grid; grid-template-columns:1fr 90px 100px 90px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-h_carwash_sales_report .mkt-footer span { padding:6px 8px; font-family:var(--font-m); font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; }
+.page-h_carwash_sales_report .mkt-footer span:last-child { text-align:right; border-right:none; }
+
+/* ── Summary card ── */
+.page-h_carwash_sales_report .sr-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06); overflow:hidden; }
+.page-h_carwash_sales_report .sr-title-row { background:#7f1d1d; padding:14px 28px; text-align:center; }
+.page-h_carwash_sales_report .sr-title-row .sr-main-title { font-size:1rem; font-weight:800; color:#fff; letter-spacing:.06em; text-transform:uppercase; font-family:var(--font-m); }
+.page-h_carwash_sales_report .sr-row { display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid #f0f2f5; min-height:44px; gap:10px; }
+.page-h_carwash_sales_report .sr-row.tan { background:#d8c7a1; }
+.page-h_carwash_sales_report .sr-row.tan .sr-label { color:#3e2f00; font-weight:700; }
+.page-h_carwash_sales_report .sr-row.pink-val .sr-value-wrap input { background:#f3d9e4; border-color:#e3bccf; }
+.page-h_carwash_sales_report .sr-row.net { background:#e8b64c; }
+.page-h_carwash_sales_report .sr-row.net .sr-label { color:#3e2f00; font-weight:800; font-style:italic; }
+.page-h_carwash_sales_report .sr-row.coh { background:#00c2c7; }
+.page-h_carwash_sales_report .sr-row.coh .sr-label { color:#00323a; font-weight:800; font-style:italic; }
+.page-h_carwash_sales_report .sr-row.short { background:#dc3545; }
+.page-h_carwash_sales_report .sr-row.short .sr-label { color:#fff; font-weight:800; }
+.page-h_carwash_sales_report .sr-label { flex:1; font-size:.82rem; color:var(--text); font-weight:600; text-align:right; padding-right:12px; }
+.page-h_carwash_sales_report .sr-value-wrap { width:140px; flex-shrink:0; }
+.page-h_carwash_sales_report .sr-input { width:100%; padding:7px 10px; text-align:center; font-family:var(--font-m); font-size:.82rem; font-weight:700; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:6px; outline:none; transition:border-color .15s; }
+.page-h_carwash_sales_report input[type=number] { appearance:textfield; -moz-appearance:textfield; }
+.page-h_carwash_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-h_carwash_sales_report input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.page-h_carwash_sales_report .sr-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-h_carwash_sales_report .sr-input.readout { background:rgba(255,255,255,.9); font-size:.92rem; font-weight:800; cursor:default; color:#1a1d23; border-color:transparent; }
+.page-h_carwash_sales_report .sr-row.net   .sr-input.readout { background:#fff; color:#7a5c00; }
+.page-h_carwash_sales_report .sr-row.coh   .sr-input.readout { background:#fff; color:#00323a; }
+.page-h_carwash_sales_report .sr-row.short .sr-input.readout { background:#fff; color:#b71c1c; }
+.page-h_carwash_sales_report .sr-remarks { width:100%; padding:10px 12px; font-family:var(--font-h); font-size:.8rem; border:1px solid var(--border); border-radius:6px; min-height:60px; resize:vertical; }
+.page-h_carwash_sales_report .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:320px; animation:fadeSlideDown .3s ease; }
+
+/* ── Locked banner + read-only state ── */
+.page-h_carwash_sales_report .locked-banner {
+  display:flex; align-items:center; gap:8px;
+  background:#fff1f2; border:1px solid #fecdd3; color:#9f1239;
+  padding:10px 16px; border-radius:8px; margin-bottom:16px;
+  font-family:var(--font-m); font-size:.76rem; font-weight:600;
+}
+.page-h_carwash_sales_report input[disabled],
+.page-h_carwash_sales_report select[disabled],
+.page-h_carwash_sales_report .sr-input[disabled] { opacity:.65; cursor:not-allowed !important; }
+
+/* ── Lock button + popover ── */
+.page-h_carwash_sales_report .lock-wrap { position:relative; display:inline-block; }
+.page-h_carwash_sales_report .btn-lock {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:8px; cursor:pointer;
+  font-family:var(--font-m); font-size:.78rem; font-weight:700;
+  border:1px solid var(--border); background:#fff; color:var(--text);
+  transition:all .15s;
+}
+.page-h_carwash_sales_report .btn-lock:hover { background:#f8f9fb; }
+.page-h_carwash_sales_report .btn-lock.is-locked { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.page-h_carwash_sales_report .btn-lock.is-locked:hover { background:#ffe4e6; }
+.page-h_carwash_sales_report .lock-badge-static {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:8px;
+  font-family:var(--font-m); font-size:.78rem; font-weight:700;
+  border:1px solid var(--border); background:#f8f9fb; color:var(--subtext);
+}
+.page-h_carwash_sales_report .lock-popover {
+  display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:200;
+  width:280px; background:#fff; border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.14); padding:16px; text-align:left;
+}
+.page-h_carwash_sales_report .lock-popover-title { font-family:var(--font-m); font-size:.85rem; font-weight:800; color:var(--text); margin-bottom:6px; }
+.page-h_carwash_sales_report .lock-popover-date { font-family:var(--font-m); font-size:.8rem; font-weight:700; color:var(--accent); margin-bottom:8px; }
+.page-h_carwash_sales_report .lock-popover-desc { font-family:var(--font-h); font-size:.75rem; color:var(--subtext); line-height:1.45; margin-bottom:14px; }
+.page-h_carwash_sales_report .lock-popover-actions { display:flex; justify-content:flex-end; gap:8px; }
+.page-h_carwash_sales_report .lock-popover-actions button {
+  padding:7px 14px; border-radius:6px; font-family:var(--font-m); font-size:.72rem; font-weight:700;
+  cursor:pointer; border:1px solid var(--border); background:#fff; color:var(--text);
+}
+.page-h_carwash_sales_report .lock-popover-actions .btn-confirm { background:#be123c; border-color:#be123c; color:#fff; }
+.page-h_carwash_sales_report .lock-popover-actions .btn-confirm:hover { background:#9f1239; }
+.page-h_carwash_sales_report .lock-popover-actions .btn-confirm.unlock { background:#0f7b5c; border-color:#0f7b5c; }
+.page-h_carwash_sales_report .lock-popover-actions .btn-confirm.unlock:hover { background:#0b5f47; }
+.page-h_carwash_sales_report .lock-popover-actions .btn-cancel:hover { background:#f8f9fb; }
+
+/* ── Custom Service Search Dropdown ── */
+.page-h_carwash_sales_report .tx-service::placeholder { color: var(--subtext); opacity: .7; }
+.page-h_carwash_sales_report #cw-service-dropdown {
+  display: none; position: fixed; z-index: 999;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 14px 32px rgba(0,0,0,.16), 0 4px 12px rgba(0,0,0,.08);
+  max-height: 280px; overflow-y: auto; padding: 6px;
+}
+.page-h_carwash_sales_report .cw-sd-group {
+  font-family: var(--font-m); font-size: .6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em; color: var(--subtext);
+  padding: 8px 10px 4px;
+}
+.page-h_carwash_sales_report .cw-sd-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 10px; border-radius: 7px; cursor: pointer;
+  font-family: var(--font-h); font-size: .8rem; color: var(--text);
+}
+.page-h_carwash_sales_report .cw-sd-item:hover,
+.page-h_carwash_sales_report .cw-sd-item.active { background: var(--accent-dim); }
+.page-h_carwash_sales_report .cw-sd-item mark { background: #fde68a; color: inherit; border-radius: 2px; padding: 0 1px; }
+.page-h_carwash_sales_report .cw-sd-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page-h_carwash_sales_report .cw-sd-price {
+  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
+  color: var(--accent); white-space: nowrap; flex-shrink: 0;
+}
+.page-h_carwash_sales_report .cw-sd-empty {
+  padding: 16px 10px; text-align: center; color: var(--subtext);
+  font-family: var(--font-m); font-size: .74rem;
+}
+
+/* ── Visual polish pass ── */
+.page-h_carwash_sales_report .sr-header-card { position:relative; overflow:hidden; }
+.page-h_carwash_sales_report .sr-header-card::before {
+  content:''; position:absolute; top:-60%; right:-8%;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.page-h_carwash_sales_report .sr-section { transition:box-shadow .2s ease; }
+.page-h_carwash_sales_report .sr-section:hover { box-shadow:0 4px 20px rgba(0,0,0,.09); }
+.page-h_carwash_sales_report .btn-add-row {
+  border-radius:8px !important;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.page-h_carwash_sales_report .btn-add-row:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.16); }
+.page-h_carwash_sales_report .btn-del-row { border-radius:6px !important; transition:background .15s ease, transform .15s ease; }
+.page-h_carwash_sales_report .btn-del-row:hover { transform:scale(1.06); }
+.page-h_carwash_sales_report .sub-row:hover { background:#f4f7fb !important; }
+.page-h_carwash_sales_report .di-inp,
+.page-h_carwash_sales_report .sub-inp,
+.page-h_carwash_sales_report .sr-input,
+.page-h_carwash_sales_report .sr-cashier-bar input {
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.page-h_carwash_sales_report .sub-inp { border-radius:6px !important; }
+
+/* ------------------------------------------------------------
+ *  Pub Express — Sales Report   (body.page-pub_express_sales_report)
+ * ------------------------------------------------------------ */
+/* ── Base layout ── */
+.page-pub_express_sales_report .sr-page { font-family: var(--font-h, 'Inter', sans-serif); }
+.page-pub_express_sales_report .sr-header-card {
+  background: linear-gradient(135deg,#1e3060,#0f2045);
+  border-radius:var(--radius,8px); padding:18px 24px;
+  margin-bottom:16px; display:flex; align-items:center;
+  justify-content:space-between; flex-wrap:wrap; gap:10px;
+}
+.page-pub_express_sales_report .sr-header-card .eyebrow { font-family:var(--font-m,'Inter',sans-serif); font-size:.56rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.45); margin-bottom:3px; }
+.page-pub_express_sales_report .sr-header-card .title { font-size:1.1rem; font-weight:800; color:#fff; }
+.page-pub_express_sales_report .sr-header-card .subtitle { font-size:.65rem; color:rgba(255,255,255,.5); margin-top:3px; }
+.page-pub_express_sales_report .sr-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+.page-pub_express_sales_report .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:320px; animation:fadeSlideDown .3s ease; }
+
+/* ── Two-column layout ── */
+.page-pub_express_sales_report .sr-two-col { display:grid; grid-template-columns:360px 1fr; gap:16px; margin-bottom:16px; }
+@media(max-width:900px) { .page-pub_express_sales_report .sr-two-col { grid-template-columns:1fr; } }
+
+/* ── Card wrapper ── */
+.page-pub_express_sales_report .sr-card {
+  background:#fff; border:1px solid #dde3ee;
+  border-radius:8px; overflow:hidden;
+  box-shadow:0 2px 10px rgba(0,0,0,.07);
+}
+.page-pub_express_sales_report .sr-card-title {
+  padding:9px 14px; font-size:.65rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.08em;
+  color:#fff; background:#223a70;
+}
+.page-pub_express_sales_report .sr-card-title.green { background:#1b5e20; }
+.page-pub_express_sales_report .sr-card-title.orange { background:#e65100; }
+.page-pub_express_sales_report .sr-card-title.red { background:#6b1530; }
+.page-pub_express_sales_report .sr-card-title.gold { background:#827717; }
+
+/* ── Denomination table ── */
+.page-pub_express_sales_report .denom-table { width:100%; border-collapse:collapse; font-size:.75rem; }
+.page-pub_express_sales_report .denom-table th {
+  background:#223a70; color:#fff;
+  padding:7px 10px; font-size:.62rem; text-transform:uppercase;
+  letter-spacing:.05em; border:1px solid #1230a0; text-align:center;
+}
+.page-pub_express_sales_report .denom-table td { padding:5px 8px; border:1px solid #e5e9f0; text-align:right; }
+.page-pub_express_sales_report .denom-table td:first-child { text-align:center; }
+.page-pub_express_sales_report .denom-table td.denom-label { text-align:right; color:#555; font-weight:500; background:#f9fafb; }
+.page-pub_express_sales_report .denom-table tfoot td { background:#e8b64c; font-weight:800; border:1px solid #c99a2e; font-size:.78rem; }
+.page-pub_express_sales_report .denom-table tfoot td.total-lbl { background:#223a70; color:#fff; text-align:left; }
+.page-pub_express_sales_report .denom-inp { width:60px; border:1px solid #dde; background:#fafafa; border-radius:3px; padding:3px 6px; font-size:.74rem; text-align:center; font-family:var(--font-m,'Inter',sans-serif); outline:none; }
+.page-pub_express_sales_report .denom-inp:focus { background:#fffbeb; border-color:#e8b64c; }
+.page-pub_express_sales_report .denom-total-cell { font-family:var(--font-m,'Inter',sans-serif); font-weight:700; }
+
+/* ── Sub-section (right col) ── */
+.page-pub_express_sales_report .sub-sections { display:flex; flex-direction:column; gap:12px; }
+.page-pub_express_sales_report .sub-sec-card { background:#fff; border:1px solid #dde3ee; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.page-pub_express_sales_report .sub-sec-title {
+  padding:8px 14px; font-size:.63rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.08em; color:#fff;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.page-pub_express_sales_report .sub-sec-title.blue { background:#223a70; }
+.page-pub_express_sales_report .sub-sec-title.gold { background:#b8860b; }
+.page-pub_express_sales_report .sub-sec-title.red { background:#6b1530; }
+.page-pub_express_sales_report .sub-sec-title.teal { background:#0f6b6b; }
+.page-pub_express_sales_report .sub-sec-title.purple { background:#4a2c7a; }
+.page-pub_express_sales_report .sub-sec-hdr { display:grid; grid-template-columns:1fr 120px 30px; background:#e5e7eb; border-bottom:1px solid #bbb; }
+.page-pub_express_sales_report .sub-sec-hdr span { padding:5px 8px; font-size:.58rem; font-weight:700; text-transform:uppercase; color:#444; border-right:1px solid #ccc; }
+.page-pub_express_sales_report .sub-sec-hdr span:last-child { border-right:none; }
+.page-pub_express_sales_report .sub-sec-rows { max-height:180px; overflow-y:auto; }
+.page-pub_express_sales_report .sub-sec-row { display:grid; grid-template-columns:1fr 120px 30px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.page-pub_express_sales_report .sub-sec-row:hover { background:#fafbfc; }
+.page-pub_express_sales_report .sub-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-size:.73rem; padding:5px 7px; outline:none; }
+.page-pub_express_sales_report .sub-inp.num { text-align:right; }
+.page-pub_express_sales_report .sub-inp:focus { background:#fffbeb; border-color:#e8b64c; }
+.page-pub_express_sales_report .sub-sec-footer { display:grid; grid-template-columns:1fr 120px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-pub_express_sales_report .sub-sec-footer span { padding:6px 10px; font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; font-family:var(--font-m,'Inter',sans-serif); }
+.page-pub_express_sales_report .sub-sec-footer span:last-child { text-align:right; border-right:none; }
+.page-pub_express_sales_report .btn-add-sub { margin:6px 10px; padding:3px 10px; background:#1b4332; color:#fff; border:none; border-radius:5px; font-size:.65rem; font-weight:700; cursor:pointer; }
+.page-pub_express_sales_report .btn-add-sub:hover { background:#123d26; }
+.page-pub_express_sales_report .btn-del-sub { background:#fee2e2; border:none; color:#991b1b; border-radius:4px; padding:2px 5px; font-size:.62rem; cursor:pointer; margin:2px; }
+
+/* ── Summary Report ── */
+.page-pub_express_sales_report .sr-summary { max-width:700px; margin:0 auto 20px; }
+.page-pub_express_sales_report .sr-sum-card { background:#fff; border:1px solid #dde3ee; border-radius:8px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.07); }
+.page-pub_express_sales_report .sr-sum-title { background:#1f6b3f; padding:13px 28px; text-align:center; font-size:.95rem; font-weight:800; color:#fff; letter-spacing:.06em; text-transform:uppercase; font-family:var(--font-m,'Inter',sans-serif); }
+.page-pub_express_sales_report .sr-row { display:flex; align-items:center; padding:8px 22px; border-bottom:1px solid #f0f2f5; min-height:42px; gap:10px; }
+.page-pub_express_sales_report .sr-row:last-child { border-bottom:none; }
+.page-pub_express_sales_report .sr-row.green { background:#1f6b3f; }
+.page-pub_express_sales_report .sr-row.green .sr-lbl { color:#fff; }
+.page-pub_express_sales_report .sr-row.blue-sub { background:#223a70; }
+.page-pub_express_sales_report .sr-row.blue-sub .sr-lbl { color:#fff; font-weight:700; }
+.page-pub_express_sales_report .sr-row.gray-hdr { background:#e5e7eb; }
+.page-pub_express_sales_report .sr-row.gray-hdr .sr-lbl { color:#333; font-weight:700; }
+.page-pub_express_sales_report .sr-row.pink-val { background:#fce4ec; }
+.page-pub_express_sales_report .sr-row.net { background:#e8b64c; }
+.page-pub_express_sales_report .sr-row.net .sr-lbl { color:#3e2f00; font-weight:800; font-style:italic; }
+.page-pub_express_sales_report .sr-row.coh-row { background:#1e3060; }
+.page-pub_express_sales_report .sr-row.coh-row .sr-lbl { color:#fff; font-weight:800; font-style:italic; }
+.page-pub_express_sales_report .sr-row.short-row { background:#dc3545; }
+.page-pub_express_sales_report .sr-row.short-row .sr-lbl { color:#fff; font-weight:800; }
+.page-pub_express_sales_report .sr-row.divider { background:#f0f4ff; padding:4px 22px; }
+.page-pub_express_sales_report .sr-lbl { flex:1; font-size:.82rem; color:#1a1d23; font-weight:600; text-align:right; padding-right:14px; }
+.page-pub_express_sales_report .sr-note { font-size:.65rem; color:rgba(255,255,255,.65); white-space:nowrap; font-style:italic; }
+.page-pub_express_sales_report .sr-note.dark { color:#777; }
+.page-pub_express_sales_report .sr-val-wrap { width:155px; flex-shrink:0; }
+.page-pub_express_sales_report .sr-inp {
+  width:100%; padding:6px 10px; text-align:center;
+  font-family:var(--font-m,'Inter',sans-serif); font-size:.82rem; font-weight:700;
+  color:#1a1d23; background:#fff; border:1px solid #dde; border-radius:6px;
+  outline:none; transition:border-color .15s;
+}
+.page-pub_express_sales_report .sr-inp:focus { border-color:#223a70; box-shadow:0 0 0 3px rgba(26,58,138,.08); }
+.page-pub_express_sales_report .sr-inp.ro { background:rgba(255,255,255,.9); cursor:default; border-color:transparent; font-size:.9rem; font-weight:800; }
+.page-pub_express_sales_report .sr-row.net   .sr-inp.ro { background:#fff; color:#7a5c00; }
+.page-pub_express_sales_report .sr-row.coh-row .sr-inp { background:#fff; }
+.page-pub_express_sales_report .sr-row.short-row .sr-inp.ro { background:#fff; color:#b71c1c; }
+.page-pub_express_sales_report .sr-row.green .sr-inp.ro { color:#1b5e20; }
+
+/* indented sub-rows */
+.page-pub_express_sales_report .sr-row.sub-row { padding-left:40px; background:#f5f8ff; }
+.page-pub_express_sales_report .sr-row.sub-row .sr-lbl { color:#374151; font-weight:500; }
+
+/* ── Visual polish pass ── */
+.page-pub_express_sales_report .sr-header-card { position:relative; overflow:hidden; }
+.page-pub_express_sales_report .sr-header-card::before {
+  content:''; position:absolute; top:-60%; right:-8%;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.page-pub_express_sales_report .sr-section { transition:box-shadow .2s ease; }
+.page-pub_express_sales_report .sr-section:hover { box-shadow:0 4px 20px rgba(0,0,0,.09); }
+.page-pub_express_sales_report .btn-add-row {
+  border-radius:8px !important;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.page-pub_express_sales_report .btn-add-row:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.16); }
+.page-pub_express_sales_report .btn-del-row { border-radius:6px !important; transition:background .15s ease, transform .15s ease; }
+.page-pub_express_sales_report .btn-del-row:hover { transform:scale(1.06); }
+.page-pub_express_sales_report .sub-row:hover { background:#f4f7fb !important; }
+.page-pub_express_sales_report .di-inp,
+.page-pub_express_sales_report .sub-inp,
+.page-pub_express_sales_report .sr-input,
+.page-pub_express_sales_report .sr-cashier-bar input {
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.page-pub_express_sales_report .sub-inp { border-radius:6px !important; }
+
+/* ------------------------------------------------------------
+ *  Recovery — Sales Report   (body.page-recovery_sales_report)
+ * ------------------------------------------------------------ */
+.page-recovery_sales_report .sr-header-card {
+  background: linear-gradient(135deg, #1e3060 0%, #0f2045 100%);
+  border-radius: var(--radius); padding: 20px 26px 16px;
+  margin-bottom: 18px; display: flex; align-items: flex-start;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.page-recovery_sales_report .sr-header-card .eyebrow { font-family:var(--font-m); font-size:.58rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.45); margin-bottom:4px; }
+.page-recovery_sales_report .sr-header-card .title { font-size:1.2rem; font-weight:800; color:#fff; letter-spacing:-.02em; }
+.page-recovery_sales_report .sr-header-card .subtitle { font-family:var(--font-m); font-size:.67rem; color:rgba(255,255,255,.5); margin-top:4px; }
+
+.page-recovery_sales_report .sr-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.page-recovery_sales_report .sr-save-status { font-family:var(--font-m); font-size:.72rem; color:var(--subtext); }
+
+/* ── Section blocks ── */
+.page-recovery_sales_report .sr-section {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06);
+  overflow:hidden; margin-bottom:22px;
+}
+.page-recovery_sales_report .sr-section-title {
+  padding:10px 16px; font-family:var(--font-m); font-size:.75rem;
+  font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#fff;
+}
+.page-recovery_sales_report .sr-section-title.dark-red { background:#6b1530; }
+.page-recovery_sales_report .sr-section-title.dark-green { background:#1b4332; }
+
+.page-recovery_sales_report .btn-add-row { margin:8px 12px; padding:4px 12px; background:#1b4332; color:#fff; border:none; border-radius:5px; font-size:.7rem; font-weight:700; cursor:pointer; }
+.page-recovery_sales_report .btn-add-row:hover { background:#123d26; }
+.page-recovery_sales_report .btn-del-row { background:#fee2e2; border:none; color:#991b1b; border-radius:4px; padding:2px 6px; font-size:.65rem; cursor:pointer; }
+
+/* Sales Services: sticky Action column (Save/Delete) */
+.page-recovery_sales_report .ss-action-cell,
+.page-recovery_sales_report .ss-action-th {
+  position: sticky; right: 0; z-index: 5;
+  background: #fff;
+  box-shadow: -3px 0 6px rgba(0,0,0,.08);
+  text-align: center; white-space: nowrap;
+}
+.page-recovery_sales_report .ss-action-th { z-index: 6; background: #8b6914; color: #fff; }
+.page-recovery_sales_report .ss-table tbody tr:nth-child(even) .ss-action-cell { background: #fdf9f3; }
+.page-recovery_sales_report .ss-table tbody tr:hover .ss-action-cell { background: #fef3e2; }
+.page-recovery_sales_report .btn-ss-save {
+  padding: 4px 10px; background: #1b4332; color: #fff;
+  border: none; border-radius: 5px; font-family: var(--font-m);
+  font-size: .64rem; font-weight: 600; cursor: pointer; margin-right: 4px;
+}
+.page-recovery_sales_report .btn-ss-save:hover { background: #123d26; }
+
+/* ── Sub-section grid ── */
+.page-recovery_sales_report .sub-grid { display:grid; grid-template-columns:repeat(5,1fr); border-top:1px solid var(--border); }
+.page-recovery_sales_report .sub-grid.three-col { grid-template-columns:repeat(3,1fr); }
+.page-recovery_sales_report .sub-grid.two-col { grid-template-columns:repeat(2,1fr); }
+@media (max-width:1100px) { .page-recovery_sales_report .sub-grid { grid-template-columns:repeat(2,1fr); } }
+.page-recovery_sales_report .sub-col { border-right:1px solid #e5e7eb; }
+.page-recovery_sales_report .sub-col:last-child { border-right:none; }
+.page-recovery_sales_report .sub-col-title {
+  background:#6b1530; color:#fff; padding:7px 10px;
+  font-family:var(--font-m); font-size:.68rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em; text-align:center;
+}
+.page-recovery_sales_report .sub-col-hdr {
+  display:grid; grid-template-columns:1fr 90px 28px;
+  background:#e5e7eb; border-bottom:1px solid #bbb;
+}
+.page-recovery_sales_report .sub-col-hdr span { padding:5px 8px; font-family:var(--font-m); font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#333; border-right:1px solid #bbb; }
+.page-recovery_sales_report .sub-col-hdr span:last-child { border-right:none; }
+.page-recovery_sales_report .sub-row { display:grid; grid-template-columns:1fr 90px 28px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.page-recovery_sales_report .sub-row:hover { background:#fafbfc; }
+.page-recovery_sales_report .sub-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-family:var(--font-m); font-size:.75rem; outline:none; padding:5px 6px; cursor:text; }
+.page-recovery_sales_report .sub-inp.num { text-align:right; }
+.page-recovery_sales_report .sub-inp:focus { background:#fffbeb; border-color:#e8b64c; box-shadow:0 0 0 2px rgba(245,197,66,.15); }
+.page-recovery_sales_report .sub-footer { display:grid; grid-template-columns:1fr 90px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-recovery_sales_report .sub-footer span { padding:6px 8px; font-family:var(--font-m); font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; }
+.page-recovery_sales_report .sub-footer span:last-child { text-align:right; border-right:none; }
+
+/* ── Wide sub-row variant (Name/Amount/MOP/Remarks) ── */
+.page-recovery_sales_report .sub-col-hdr.wide { grid-template-columns:1fr 70px 60px 90px 28px; }
+.page-recovery_sales_report .sub-row.wide { grid-template-columns:1fr 70px 60px 90px 28px; }
+
+/* ── Summary card (existing) ── */
+.page-recovery_sales_report .sr-wrap { max-width:680px; margin:0 auto; }
+.page-recovery_sales_report .sr-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06); overflow:hidden; }
+.page-recovery_sales_report .sr-title-row { background:#1f6b3f; padding:14px 28px; text-align:center; }
+.page-recovery_sales_report .sr-title-row .sr-main-title { font-size:1rem; font-weight:800; color:#fff; letter-spacing:.06em; text-transform:uppercase; font-family:var(--font-m); }
+.page-recovery_sales_report .sr-row { display:flex; align-items:center; padding:10px 28px; border-bottom:1px solid #f0f2f5; min-height:44px; gap:10px; }
+.page-recovery_sales_report .sr-row.green { background:#3f7050; }
+.page-recovery_sales_report .sr-row.green .sr-label { color:#fff; font-weight:700; }
+.page-recovery_sales_report .sr-row.gray-hdr { background:#e5e7eb; }
+.page-recovery_sales_report .sr-row.gray-hdr .sr-label { color:#333; font-weight:700; }
+.page-recovery_sales_report .sr-row.pink-val .sr-value-wrap input { background:#f3d9e4; border-color:#e3bccf; }
+.page-recovery_sales_report .sr-row.net { background:#e8b64c; }
+.page-recovery_sales_report .sr-row.net .sr-label { color:#3e2f00; font-weight:800; font-style:italic; }
+.page-recovery_sales_report .sr-row.coh { background:#1f2d42; }
+.page-recovery_sales_report .sr-row.coh .sr-label { color:#fff; font-weight:800; font-style:italic; }
+.page-recovery_sales_report .sr-row.short { background:#dc3545; }
+.page-recovery_sales_report .sr-row.short .sr-label { color:#fff; font-weight:800; }
+.page-recovery_sales_report .sr-label { flex:1; font-size:.84rem; color:var(--text); font-weight:600; text-align:right; padding-right:14px; }
+.page-recovery_sales_report .sr-note { font-family:var(--font-h); font-style:italic; font-size:.68rem; color:var(--subtext); white-space:nowrap; }
+.page-recovery_sales_report .sr-value-wrap { width:160px; flex-shrink:0; }
+.page-recovery_sales_report .sr-input { width:100%; padding:7px 12px; text-align:center; font-family:var(--font-m); font-size:.84rem; font-weight:700; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:6px; outline:none; transition:border-color .15s; }
+.page-recovery_sales_report input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+.page-recovery_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-recovery_sales_report input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.page-recovery_sales_report .sr-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-recovery_sales_report .sr-input.readout { background:rgba(255,255,255,.9); font-size:1rem; font-weight:800; cursor:default; color:#1a1d23; border-color:transparent; }
+.page-recovery_sales_report .sr-row.net   .sr-input.readout { background:#fff; color:#7a5c00; }
+.page-recovery_sales_report .sr-row.coh   .sr-input { background:#fff; }
+.page-recovery_sales_report .sr-row.short .sr-input.readout { background:#fff; color:#b71c1c; }
+.page-recovery_sales_report .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:320px; animation:fadeSlideDown .3s ease; }
+
+/* ── Sales Services table ── */
+.page-recovery_sales_report .ss-wrap { overflow-x:auto; margin-bottom:22px; }
+.page-recovery_sales_report .ss-table { width:100%; border-collapse:collapse; min-width:1400px; }
+.page-recovery_sales_report .ss-table thead tr:first-child th {
+  background:#c8a96e; color:#1a0a00; padding:8px 6px;
+  font-family:var(--font-m); font-size:.65rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.05em; text-align:center;
+  border:1px solid #a07840; white-space:nowrap;
+}
+.page-recovery_sales_report .ss-table thead tr.sub-hdr th {
+  background:#e8d5b0; color:#3a2000; padding:5px 4px;
+  font-family:var(--font-m); font-size:.58rem; font-weight:700;
+  text-align:center; border:1px solid #c8a870;
+}
+.page-recovery_sales_report .ss-table tbody td { padding:4px 5px; border:1px solid #e5e7eb; font-size:.75rem; vertical-align:middle; }
+.page-recovery_sales_report .ss-table tbody tr:nth-child(even) { background:#fdf9f3; }
+.page-recovery_sales_report .ss-table tbody tr:hover { background:#fef3e2; }
+.page-recovery_sales_report .ss-table tfoot td { background:#c8a96e; color:#1a0a00; padding:7px 6px; font-family:var(--font-m); font-weight:800; font-size:.75rem; border:1px solid #a07840; }
+.page-recovery_sales_report .ss-table tfoot td.num { text-align:right; }
+
+.page-recovery_sales_report .ss-inp { width:100%; border:none; background:transparent; font-family:var(--font-m); font-size:.74rem; color:var(--text); outline:none; text-align:right; }
+.page-recovery_sales_report .ss-inp:focus { background:#fffbeb; border-radius:3px; }
+.page-recovery_sales_report .ss-inp.txt { text-align:left; }
+.page-recovery_sales_report .ss-inp.time { width:58px; text-align:center; }
+.page-recovery_sales_report .ss-inp.slip { width:72px; text-align:left; }
+.page-recovery_sales_report .ss-inp.name { width:120px; }
+.page-recovery_sales_report .ss-inp.svc { width:160px; }
+.page-recovery_sales_report .ss-inp.styl { width:70px; }
+.page-recovery_sales_report .ss-inp.mop { width:55px; }
+.page-recovery_sales_report .ss-inp.rem { width:100px; }
+/* ── Custom Service Dropdown ── */
+.page-recovery_sales_report .svc-wrap { position:relative; width:100%; }
+.page-recovery_sales_report .svc-display {
+  width:100%; border:1px solid #e0e0e0; background:#fafafa;
+  border-radius:5px; font-family:var(--font-m); font-size:.73rem;
+  color:var(--text); padding:5px 24px 5px 7px; cursor:pointer;
+  outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  display:flex; align-items:center; justify-content:space-between; gap:4px;
+  transition:border-color .15s;
+}
+.page-recovery_sales_report .svc-display:focus,
+.page-recovery_sales_report .svc-display.open { border-color:#4a7c59; background:#fffbeb; box-shadow:0 0 0 2px rgba(74,124,89,.12); }
+.page-recovery_sales_report .svc-display .svc-arrow { font-size:.55rem; color:#9ca3af; flex-shrink:0; transition:transform .15s; }
+.page-recovery_sales_report .svc-display.open .svc-arrow { transform:rotate(180deg); }
+.page-recovery_sales_report .svc-display .svc-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.page-recovery_sales_report .svc-dropdown {
+  display:none; position:fixed; z-index:99999;
+  background:#fff; border:1px solid #c8d4df; border-radius:8px;
+  box-shadow:0 8px 32px rgba(0,0,0,.18);
+  width:280px; max-height:320px; overflow:hidden;
+  flex-direction:column;
+}
+.page-recovery_sales_report .svc-dropdown.open { display:flex; }
+.page-recovery_sales_report .svc-search-wrap { padding:8px 10px 6px; border-bottom:1px solid #f0f2f5; flex-shrink:0; }
+.page-recovery_sales_report .svc-search {
+  width:100%; padding:5px 10px; font-family:var(--font-m); font-size:.72rem;
+  border:1px solid #e0e0e0; border-radius:5px; outline:none;
+  background:#f9fafb;
+}
+.page-recovery_sales_report .svc-search:focus { border-color:#4a7c59; background:#fff; }
+.page-recovery_sales_report .svc-list { overflow-y:auto; flex:1; padding:4px 0; }
+.page-recovery_sales_report .svc-opt {
+  padding:7px 12px; font-family:var(--font-m); font-size:.73rem;
+  color:#374151; cursor:pointer; transition:background .08s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.page-recovery_sales_report .svc-opt:hover,
+.page-recovery_sales_report .svc-opt.active { background:#f0fdf4; color:#1b4332; font-weight:600; }
+.page-recovery_sales_report .svc-opt.other { color:#6b7280; border-top:1px solid #f0f2f5; }
+.page-recovery_sales_report .svc-no-match { padding:10px 12px; font-family:var(--font-m); font-size:.71rem; color:#9ca3af; text-align:center; }
+/* hidden real select for form compat */
+.page-recovery_sales_report .svc-sel-hidden { display:none; }
+
+/* ── Stylist Dropdown (shared by Sales Services + Mktg) ── */
+.page-recovery_sales_report .styl-wrap { position:relative; width:100%; }
+.page-recovery_sales_report .styl-display {
+  width:100%; border:1px solid #e0e0e0; background:#fafafa;
+  border-radius:4px; font-family:var(--font-m); font-size:.73rem;
+  color:var(--text); padding:4px 22px 4px 6px; cursor:pointer;
+  outline:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  display:flex; align-items:center; justify-content:space-between; gap:3px;
+  transition:border-color .15s;
+}
+.page-recovery_sales_report .styl-display:focus,
+.page-recovery_sales_report .styl-display.open { border-color:#8b6914; background:#fffbeb; box-shadow:0 0 0 2px rgba(139,105,20,.1); }
+.page-recovery_sales_report .styl-display .styl-arrow { font-size:.5rem; color:#9ca3af; flex-shrink:0; transition:transform .15s; }
+.page-recovery_sales_report .styl-display.open .styl-arrow { transform:rotate(180deg); }
+.page-recovery_sales_report .styl-display .styl-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.page-recovery_sales_report .styl-dropdown {
+  display:none; position:fixed; z-index:99999;
+  background:#fff; border:1px solid #c8d4df; border-radius:8px;
+  box-shadow:0 8px 32px rgba(0,0,0,.18);
+  width:200px; max-height:240px; overflow:hidden; flex-direction:column;
+}
+.page-recovery_sales_report .styl-dropdown.open { display:flex; }
+.page-recovery_sales_report .styl-search-wrap { padding:6px 8px 5px; border-bottom:1px solid #f0f2f5; flex-shrink:0; }
+.page-recovery_sales_report .styl-search { width:100%; padding:4px 8px; font-family:var(--font-m); font-size:.71rem; border:1px solid #e0e0e0; border-radius:4px; outline:none; background:#f9fafb; }
+.page-recovery_sales_report .styl-search:focus { border-color:#8b6914; background:#fff; }
+.page-recovery_sales_report .styl-list { overflow-y:auto; flex:1; padding:3px 0; }
+.page-recovery_sales_report .styl-opt { padding:6px 10px; font-family:var(--font-m); font-size:.72rem; color:#374151; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.page-recovery_sales_report .styl-opt:hover,
+.page-recovery_sales_report .styl-opt.styl-active { background:#fffbeb; color:#5a3e00; font-weight:600; }
+.page-recovery_sales_report .styl-opt.styl-other { color:#6b7280; border-top:1px solid #f0f2f5; font-style:italic; }
+.page-recovery_sales_report .cb-table { width:100%; max-width:420px; border-collapse:collapse; margin:0 auto; }
+.page-recovery_sales_report .cb-table th { background:#1a1a1a; color:#fff; padding:8px; font-family:var(--font-m); font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; text-align:center; border:1px solid #333; }
+.page-recovery_sales_report .cb-table td { padding:5px 8px; border:1px solid #e5e7eb; font-size:.78rem; text-align:center; }
+.page-recovery_sales_report .cb-table tbody tr:nth-child(even) { background:#fafafa; }
+.page-recovery_sales_report .cb-table .cb-denom { font-family:var(--font-m); font-weight:700; color:#374151; }
+.page-recovery_sales_report .cb-table tfoot td { background:#d99a3f; color:#1a0a00; font-family:var(--font-m); font-weight:800; font-size:.8rem; padding:8px; border:1px solid #b87d28; }
+.page-recovery_sales_report .cb-inp { width:70px; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-family:var(--font-m); font-size:.76rem; text-align:center; padding:4px 6px; outline:none; }
+.page-recovery_sales_report .cb-inp:focus { background:#fffbeb; border-color:#e8b64c; }
+
+/* ── Cash Breakdown + side panels layout ── */
+.page-recovery_sales_report .cb-layout { display:grid; grid-template-columns:420px 1fr; gap:18px; align-items:start; padding:16px; }
+@media (max-width:1000px) { .page-recovery_sales_report .cb-layout { grid-template-columns:1fr; } }
+.page-recovery_sales_report .cb-side { display:flex; flex-direction:column; gap:16px; }
+.page-recovery_sales_report .cb-side .sub-col { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.page-recovery_sales_report .cb-tot-cell { font-family:var(--font-m); font-weight:700; color:#1b4332; }
+
+/* ── Generic multi-col mini tables (Mktg Services / GC Sold / Product Sold) ── */
+.page-recovery_sales_report .mt-wrap { overflow-x:auto; }
+.page-recovery_sales_report .mt-table { width:100%; border-collapse:collapse; }
+.page-recovery_sales_report .mt-table th { background:#8b6914; color:#fff; padding:6px 5px; font-family:var(--font-m); font-size:.6rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; text-align:center; border:1px solid #6b5210; white-space:nowrap; }
+.page-recovery_sales_report .mt-table td { padding:4px 5px; border:1px solid #e5e7eb; font-size:.74rem; vertical-align:middle; }
+.page-recovery_sales_report .mt-table tbody tr:nth-child(even) { background:#fdf9f3; }
+.page-recovery_sales_report .mt-table tfoot td { background:#8b6914; color:#fff; font-family:var(--font-m); font-weight:800; font-size:.74rem; padding:6px 5px; border:1px solid #6b5210; }
+.page-recovery_sales_report .mt-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-family:var(--font-m); font-size:.73rem; outline:none; padding:4px 6px; text-align:right; }
+.page-recovery_sales_report .mt-inp.txt { text-align:left; }
+.page-recovery_sales_report .mt-inp:focus { background:#fffbeb; border-color:#e8b64c; }
+.page-recovery_sales_report .gc-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; padding:14px; }
+.page-recovery_sales_report .gc-grid.three-col { grid-template-columns:1fr 1fr .85fr; }
+@media (max-width:1100px) { .page-recovery_sales_report .gc-grid.three-col { grid-template-columns:1fr 1fr; } }
+@media (max-width:900px) { .page-recovery_sales_report .gc-grid { grid-template-columns:1fr; } .page-recovery_sales_report .gc-grid.three-col { grid-template-columns:1fr; } }
+
+/* ── Shift info bar (Date / Opening / Closing Cashier) ── */
+.page-recovery_sales_report .shift-bar { display:flex; gap:0; flex-wrap:wrap; }
+.page-recovery_sales_report .shift-field { flex:1; min-width:200px; padding:14px 20px; border-right:1px solid var(--border); }
+.page-recovery_sales_report .shift-field:last-child { border-right:none; }
+.page-recovery_sales_report .shift-field label { display:block; font-family:var(--font-m); font-size:.6rem; font-weight:800; letter-spacing:.08em; color:var(--subtext); text-transform:uppercase; margin-bottom:6px; }
+.page-recovery_sales_report .shift-readout { font-family:var(--font-m); font-size:.9rem; font-weight:700; color:var(--text); }
+.page-recovery_sales_report .shift-inp { width:100%; padding:7px 10px; font-family:var(--font-m); font-size:.85rem; font-weight:600; color:var(--text); background:#fafafa; border:1px solid var(--border); border-radius:6px; outline:none; }
+.page-recovery_sales_report .shift-inp:focus { border-color:var(--accent); background:#fff; box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+
+.page-recovery_sales_report .btn-guide {
+  display:inline-flex; align-items:center; gap:8px;
+  margin-left:auto;
+  padding:10px 20px;
+  background:#b98a5e; color:#fff;
+  border:1px solid #a5754a; border-radius:8px;
+  font-family:var(--font-m); font-size:.82rem; font-weight:700;
+  text-decoration:none; white-space:nowrap;
+  transition:background .15s, box-shadow .15s;
+}
+.page-recovery_sales_report .btn-guide:hover { background:#a5754a; box-shadow:0 2px 6px rgba(0,0,0,.12); }
+
+/* ── Visual polish pass ── */
+.page-recovery_sales_report .sr-header-card { position:relative; overflow:hidden; }
+.page-recovery_sales_report .sr-header-card::before {
+  content:''; position:absolute; top:-60%; right:-8%;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.page-recovery_sales_report .sr-section { transition:box-shadow .2s ease; }
+.page-recovery_sales_report .sr-section:hover { box-shadow:0 4px 20px rgba(0,0,0,.09); }
+.page-recovery_sales_report .btn-add-row {
+  border-radius:8px !important;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.page-recovery_sales_report .btn-add-row:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.16); }
+.page-recovery_sales_report .btn-del-row { border-radius:6px !important; transition:background .15s ease, transform .15s ease; }
+.page-recovery_sales_report .btn-del-row:hover { transform:scale(1.06); }
+.page-recovery_sales_report .sub-row:hover { background:#f4f7fb !important; }
+.page-recovery_sales_report .di-inp,
+.page-recovery_sales_report .sub-inp,
+.page-recovery_sales_report .sr-input,
+.page-recovery_sales_report .sr-cashier-bar input {
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.page-recovery_sales_report .sub-inp { border-radius:6px !important; }
+
+/* ------------------------------------------------------------
+ *  Stella — Sales Report   (body.page-stella_sales_report)
+ * ------------------------------------------------------------ */
+.page-stella_sales_report .sr-header-card {
+  background: linear-gradient(135deg, #1e3060 0%, #0f2045 100%);
+  border-radius: var(--radius); padding: 20px 26px 16px;
+  margin-bottom: 18px; display: flex; align-items: flex-start;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.page-stella_sales_report .sr-header-card .eyebrow { font-family:var(--font-m); font-size:.58rem; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.45); margin-bottom:4px; }
+.page-stella_sales_report .sr-header-card .title { font-size:1.2rem; font-weight:800; color:#fff; letter-spacing:-.02em; }
+.page-stella_sales_report .sr-header-card .subtitle { font-family:var(--font-m); font-size:.67rem; color:rgba(255,255,255,.5); margin-top:4px; }
+
+.page-stella_sales_report .sr-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.page-stella_sales_report .sr-cashier-bar { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.page-stella_sales_report .sr-cashier-bar label { font-family:var(--font-m); font-size:.85rem; font-weight:800; color:var(--text); white-space:nowrap; }
+.page-stella_sales_report .sr-cashier-bar input { flex:1; min-width:0; padding:10px 14px; font-family:var(--font-m); font-size:.95rem; font-weight:700; text-align:left; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:8px; outline:none; transition:border-color .15s; }
+.page-stella_sales_report .sr-cashier-bar input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-stella_sales_report .sr-save-status { font-family:var(--font-m); font-size:.72rem; color:var(--subtext); }
+
+/* ── Section blocks ── */
+.page-stella_sales_report .sr-section {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06);
+  overflow:hidden; margin-bottom:22px;
+}
+.page-stella_sales_report .sr-section-title {
+  padding:10px 16px; font-family:var(--font-m); font-size:.75rem;
+  font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#fff;
+}
+.page-stella_sales_report .sr-section-title.dark-red { background:#6b1530; }
+.page-stella_sales_report .sr-section-title.dark-green { background:#1b4332; }
+
+/* ── DINE IN table ── */
+.page-stella_sales_report .di-table { width:100%; border-collapse:collapse; }
+.page-stella_sales_report .di-table th {
+  background:#7a2233; color:#fff; padding:7px 8px;
+  font-family:var(--font-m); font-size:.62rem; text-transform:uppercase;
+  letter-spacing:.06em; text-align:center; white-space:nowrap; border:1px solid #4a1020;
+}
+.page-stella_sales_report .di-table th.sub { background:#4b5563; font-size:.58rem; }
+.page-stella_sales_report .di-table td { padding:5px 7px; border:1px solid #e5e7eb; font-size:.77rem; vertical-align:middle; }
+.page-stella_sales_report .di-table tfoot td { background:#e8b64c; font-family:var(--font-m); font-weight:800; font-size:.78rem; padding:7px 8px; border:1px solid #c99a2e; }
+.page-stella_sales_report .di-table tfoot td.total-label { background:#223a70; color:#fff; font-size:.78rem; }
+.page-stella_sales_report .di-table tfoot td.grand-total { background:#223a70; color:#fff; font-family:var(--font-m); font-weight:800; }
+
+.page-stella_sales_report .di-inp { width:100%; border:none; background:transparent; font-family:var(--font-m); font-size:.77rem; text-align:right; outline:none; }
+.page-stella_sales_report .di-inp:focus { background:#fffbeb; border-radius:3px; }
+.page-stella_sales_report .di-inp.txt { text-align:left; }
+.page-stella_sales_report .di-inp-name { width:90px; }
+.page-stella_sales_report .di-inp-amt { width:70px; }
+.page-stella_sales_report .btn-add-row { margin:8px 12px; padding:4px 12px; background:#1b4332; color:#fff; border:none; border-radius:5px; font-size:.7rem; font-weight:700; cursor:pointer; }
+.page-stella_sales_report .btn-add-row:hover { background:#123d26; }
+.page-stella_sales_report .btn-del-row { background:#fee2e2; border:none; color:#991b1b; border-radius:4px; padding:2px 6px; font-size:.65rem; cursor:pointer; }
+
+/* ── Sub-section grid ── */
+.page-stella_sales_report .sub-grid { display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--border); }
+.page-stella_sales_report .sub-grid.three-col { grid-template-columns:repeat(3,1fr); }
+.page-stella_sales_report .sub-grid.four-col { grid-template-columns:repeat(4,1fr); }
+.page-stella_sales_report .sub-col { border-right:1px solid #e5e7eb; }
+.page-stella_sales_report .sub-col:last-child { border-right:none; }
+.page-stella_sales_report .sub-col-title {
+  background:#6b1530; color:#fff; padding:7px 10px;
+  font-family:var(--font-m); font-size:.68rem; font-weight:800;
+  text-transform:uppercase; letter-spacing:.06em; text-align:center;
+}
+.page-stella_sales_report .sub-col-hdr {
+  display:grid; grid-template-columns:1fr 90px 28px;
+  background:#e5e7eb; border-bottom:1px solid #bbb;
+}
+.page-stella_sales_report .sub-col-hdr span { padding:5px 8px; font-family:var(--font-m); font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#333; border-right:1px solid #bbb; }
+.page-stella_sales_report .sub-col-hdr span:last-child { border-right:none; }
+.page-stella_sales_report .sub-row { display:grid; grid-template-columns:1fr 90px 28px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.page-stella_sales_report .sub-row:hover { background:#fafbfc; }
+.page-stella_sales_report .sub-inp { width:100%; border:1px solid #e0e0e0; background:#fafafa; border-radius:4px; font-family:var(--font-m); font-size:.75rem; outline:none; padding:5px 6px; cursor:text; }
+.page-stella_sales_report .sub-inp.num { text-align:right; }
+.page-stella_sales_report .sub-inp:focus { background:#fffbeb; border-color:#e8b64c; box-shadow:0 0 0 2px rgba(245,197,66,.15); }
+.page-stella_sales_report .sub-footer { display:grid; grid-template-columns:1fr 90px; background:#e8b64c; border-top:2px solid #c99a2e; }
+.page-stella_sales_report .sub-footer span { padding:6px 8px; font-family:var(--font-m); font-size:.72rem; font-weight:800; border-right:1px solid #c99a2e; }
+.page-stella_sales_report .sub-footer span:last-child { text-align:right; border-right:none; }
+
+/* ── Summary card (existing) ── */
+.page-stella_sales_report .sr-wrap { max-width:680px; margin:0 auto; }
+.page-stella_sales_report .sr-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.06); overflow:hidden; }
+.page-stella_sales_report .sr-title-row { background:#1f6b3f; padding:14px 28px; text-align:center; }
+.page-stella_sales_report .sr-title-row .sr-main-title { font-size:1rem; font-weight:800; color:#fff; letter-spacing:.06em; text-transform:uppercase; font-family:var(--font-m); }
+.page-stella_sales_report .sr-row { display:flex; align-items:center; padding:10px 28px; border-bottom:1px solid #f0f2f5; min-height:44px; gap:10px; }
+.page-stella_sales_report .sr-row.green { background:#3f7050; }
+.page-stella_sales_report .sr-row.green .sr-label { color:#fff; font-weight:700; }
+.page-stella_sales_report .sr-row.gray-hdr { background:#e5e7eb; }
+.page-stella_sales_report .sr-row.gray-hdr .sr-label { color:#333; font-weight:700; }
+.page-stella_sales_report .sr-row.pink-val .sr-value-wrap input { background:#f3d9e4; border-color:#e3bccf; }
+.page-stella_sales_report .sr-row.net { background:#e8b64c; }
+.page-stella_sales_report .sr-row.net .sr-label { color:#3e2f00; font-weight:800; font-style:italic; }
+.page-stella_sales_report .sr-row.coh { background:#1f2d42; }
+.page-stella_sales_report .sr-row.coh .sr-label { color:#fff; font-weight:800; font-style:italic; }
+.page-stella_sales_report .sr-row.short { background:#dc3545; }
+.page-stella_sales_report .sr-row.short .sr-label { color:#fff; font-weight:800; }
+.page-stella_sales_report .sr-label { flex:1; font-size:.84rem; color:var(--text); font-weight:600; text-align:right; padding-right:14px; }
+.page-stella_sales_report .sr-note { font-family:var(--font-h); font-style:italic; font-size:.68rem; color:var(--subtext); white-space:nowrap; }
+.page-stella_sales_report .sr-value-wrap { width:160px; flex-shrink:0; }
+.page-stella_sales_report .sr-input { width:100%; padding:7px 12px; text-align:center; font-family:var(--font-m); font-size:.84rem; font-weight:700; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:6px; outline:none; transition:border-color .15s; }
+.page-stella_sales_report input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+.page-stella_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-stella_sales_report input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.page-stella_sales_report .sr-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.08); }
+.page-stella_sales_report .sr-input.readout { background:rgba(255,255,255,.9); font-size:1rem; font-weight:800; cursor:default; color:#1a1d23; border-color:transparent; }
+.page-stella_sales_report .sr-row.net   .sr-input.readout { background:#fff; color:#7a5c00; }
+.page-stella_sales_report .sr-row.coh   .sr-input { background:#fff; }
+.page-stella_sales_report .sr-row.short .sr-input.readout { background:#fff; color:#000; -webkit-text-fill-color:#000; opacity:1; font-weight:900; }
+.page-stella_sales_report .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:320px; animation:fadeSlideDown .3s ease; }
+
+/* ── Visual polish pass ── */
+.page-stella_sales_report .sr-header-card { position:relative; overflow:hidden; }
+.page-stella_sales_report .sr-header-card::before {
+  content:''; position:absolute; top:-60%; right:-8%;
+  width:280px; height:280px; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.page-stella_sales_report .sr-section { transition:box-shadow .2s ease; }
+.page-stella_sales_report .sr-section:hover { box-shadow:0 4px 20px rgba(0,0,0,.09); }
+.page-stella_sales_report .btn-add-row {
+  border-radius:8px !important;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.page-stella_sales_report .btn-add-row:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.16); }
+.page-stella_sales_report .btn-del-row { border-radius:6px !important; transition:background .15s ease, transform .15s ease; }
+.page-stella_sales_report .btn-del-row:hover { transform:scale(1.06); }
+.page-stella_sales_report .sub-row:hover { background:#f4f7fb !important; }
+.page-stella_sales_report .di-inp,
+.page-stella_sales_report .sub-inp,
+.page-stella_sales_report .sr-input,
+.page-stella_sales_report .sr-cashier-bar input {
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.page-stella_sales_report .sub-inp { border-radius:6px !important; }
+
+/* ------------------------------------------------------------
+ *  Sales Report — Jewel-tone palette redesign
+ *  (Stella / H / Dois)
+ *
+ *  Problem: every sub-section card (Marketing Pullout, GRAB,
+ *  Expenses, Late Payment, Advance Payment, GC Sponsorship...)
+ *  rendered in the exact same maroon (Stella/H), or in a clashing
+ *  mix of pure CSS-named colors — bright orange, hot pink, purple
+ *  (Dois) — so a long page read as either one monotonous wall of
+ *  red bars, or a loud, uncoordinated one. This pass gives every
+ *  card its own color from one coordinated, muted jewel-tone
+ *  family so sections are easy to tell apart at a glance without
+ *  clashing, plus a general polish pass (radius, spacing, softer
+ *  delete buttons, subtle depth).
+ *
+ *  Palette:
+ *    wine    #7a2233   — anchor color, DINE IN header
+ *    plum    #5b3a73
+ *    indigo  #34406b
+ *    forest  #1f6b47
+ *    umber   #8a5a20
+ *    rose    #8a3a52
+ *    teal    #1f6b6b
+ *    gold    #e8b64c   — totals (unchanged)
+ * ------------------------------------------------------------ */
+
+/* ── Stella & H: cycle sub-col-title colors by position within
+   each sub-grid, instead of one repeated maroon ── */
+.page-stella_sales_report .sub-col:nth-child(4n+1) .sub-col-title,
+.page-h_sales_report      .sub-col:nth-child(4n+1) .sub-col-title { background:#5b3a73; }
+.page-stella_sales_report .sub-col:nth-child(4n+2) .sub-col-title,
+.page-h_sales_report      .sub-col:nth-child(4n+2) .sub-col-title { background:#34406b; }
+.page-stella_sales_report .sub-col:nth-child(4n+3) .sub-col-title,
+.page-h_sales_report      .sub-col:nth-child(4n+3) .sub-col-title { background:#1f6b47; }
+.page-stella_sales_report .sub-col:nth-child(4n+4) .sub-col-title,
+.page-h_sales_report      .sub-col:nth-child(4n+4) .sub-col-title { background:#8a5a20; }
+
+/* H: the two side-by-side "extra section" cards (Advance Deposit /
+   Bar Sales) were both the same maroon as DINE IN — give the second
+   its own color so the pair reads as two distinct cards */
+.page-h_sales_report .extra-sections-row .extra-section-col:nth-child(2) .sr-section-title { background:#1f6b6b; }
+
+/* Softer, more refined title bars: a touch more padding + letter
+   spacing, and a subtle inset highlight for depth instead of a flat
+   block of color */
+.page-stella_sales_report .sub-col-title,
+.page-h_sales_report      .sub-col-title,
+.page-stella_sales_report .sr-section-title,
+.page-h_sales_report      .sr-section-title {
+  padding:9px 12px; letter-spacing:.07em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.08);
+}
+
+/* Quieter delete buttons: circular, muted by default, red only on
+   hover — the old solid red squares made every row look like it had
+   an error */
+.page-stella_sales_report .btn-del-row,
+.page-h_sales_report      .btn-del-row,
+.page-dois_sales_report   .btn-del-row,
+.page-dois_sales_report   .btn-del-sub,
+.page-dois_sales_report   .btn-del-di {
+  background:#f1f2f5 !important; color:#8a8f9a !important;
+  border-radius:50% !important; width:20px; height:20px;
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:0 !important; font-size:.62rem !important; line-height:1;
+  transition:background .15s ease, color .15s ease, transform .15s ease;
+}
+.page-stella_sales_report .btn-del-row:hover,
+.page-h_sales_report      .btn-del-row:hover,
+.page-dois_sales_report   .btn-del-row:hover,
+.page-dois_sales_report   .btn-del-sub:hover,
+.page-dois_sales_report   .btn-del-di:hover {
+  background:#fee2e2 !important; color:#b91c1c !important; transform:scale(1.08);
+}
+
+/* Slightly richer, more consistent totals footer + Add button */
+.page-stella_sales_report .sub-footer,
+.page-h_sales_report      .sub-footer { border-top:2px solid #c99a2e; box-shadow:inset 0 1px 0 rgba(255,255,255,.35); }
+.page-stella_sales_report .btn-add-row,
+.page-h_sales_report      .btn-add-row {
+  background:#1f6b47; letter-spacing:.02em;
+}
+.page-stella_sales_report .btn-add-row:hover,
+.page-h_sales_report      .btn-add-row:hover { background:#164f34; }
+
+/* Softer grid lines throughout (was harsh pure #bbb / #e5e7eb mix) */
+.page-stella_sales_report .sub-col,
+.page-h_sales_report      .sub-col { border-right:1px solid #e9ebef; }
+.page-stella_sales_report .sub-col-hdr,
+.page-h_sales_report      .sub-col-hdr { background:#f3f4f7; border-bottom:1px solid #dde0e6; }
+.page-stella_sales_report .sub-col-hdr span,
+.page-h_sales_report      .sub-col-hdr span { border-right:1px solid #dde0e6; color:#5a6070; }
+
+/* ── Dois: recolor the clashing bright orange / hot pink / purple
+   set to the same coordinated jewel-tone family used above ── */
+.page-dois_sales_report .sub-col-title.orange  { background:#8a5a20; }
+.page-dois_sales_report .sub-col-title.pink    { background:#8a3a52; }
+.page-dois_sales_report .sub-col-title.appigo  { background:#5b3a73; }
+.page-dois_sales_report .sub-col-title.green   { background:#1f6b47; }
+.page-dois_sales_report .sub-col-title.gcred   { background:#7a2233; }
+.page-dois_sales_report .sub-col-title.gccard  { background:#1f6b6b; }
+.page-dois_sales_report .di-table th           { background:#7a2233; border-color:#4a1020; }
+.page-dois_sales_report .sr-row.orange-hdr     { background:#34406b; }
+.page-dois_sales_report .sr-row.orange-sub     { background:#4a5a85; }
+.page-dois_sales_report .sub-col-title,
+.page-dois_sales_report .dinein-title {
+  padding:9px 12px; letter-spacing:.07em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(0,0,0,.08);
+}
+.page-dois_sales_report .sub-col { border-right:1px solid #e9ebef; }
+.page-dois_sales_report .sub-col-hdr { background:#f3f4f7; border-bottom:1px solid #dde0e6; }
+.page-dois_sales_report .sub-col-hdr span { border-right:1px solid #dde0e6; color:#5a6070; }
+.page-dois_sales_report .btn-add-sub,
+.page-dois_sales_report .btn-add-di { background:#1f6b47; letter-spacing:.02em; }
+.page-dois_sales_report .btn-add-sub:hover,
+.page-dois_sales_report .btn-add-di:hover { background:#164f34; }
+
+
+
+/* ── Sales Reports (all branches): hide number-input spinner arrows ── */
+.page-commissary_sales_report input[type=number],
+.page-demiclab_sales_report input[type=number],
+.page-demiclab_jaro_sales_report input[type=number],
+.page-dois_sales_report input[type=number],
+.page-h_sales_report input[type=number],
+.page-h_carwash_sales_report input[type=number],
+.page-pub_express_sales_report input[type=number],
+.page-recovery_sales_report input[type=number],
+.page-stella_sales_report input[type=number] {
+  -moz-appearance:textfield; appearance:textfield;
+}
+.page-commissary_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-commissary_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-demiclab_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-demiclab_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-demiclab_jaro_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-demiclab_jaro_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-dois_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-dois_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-h_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-h_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-h_carwash_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-h_carwash_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-pub_express_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-pub_express_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-recovery_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-recovery_sales_report input[type=number]::-webkit-inner-spin-button,
+.page-stella_sales_report input[type=number]::-webkit-outer-spin-button,
+.page-stella_sales_report input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance:none; margin:0;
+}
