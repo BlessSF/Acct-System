@@ -1588,3 +1588,108 @@
 .page-stella_sales_report input[type=number]::-webkit-inner-spin-button {
   -webkit-appearance:none; margin:0;
 }
+
+/* ------------------------------------------------------------
+ *  Stella — Sales Report: green theme + Summary Report on the left
+ * ------------------------------------------------------------ */
+.page-stella_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
+.page-stella_sales_report .sr-split .sr-wrap { order:-1; flex:0 0 440px; max-width:440px; margin:0; position:sticky; top:12px; max-height:calc(100vh - 24px); overflow-y:auto; border-radius:var(--radius); }
+.page-stella_sales_report .sr-split .sr-main { order:1; flex:1 1 0; min-width:0; }
+.page-stella_sales_report .sr-split .sr-row { padding:8px 14px; min-height:40px; gap:8px; }
+.page-stella_sales_report .sr-split .sr-label { font-size:.78rem; padding-right:8px; }
+.page-stella_sales_report .sr-split .sr-value-wrap { width:128px; }
+.page-stella_sales_report .sr-split .sr-title-row { padding:12px 14px; }
+@media (max-width:1100px) {
+  .page-stella_sales_report .sr-split { flex-direction:column; }
+  .page-stella_sales_report .sr-split .sr-wrap { order:0; flex:none; max-width:none; width:100%; position:static; max-height:none; }
+  .page-stella_sales_report .sr-split .sr-main { order:1; width:100%; }
+}
+.page-stella_sales_report .sr-header-card { background:linear-gradient(135deg,#1f6b3f 0%,#14532d 100%); }
+.page-stella_sales_report .sr-section-title.dark-red,
+.page-stella_sales_report .sr-section-title.dark-green,
+.page-stella_sales_report .sub-col-title { background:#2f855a; }
+.page-stella_sales_report .di-table th { background:#2f855a; border-color:#1f6b3f; }
+.page-stella_sales_report .di-table th.sub { background:#4c9f70; }
+.page-stella_sales_report .di-table tfoot td { background:#bbf7d0; border-color:#86d9a5; color:#14532d; }
+.page-stella_sales_report .di-table tfoot td.total-label,
+.page-stella_sales_report .di-table tfoot td.grand-total { background:#1f6b3f; color:#fff; }
+.page-stella_sales_report .sub-col-hdr { background:#dcfce7; border-bottom-color:#86d9a5; }
+.page-stella_sales_report .sub-col-hdr span { border-right-color:#86d9a5; color:#14532d; }
+.page-stella_sales_report .sub-footer { background:#bbf7d0; border-top-color:#86d9a5; color:#14532d; }
+.page-stella_sales_report .sub-footer span { border-right-color:#86d9a5; }
+.page-stella_sales_report .sub-inp:focus,
+.page-stella_sales_report .di-inp:focus { background:#f0fdf4; border-color:#4c9f70; box-shadow:0 0 0 2px rgba(47,133,90,.15); }
+.page-stella_sales_report .btn-add-row { background:#2f855a; }
+.page-stella_sales_report .btn-add-row:hover { background:#1f6b3f; }
+.page-stella_sales_report .btn-del-row { background:#dcfce7; color:#14532d; }
+.page-stella_sales_report .sr-title-row { background:#1f6b3f; }
+.page-stella_sales_report .sr-row.green { background:#2f855a; }
+.page-stella_sales_report .sr-row.gray-hdr { background:#dcfce7; }
+.page-stella_sales_report .sr-row.gray-hdr .sr-label { color:#14532d; }
+.page-stella_sales_report .sr-row.pink-val { background:#f0fdf4; }
+.page-stella_sales_report .sr-row.pink-val .sr-value-wrap input { background:#dcfce7; border-color:#a7e3bd; }
+.page-stella_sales_report .sr-row.net { background:#bbf7d0; }
+.page-stella_sales_report .sr-row.net .sr-label { color:#14532d; }
+.page-stella_sales_report .sr-row.net .sr-input.readout { color:#14532d; }
+.page-stella_sales_report .sr-row.coh { background:#1f6b3f; }
+.page-stella_sales_report .sr-row.short { background:#4c9f70; }
+.page-stella_sales_report .sr-row.short .sr-input.readout { color:#14532d; -webkit-text-fill-color:#14532d; }
+.page-stella_sales_report .sr-row .sr-input.readout { background:#fff; }
+.page-stella_sales_report .sr-note { color:#3f7050; }
+.page-stella_sales_report .sr-row.green .sr-note,
+.page-stella_sales_report .sr-row.coh .sr-note,
+.page-stella_sales_report .sr-row.short .sr-note { color:#e6fbee !important; }
+
+/* Stella green theme — override per-column title colours (alternating greens) */
+body.page-stella_sales_report .sub-col .sub-col-title { background:#2f855a !important; color:#fff !important; }
+body.page-stella_sales_report .sub-col:nth-child(even) .sub-col-title { background:#1f6b3f !important; }
+body.page-stella_sales_report .sub-grid.three-col .sub-col:nth-child(even) .sub-col-title { background:#1f6b3f !important; }
+
+/* Stella — one single green everywhere (matches DINE IN header) */
+body.page-stella_sales_report .sub-col .sub-col-title,
+body.page-stella_sales_report .sub-col:nth-child(even) .sub-col-title,
+body.page-stella_sales_report .sub-grid.three-col .sub-col:nth-child(even) .sub-col-title,
+body.page-stella_sales_report .sr-section-title,
+body.page-stella_sales_report .sr-title-row,
+body.page-stella_sales_report .di-table th,
+body.page-stella_sales_report .di-table tfoot td.total-label,
+body.page-stella_sales_report .di-table tfoot td.grand-total,
+body.page-stella_sales_report .sr-row.green,
+body.page-stella_sales_report .sr-row.coh,
+body.page-stella_sales_report .sr-row.short,
+body.page-stella_sales_report .btn-add-row { background:#2f855a !important; }
+body.page-stella_sales_report .sr-header-card { background:#2f855a !important; }
+body.page-stella_sales_report .di-table th { border-color:#256b49 !important; }
+body.page-stella_sales_report .di-table th.sub { background:#3d9a6b !important; }
+body.page-stella_sales_report .btn-add-row:hover { background:#256b49 !important; }
+
+/* Stella — Summary Report always fits ONE screen (no scrolling at any zoom) */
+body.page-stella_sales_report .sr-split .sr-wrap {
+  position:sticky; top:8px; height:calc(100vh - 16px); max-height:none; overflow:visible; align-self:flex-start;
+}
+body.page-stella_sales_report .sr-split .sr-card { height:100%; display:flex; flex-direction:column; overflow:hidden; }
+body.page-stella_sales_report .sr-split .sr-title-row { flex:0 0 auto; padding:0; height:clamp(22px,5vh,48px); display:flex; align-items:center; justify-content:center; }
+body.page-stella_sales_report .sr-split .sr-title-row .sr-main-title { font-size:clamp(.7rem,2.2vh,1.05rem); }
+body.page-stella_sales_report .sr-split .sr-row {
+  flex:1 1 0; min-height:0; padding:0 12px; gap:8px; border-bottom:0;
+}
+body.page-stella_sales_report .sr-split .sr-label { font-size:clamp(.5rem,1.55vh,.8rem); line-height:1.15; padding-right:6px; }
+body.page-stella_sales_report .sr-split .sr-label span { font-size:clamp(.4rem,1.1vh,.62rem) !important; }
+body.page-stella_sales_report .sr-split .sr-value-wrap { width:clamp(80px,9vw,128px); }
+body.page-stella_sales_report .sr-split .sr-input { padding:0 8px; height:clamp(16px,3.8vh,36px); line-height:1; font-size:clamp(.55rem,1.9vh,.95rem) !important; }
+body.page-stella_sales_report .sr-split .sr-input.readout { font-size:clamp(.55rem,2vh,1rem) !important; }
+body.page-stella_sales_report .sr-split .sr-note { font-size:clamp(.4rem,1.1vh,.62rem); }
+@media (max-height:760px) { body.page-stella_sales_report .sr-split .sr-label span { display:none; } }
+@media (max-width:1100px) {
+  body.page-stella_sales_report .sr-split .sr-wrap { height:auto; position:static; }
+  body.page-stella_sales_report .sr-split .sr-card { height:auto; }
+  body.page-stella_sales_report .sr-split .sr-row { flex:none; min-height:40px; }
+}
+body.page-stella_sales_report .sr-split .sr-wrap { height:calc(100vh - 72px); }
+body.page-stella_sales_report .sr-split .sr-row { overflow:hidden; }
+@media (max-height:900px) { body.page-stella_sales_report .sr-split .sr-label span { display:none; } }
+@media (max-width:1100px) { body.page-stella_sales_report .sr-split .sr-wrap { height:auto; } }
+body.page-stella_sales_report .sr-split .sr-value-wrap { align-self:stretch; display:flex; align-items:center; }
+body.page-stella_sales_report .sr-split .sr-value-wrap .sr-input { height:80%; max-height:36px; min-height:14px; }
+body.page-stella_sales_report .sr-split .sr-row.coh .sr-value-wrap, body.page-stella_sales_report .sr-split .sr-row.short .sr-value-wrap { width:clamp(80px,9vw,128px); }
+body.page-stella_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label span { display:none; }

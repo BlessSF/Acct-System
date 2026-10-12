@@ -6,7 +6,11 @@
 require_once '../config.php';
 require_once '../auth.php';
 require_once __DIR__ . '/../lib/vat_mode.php';
-require_once __DIR__ . '/../lib/expense_sync.php';
+// Expenses auto-posting library. If it is missing / broken the Disbursement still works (entries just
+// are not posted to Expenses) instead of the whole page failing with HTTP 500.
+$expSyncLib = __DIR__ . '/../lib/expense_sync.php';
+$expSyncReady = false;
+if (is_file($expSyncLib)) { require_once $expSyncLib; $expSyncReady = true; }
 requireLogin();
 
 // Only H branch + management can access
@@ -103,8 +107,12 @@ vatModeEnsureColumn($pdo, 'h_acc_titles');
 
 // ── Expenses auto-posting (H branch test): every entry is posted to h_expenses
 //    through the "Expenses column" set on its Account Title (see lib/expense_sync.php) ──
-expSyncCreateHExpenses($pdo);
-expSyncEnsure($pdo, 'h_acc_titles', 'h_expenses', EXP_SYNC_H_DEFAULTS);
+if ($expSyncReady) {
+    try {
+        expSyncCreateHExpenses($pdo);
+        expSyncEnsure($pdo, 'h_acc_titles', 'h_expenses', EXP_SYNC_H_DEFAULTS);
+    } catch (Throwable $e) { $expSyncReady = false; }
+}
 function hPostToExpenses(PDO $pdo, int $id): string {
     try { return expSyncOne($pdo, 'h_disbursement', 'h_expenses', 'h_acc_titles', $id); }
     catch (Throwable $e) { return 'error'; }
@@ -517,6 +525,11 @@ $__expMap = []; try { $__expMap = expSyncTitleMap($pdo, 'h_acc_titles'); } catch
 $__unposted = [];
 foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($__expMap[$t] ?? '') === '') $__unposted[$t] = ($__unposted[$t] ?? 0) + 1; }
 ?>
+<?php if (!$expSyncReady): ?>
+<div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;font-family:var(--font-m);font-size:.68rem;color:#991B1B">
+  ⚠ Auto-posting to Expenses is OFF: <strong>lib/expense_sync.php</strong> is missing or failed to load on this server. Entries still save here, but are not posted to Expenses.
+</div>
+<?php endif; ?>
 <div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#EFF6FF;border:1px solid #BFDBFE;font-family:var(--font-m);font-size:.68rem;color:#1E3A8A;line-height:1.6">
   🔗 Entries are posted <strong>automatically to H Expenses</strong> (gross amount, into the column set for each Account Title).
   Expenses is view-only — edit here.
@@ -564,13 +577,13 @@ foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($_
       <?php endforeach; ?>
     <?php else: ?>
       <tr id="empty-row">
-        <td colspan="11" class="empty-state">No entries for <?= htmlspecialchars(date('F Y', strtotime($fMonth . '-01'))) ?> — type in the row below and press <strong>Enter</strong></td>
+        <td colspan="12" class="empty-state">No entries for <?= htmlspecialchars(date('F Y', strtotime($fMonth . '-01'))) ?> — type in the row below and press <strong>Enter</strong></td>
       </tr>
     <?php endif; ?>
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="6" style="text-align:right;padding:8px 12px;font-weight:800;font-family:var(--font-m);font-size:.65rem;">
+        <td colspan="7" style="text-align:right;padding:8px 12px;font-weight:800;font-family:var(--font-m);font-size:.65rem;">
           TOTAL (<span id="dsb-count"><?= count($rows) ?></span> entries)
         </td>
         <td class="num" id="tfoot-gross"><?= number_format((float)$totals['g'], 2) ?></td>
@@ -802,9 +815,9 @@ function addRow(focus = true, dateVal = '') {
       <td><input type="text" class="di" data-col="address"       value="" placeholder="—" oninput="markDirty(this)"></td>
       <td><input type="text" class="di mono" data-col="invoice_no"    value="" placeholder="—" oninput="markDirty(this)"></td>
       <td><select class="di-sel acct-sel" data-col="account_title" onchange="markDirty(this)">${acctOptionsHtml()}</select></td>
-      <td><input type="text" class="di num" data-col="gross"      value="0.00" oninput="markDirty(this);calcRow(this)"></td>
-      <td><input type="text" class="di num" data-col="input_tax"  value="0.00" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
-      <td><input type="text" class="di num" data-col="net_of_vat" value="0.00" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
+      <td><input type="text" class="di num" data-col="gross"      value="" placeholder="" oninput="markDirty(this);calcRow(this)"></td>
+      <td><input type="text" class="di num" data-col="input_tax"  value="" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
+      <td><input type="text" class="di num" data-col="net_of_vat" value="" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
       <td><input type="text" class="di" data-col="particular"     value="" placeholder="—" oninput="markDirty(this)"></td>
       <td class="td-act-sticky" style="padding:4px 5px;text-align:center">
         <span class="rs rs-new">Enter to save</span>

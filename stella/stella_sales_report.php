@@ -466,6 +466,8 @@ include '../layout.php';
 
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 
+<div class="sr-split">
+<div class="sr-main">
 <!-- Header -->
 <div class="sr-header-card">
   <div>
@@ -719,6 +721,8 @@ include '../layout.php';
   </div>
 </div>
 
+</div><!-- /.sr-main -->
+
 <!-- ══════════════════════════════════════════════════════════
      SUMMARY REPORT (existing fields — auto-fed from above)
 ════════════════════════════════════════════════════════════ -->
@@ -729,7 +733,7 @@ include '../layout.php';
 <div class="sr-card">
   <div class="sr-title-row"><div class="sr-main-title">Summary Report</div></div>
 
-  <div class="sr-row" style="background:#f8f9fb">
+  <div class="sr-row" style="background:#f0fdf4">
     <div class="sr-label" style="text-align:left;flex:1">For</div>
     <div class="sr-value-wrap"><span class="sr-input readout" style="font-size:.8rem"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
   </div>
@@ -765,7 +769,7 @@ include '../layout.php';
   <!-- Green Maya row -->
   <div class="sr-row green">
     <div class="sr-label">Sales of the day Swipe: (MAYA) <span style="font-size:.65rem;opacity:.7">(auto from Card/Swipe/QR total)</span></div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="maya_swipe" value="<?= $fmt($v('maya_swipe')) ?>" readonly tabindex="-1" style="color:#dc2626;font-weight:800"></div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="maya_swipe" value="<?= $fmt($v('maya_swipe')) ?>" readonly tabindex="-1" style="font-weight:800"></div>
   </div>
 
   <!-- Pink deduction rows -->
@@ -843,6 +847,7 @@ include '../layout.php';
   </div>
 </div>
 </div>
+</div><!-- /.sr-split -->
 
 
 <script>
