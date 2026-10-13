@@ -533,6 +533,9 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     <a href="<?= BASE_URL ?>/stella/stella_cogs.php" class="nav-item <?= ($activePage==='stella_cogs')?'active':'' ?>">
       <span class="ni">📦</span> <?= isBranch() ? 'COGS' : 'Stella COGS' ?>
     </a>
+    <a href="<?= BASE_URL ?>/stella/stella_cogs_monitoring.php" class="nav-item <?= ($activePage==='stella_cogs_monitoring')?'active':'' ?>">
+      <span class="ni">📈</span> <?= isBranch() ? 'COGS Monitoring' : 'Stella COGS Monitoring' ?>
+    </a>
     <a href="<?= BASE_URL ?>/stella/stella_expenses.php" class="nav-item <?= ($activePage==='stella_expenses')?'active':'' ?>">
       <span class="ni">🧾</span> <?= isBranch() ? 'Expenses' : 'Stella Expenses' ?>
     </a>
@@ -550,6 +553,9 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     </a>
     <a href="<?= BASE_URL ?>/dois/dois_cogs.php" class="nav-item <?= ($activePage==='dois_cogs')?'active':'' ?>">
       <span class="ni">📦</span> <?= isBranch() ? 'COGS' : 'Dois COGS' ?>
+    </a>
+    <a href="<?= BASE_URL ?>/dois/dois_cogs_monitoring.php" class="nav-item <?= ($activePage==='dois_cogs_monitoring')?'active':'' ?>">
+      <span class="ni">📈</span> <?= isBranch() ? 'COGS Monitoring' : 'Dois COGS Monitoring' ?>
     </a>
     <a href="<?= BASE_URL ?>/dois/dois_expenses.php" class="nav-item <?= ($activePage==='dois_expenses')?'active':'' ?>">
       <span class="ni">🧾</span> <?= isBranch() ? 'Expenses' : 'Dois Expenses' ?>
@@ -580,6 +586,9 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     </a>
     <a href="<?= BASE_URL ?>/h/h_cogs.php" class="nav-item <?= ($activePage==='h_cogs')?'active':'' ?>">
       <span class="ni">📦</span> <?= isBranch() ? 'COGS' : 'H COGS' ?>
+    </a>
+    <a href="<?= BASE_URL ?>/h/h_cogs_monitoring.php" class="nav-item <?= ($activePage==='h_cogs_monitoring')?'active':'' ?>">
+      <span class="ni">📈</span> <?= isBranch() ? 'COGS Monitoring' : 'H COGS Monitoring' ?>
     </a>
     <a href="<?= BASE_URL ?>/h/h_carwash_cogs.php" class="nav-item <?= ($activePage==='h_carwash_cogs')?'active':'' ?>">
       <span class="ni">🚗</span> <?= isBranch() ? 'Carwash COGS' : 'H Carwash COGS' ?>
@@ -626,6 +635,9 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     <a href="<?= BASE_URL ?>/commissary/commissary_cogs.php" class="nav-item <?= ($activePage==='commissary_cogs')?'active':'' ?>">
       <span class="ni">📦</span> <?= isBranch() ? 'COGS' : 'Commissary COGS' ?>
     </a>
+    <a href="<?= BASE_URL ?>/commissary/commissary_cogs_monitoring.php" class="nav-item <?= ($activePage==='commissary_cogs_monitoring')?'active':'' ?>">
+      <span class="ni">📈</span> <?= isBranch() ? 'COGS Monitoring' : 'Commissary COGS Monitoring' ?>
+    </a>
     <a href="<?= BASE_URL ?>/commissary/commissary_accounts_payable.php" class="nav-item <?= ($activePage==='commissary_accounts_payable')?'active':'' ?>">
       <span class="ni">🏦</span> <?= isBranch() ? 'Accounts' : 'Commissary Accounts' ?>
     </a>
@@ -652,6 +664,9 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     </a>
     <a href="<?= BASE_URL ?>/recovery/recovery_cogs.php" class="nav-item <?= ($activePage==='recovery_cogs')?'active':'' ?>">
       <span class="ni">📦</span> <?= isBranch() ? 'COGS' : 'Recovery COGS' ?>
+    </a>
+    <a href="<?= BASE_URL ?>/recovery/recovery_cogs_monitoring.php" class="nav-item <?= ($activePage==='recovery_cogs_monitoring')?'active':'' ?>">
+      <span class="ni">📈</span> <?= isBranch() ? 'COGS Monitoring' : 'Recovery COGS Monitoring' ?>
     </a>
     <a href="<?= BASE_URL ?>/recovery/recovery_expenses.php" class="nav-item <?= ($activePage==='recovery_expenses')?'active':'' ?>">
       <span class="ni">🧾</span> <?= isBranch() ? 'Expenses' : 'Recovery Expenses' ?>

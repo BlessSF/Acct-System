@@ -851,6 +851,42 @@ include '../layout.php';
 
 
 <script>
+// ── AUTO-SAVE: every change saves by itself — no Save button / Enter needed ──
+window.addEventListener('load', function () {
+  if (typeof saveAll !== 'function') return;
+  if (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED) return;
+  const origToast = window.showToast;
+  let quiet = false;
+  if (typeof origToast === 'function') {
+    window.showToast = function (m, t) { if (quiet && t !== 'error') return; return origToast.apply(this, arguments); };
+  }
+  let timer = null, running = false, again = false, dirty = false;
+  async function run() {
+    if (running) { again = true; return; }
+    running = true; dirty = false; quiet = true;
+    try { await saveAll(); }
+    catch (e) { quiet = false; if (origToast) origToast('❌ Auto-save failed — check your connection', 'error'); }
+    quiet = false; running = false;
+    if (again) { again = false; run(); }
+  }
+  function schedule(ms) { dirty = true; clearTimeout(timer); timer = setTimeout(run, ms); }
+  const skip = el => !el || !el.matches || !el.matches('input,select,textarea') || el.readOnly || el.disabled ||
+    el.closest('#filterForm,.sr-controls,#lockPopover,.lock-wrap,.se-controls');
+  document.addEventListener('input',  e => { if (!skip(e.target)) schedule(900); });
+  document.addEventListener('change', e => { if (!skip(e.target)) schedule(200); });
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('[onclick^="del"],[onclick^="pick"],.btn-del-row,.bdel');
+    if (b) schedule(500);
+  });
+  window.addEventListener('beforeunload', e => { if (dirty || running) { e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) { clearTimeout(timer); run(); } });
+  const sb = document.querySelector('button[onclick="saveAll()"]');
+  if (sb) { const chip = document.createElement('span'); chip.textContent = '✓ Auto-save on';
+    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--accent);padding:6px 10px';
+    sb.replaceWith(chip); }
+});
+</script>
+<script>
 const FDATE  = '<?= $fDate ?>';
 const REPORT_LOCKED = <?= $restrictEdit ? 'true' : 'false' ?>;
 const REPORT_LOCKED_RAW = <?= $locked ? 'true' : 'false' ?>;
