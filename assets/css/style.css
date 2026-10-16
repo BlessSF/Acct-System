@@ -1693,3 +1693,127 @@ body.page-stella_sales_report .sr-split .sr-value-wrap { align-self:stretch; dis
 body.page-stella_sales_report .sr-split .sr-value-wrap .sr-input { height:80%; max-height:36px; min-height:14px; }
 body.page-stella_sales_report .sr-split .sr-row.coh .sr-value-wrap, body.page-stella_sales_report .sr-split .sr-row.short .sr-value-wrap { width:clamp(80px,9vw,128px); }
 body.page-stella_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label span { display:none; }
+
+/* ------------------------------------------------------------
+ *  H — Sales Report: red theme + Summary Report on the left
+ *  (same look as the Stella page — one single colour everywhere,
+ *   soft tinted sub-headers/footers — but in H's red)
+ *
+ *  Change the palette in ONE place: the variables just below.
+ * ------------------------------------------------------------ */
+body.page-h_sales_report {
+  --h-main:#c53030;   /* headers, title bars, Add buttons          */
+  --h-dark:#9b2c2c;   /* borders on the main colour                */
+  --h-mid:#dd4b4b;    /* sub-header cells (NAME / AMOUNT)          */
+  --h-tint:#fed7d7;   /* light fills (column headers, input wells) */
+  --h-tint2:#fdc9c9;  /* totals rows / Net Sales                   */
+  --h-pale:#fff5f5;   /* palest fill (auto-fed summary rows)       */
+  --h-line:#f7b4b4;   /* soft red grid lines                       */
+  --h-ink:#822727;    /* dark red text on light fills              */
+}
+
+/* ── Layout: Summary Report in the LEFT column, report on the right ── */
+.page-h_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
+.page-h_sales_report .sr-split .sr-main { order:1; flex:1 1 0; min-width:0; }
+.page-h_sales_report .sr-split .sr-wrap {
+  order:-1; flex:0 0 440px; width:440px; max-width:440px; margin:0;
+  position:sticky; top:8px; height:calc(100vh - 72px); align-self:flex-start;
+  border-radius:var(--radius);
+}
+
+/* Summary card fills the column height; rows share the space evenly so the
+   whole summary stays in view. On very short screens it scrolls instead of
+   crushing the rows. */
+.page-h_sales_report .sr-split .sr-card { height:100%; display:flex; flex-direction:column; overflow-x:hidden; overflow-y:auto; }
+.page-h_sales_report .sr-split .sr-title-row { flex:0 0 auto; padding:0; height:clamp(26px,5vh,48px); display:flex; align-items:center; justify-content:center; }
+.page-h_sales_report .sr-split .sr-title-row .sr-main-title { font-size:clamp(.7rem,2.2vh,1.05rem); }
+.page-h_sales_report .sr-split .sr-row { flex:1 1 0; min-height:24px; padding:0 12px; gap:8px; border-bottom:0; overflow:hidden; }
+.page-h_sales_report .sr-split .sr-label { font-size:clamp(.5rem,1.5vh,.8rem); line-height:1.15; padding-right:6px; }
+.page-h_sales_report .sr-split .sr-label span { font-size:clamp(.4rem,1.05vh,.62rem) !important; }
+.page-h_sales_report .sr-split .sr-value-wrap { width:clamp(80px,9vw,128px); align-self:stretch; display:flex; align-items:center; }
+.page-h_sales_report .sr-split .sr-input { padding:0 8px; line-height:1; font-size:clamp(.55rem,1.8vh,.95rem) !important; }
+.page-h_sales_report .sr-split .sr-value-wrap .sr-input { height:80%; max-height:36px; min-height:14px; }
+.page-h_sales_report .sr-split .sr-input.readout { font-size:clamp(.55rem,1.9vh,1rem) !important; }
+.page-h_sales_report .sr-split .sr-note { font-size:clamp(.4rem,1.05vh,.62rem); }
+/* the two long formula hints don't fit a 440px column — hide them always */
+.page-h_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label span,
+.page-h_sales_report .sr-split .sr-card > .sr-row:nth-child(6) .sr-label span,
+.page-h_sales_report .sr-split .sr-row.coh .sr-label span { display:none; }
+@media (max-height:900px) { .page-h_sales_report .sr-split .sr-label span { display:none; } }
+
+/* Remarks: label on top, text box fills the row */
+.page-h_sales_report .sr-split .sr-row.remarks { flex:2.3 1 0; min-height:74px; flex-direction:column; align-items:stretch; justify-content:center; gap:3px; padding:6px 12px; background:var(--h-pale); }
+.page-h_sales_report .sr-split .sr-row.remarks .sr-label { text-align:left; padding:0; font-weight:800; color:var(--h-ink); flex:0 0 auto; }
+.page-h_sales_report .sr-split .sr-row.remarks .sr-value-wrap { width:auto; flex:1 1 auto; min-height:0; align-self:stretch; display:block; }
+.page-h_sales_report .sr-remarks { width:100%; height:100%; min-height:0; resize:none; padding:6px 9px; border:1px solid var(--h-line); border-radius:6px; background:#fff; color:#222; font-family:var(--font-h); font-size:.78rem; line-height:1.35; transition:border-color .15s ease, box-shadow .15s ease; }
+.page-h_sales_report .sr-remarks:focus { outline:none; border-color:var(--h-main); box-shadow:0 0 0 2px rgba(197,48,48,.15); }
+.page-h_sales_report .sr-remarks:disabled { background:#f3f1f1; color:#777; }
+
+/* Narrower screens: Summary goes back on top, full width */
+@media (max-width:1100px) {
+  .page-h_sales_report .sr-split { flex-direction:column; }
+  .page-h_sales_report .sr-split .sr-wrap { order:0; flex:none; width:100%; max-width:none; position:static; height:auto; }
+  .page-h_sales_report .sr-split .sr-main { order:1; width:100%; }
+  .page-h_sales_report .sr-split .sr-card { height:auto; overflow:hidden; }
+  .page-h_sales_report .sr-split .sr-row { flex:none; min-height:40px; }
+  .page-h_sales_report .sr-split .sr-row.remarks { min-height:110px; }
+  .page-h_sales_report .sr-split .sr-card > .sr-row .sr-label span { display:inline; }
+}
+/* Medium screens: the report column is narrower, so use 2 columns of
+   sub-sections instead of 4 (keeps Name inputs usable) */
+@media (max-width:1500px) and (min-width:1101px) {
+  .page-h_sales_report .sub-grid,
+  .page-h_sales_report .sub-grid.three-col { grid-template-columns:repeat(2,1fr); }
+  .page-h_sales_report .sub-col:nth-child(2n) { border-right:none; }
+}
+
+/* ── Red theme: one single colour everywhere (like Stella's single green) ── */
+body.page-h_sales_report .sr-header-card { background:var(--h-main); }
+body.page-h_sales_report .sr-section-title,
+body.page-h_sales_report .sr-section-title.dark-red,
+body.page-h_sales_report .sr-section-title.dark-green,
+body.page-h_sales_report .extra-sections-row .extra-section-col .sr-section-title,
+body.page-h_sales_report .sub-col:nth-child(n) .sub-col-title,
+body.page-h_sales_report .sr-title-row,
+body.page-h_sales_report .btn-add-row { background:var(--h-main) !important; color:#fff; }
+body.page-h_sales_report .btn-add-row:hover { background:var(--h-dark) !important; }
+
+/* DINE IN / Advance Deposit / Bar Sales tables */
+body.page-h_sales_report .di-table th { background:var(--h-main); border-color:var(--h-dark); }
+body.page-h_sales_report .di-table th.sub { background:var(--h-mid); }
+body.page-h_sales_report .di-table tfoot td { background:var(--h-tint2); border-color:var(--h-line); color:var(--h-ink); }
+body.page-h_sales_report .di-table tfoot td.total-label,
+body.page-h_sales_report .di-table tfoot td.grand-total { background:var(--h-main); border-color:var(--h-dark); color:#fff; }
+
+/* Sub-section cards */
+body.page-h_sales_report .sub-col-hdr { background:var(--h-tint); border-bottom-color:var(--h-line); }
+body.page-h_sales_report .sub-col-hdr span { border-right-color:var(--h-line); color:var(--h-ink); }
+body.page-h_sales_report .sub-footer { background:var(--h-tint2); border-top-color:var(--h-line); color:var(--h-ink); }
+body.page-h_sales_report .sub-footer span { border-right-color:var(--h-line); }
+body.page-h_sales_report .sub-inp:focus,
+body.page-h_sales_report .di-inp:focus { background:var(--h-pale); border-color:var(--h-mid); box-shadow:0 0 0 2px rgba(197,48,48,.15); }
+
+/* Focus rings (inputs + cashier bar) in red instead of the global green */
+body.page-h_sales_report .sr-input:focus,
+body.page-h_sales_report .sr-oc-bar input:focus { border-color:var(--h-main); box-shadow:0 0 0 3px rgba(197,48,48,.12); }
+
+/* Summary Report rows */
+body.page-h_sales_report .sr-row.for-row { background:var(--h-pale); }
+body.page-h_sales_report .sr-row.for-row .sr-label { color:var(--h-ink); font-weight:800; }
+body.page-h_sales_report .sr-row.green { background:var(--h-main); }
+body.page-h_sales_report .sr-row.gray-hdr { background:var(--h-tint); }
+body.page-h_sales_report .sr-row.gray-hdr .sr-label { color:var(--h-ink); }
+body.page-h_sales_report .sr-row.pink-val { background:var(--h-pale); }
+body.page-h_sales_report .sr-row.pink-val .sr-label { color:var(--h-ink); }
+body.page-h_sales_report .sr-row.pink-val .sr-value-wrap input { background:var(--h-tint); border-color:var(--h-line); }
+body.page-h_sales_report .sr-row.net { background:var(--h-tint2); }
+body.page-h_sales_report .sr-row.net .sr-label { color:var(--h-ink); }
+body.page-h_sales_report .sr-row.net .sr-input.readout { color:var(--h-ink); }
+body.page-h_sales_report .sr-row.coh,
+body.page-h_sales_report .sr-row.short { background:var(--h-main); }
+body.page-h_sales_report .sr-row .sr-input.readout { background:#fff; }
+body.page-h_sales_report .sr-row.short .sr-input.readout { color:#000; -webkit-text-fill-color:#000; opacity:1; font-weight:900; }
+body.page-h_sales_report .sr-note { color:var(--h-dark); }
+body.page-h_sales_report .sr-row.green .sr-note,
+body.page-h_sales_report .sr-row.coh .sr-note,
+body.page-h_sales_report .sr-row.short .sr-note { color:#ffecec !important; }

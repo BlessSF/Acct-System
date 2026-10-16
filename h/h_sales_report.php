@@ -545,6 +545,8 @@ include '../layout.php';
 
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 
+<div class="sr-split">
+<div class="sr-main">
 <!-- Header -->
 <div class="sr-header-card">
   <div>
@@ -812,23 +814,19 @@ include '../layout.php';
 <?php endforeach; ?>
 </div>
 
+</div><!-- /.sr-main -->
+
 <!-- ══════════════════════════════════════════════════════════
      SUMMARY REPORT (existing fields — auto-fed from above)
+     Sits in the LEFT column (CSS: .sr-split .sr-wrap { order:-1 }),
+     sticky so it stays on screen while the report scrolls.
+     Remarks styles live in assets/css/style.css (H red theme block).
 ════════════════════════════════════════════════════════════ -->
-<style>
-/* Remarks (below Short/Over) */
-.page-h_sales_report .sr-row.remarks { background:#f8f9fb; align-items:flex-start; border-bottom:none; }
-.page-h_sales_report .sr-row.remarks .sr-label { font-weight:700; padding-top:8px; }
-.page-h_sales_report .sr-row.remarks .sr-value-wrap { flex:1; }
-.page-h_sales_report .sr-remarks { width:100%; min-height:72px; resize:vertical; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; color:#222; font-family:var(--font-h); font-size:.85rem; line-height:1.4; }
-.page-h_sales_report .sr-remarks:focus { outline:none; border-color:var(--accent); }
-.page-h_sales_report .sr-remarks:disabled { background:#eef0f3; color:#777; }
-</style>
 <div class="sr-wrap">
 <div class="sr-card">
   <div class="sr-title-row"><div class="sr-main-title">Summary Report</div></div>
 
-  <div class="sr-row" style="background:#f8f9fb">
+  <div class="sr-row for-row">
     <div class="sr-label" style="text-align:left;flex:1">For</div>
     <div class="sr-value-wrap"><span class="sr-input readout" style="font-size:.8rem"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
   </div>
@@ -928,6 +926,7 @@ include '../layout.php';
   </div>
 </div>
 </div>
+</div><!-- /.sr-split -->
 
 <script>
 // ── AUTO-SAVE: every change saves by itself — no Save button / Enter needed ──
@@ -961,7 +960,7 @@ window.addEventListener('load', function () {
   document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) { clearTimeout(timer); run(); } });
   const sb = document.querySelector('button[onclick="saveAll()"]');
   if (sb) { const chip = document.createElement('span'); chip.textContent = '✓ Auto-save on';
-    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--accent);padding:6px 10px';
+    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--h-main,#c9202f);padding:6px 10px';
     sb.replaceWith(chip); }
 });
 </script>
@@ -1232,7 +1231,7 @@ async function saveAll() {
   const res  = await fetch('h_sales_report.php', {method:'POST',body:fd3});
   const data = await res.json();
   if (data.ok) {
-    status.textContent = '✓ Saved'; status.style.color = 'var(--accent)';
+    status.textContent = '✓ Saved'; status.style.color = 'var(--h-main,#c9202f)';
     showToast('✓ Sales report saved', 'success');
   } else {
     showToast('❌ ' + data.msg, 'error'); status.textContent = '❌ Error';
