@@ -1817,3 +1817,289 @@ body.page-h_sales_report .sr-note { color:var(--h-dark); }
 body.page-h_sales_report .sr-row.green .sr-note,
 body.page-h_sales_report .sr-row.coh .sr-note,
 body.page-h_sales_report .sr-row.short .sr-note { color:#ffecec !important; }
+
+
+/* ============================================================
+ *  Sales Reports — Stella-style design in each branch's colour,
+ *  Summary Report in the LEFT column.
+ *  (Dois = orange, Recovery = light brown, Pub Express = dark red)
+ *  Change a branch colour in the variables at the top of its block.
+ * ============================================================ */
+
+/* ── Dois (orange) ── */
+
+body.page-dois_sales_report {
+  --sr-main:#c05621;   /* headers, title bars, Add buttons          */
+  --sr-dark:#9c4221;   /* borders on the main colour                */
+  --sr-mid:#dd6b20;     /* sub-header cells                          */
+  --sr-tint:#feebc8;   /* light fills (column headers, input wells) */
+  --sr-tint2:#fcd9a0; /* totals rows / Net Sales                   */
+  --sr-pale:#fffaf0;   /* palest fill                               */
+  --sr-line:#f6c07a;   /* soft grid lines                           */
+  --sr-ink:#7b341e;     /* dark text on light fills                  */
+}
+
+
+/* Layout: Summary Report in the LEFT column, report on the right */
+body.page-dois_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
+body.page-dois_sales_report .sr-split .sr-main { order:1; flex:1 1 0; min-width:0; }
+body.page-dois_sales_report .sr-split .sr-wrap {
+  order:-1; flex:0 0 440px; width:440px; max-width:440px; margin:0;
+  position:sticky; top:8px; height:calc(100vh - 72px); align-self:flex-start;
+  border-radius:var(--radius);
+}
+body.page-dois_sales_report .sr-split .sr-card { height:100%; display:flex; flex-direction:column; overflow-x:hidden; overflow-y:auto; }
+body.page-dois_sales_report .sr-split .sr-title-row { flex:0 0 auto; padding:0; height:clamp(26px,5vh,48px); display:flex; align-items:center; justify-content:center; }
+body.page-dois_sales_report .sr-split .sr-title-row .sr-main-title { font-size:clamp(.7rem,2.2vh,1.05rem); }
+body.page-dois_sales_report .sr-split .sr-row { flex:1 1 0; min-height:24px; padding:0 12px; gap:8px; border-bottom:0; overflow:hidden; }
+body.page-dois_sales_report .sr-split .sr-label { font-size:clamp(.5rem,1.5vh,.8rem); line-height:1.15; padding-right:6px; }
+body.page-dois_sales_report .sr-split .sr-label span { font-size:clamp(.4rem,1.05vh,.62rem) !important; }
+body.page-dois_sales_report .sr-split .sr-value-wrap { width:clamp(80px,9vw,128px); align-self:stretch; display:flex; align-items:center; }
+body.page-dois_sales_report .sr-split .sr-input { padding:0 8px; line-height:1; font-size:clamp(.55rem,1.8vh,.95rem) !important; }
+body.page-dois_sales_report .sr-split .sr-value-wrap .sr-input { height:80%; max-height:36px; min-height:14px; }
+body.page-dois_sales_report .sr-split .sr-input.readout { font-size:clamp(.55rem,1.9vh,1rem) !important; }
+body.page-dois_sales_report .sr-split .sr-note { font-size:clamp(.4rem,1.05vh,.62rem); }
+body.page-dois_sales_report .sr-split .sr-row.coh .sr-label span { display:none; }
+@media (max-height:900px) { body.page-dois_sales_report .sr-split .sr-label span { display:none; } }
+@media (max-width:1100px) {
+  body.page-dois_sales_report .sr-split { flex-direction:column; }
+  body.page-dois_sales_report .sr-split .sr-wrap { order:0; flex:none; width:100%; max-width:none; position:static; height:auto; }
+  body.page-dois_sales_report .sr-split .sr-main { order:1; width:100%; }
+  body.page-dois_sales_report .sr-split .sr-card { height:auto; overflow:hidden; }
+  body.page-dois_sales_report .sr-split .sr-row { flex:none; min-height:40px; }
+  body.page-dois_sales_report .sr-split .sr-label span { display:inline; }
+}
+
+/* Theme: one single colour everywhere (like Stella) */
+body.page-dois_sales_report .sr-header-card { background:var(--sr-main); }
+body.page-dois_sales_report .sr-section-title, body.page-dois_sales_report .sr-section-title.dark-red, body.page-dois_sales_report .sr-section-title.dark-green,
+body.page-dois_sales_report .sub-col:nth-child(n) .sub-col-title, body.page-dois_sales_report .sub-col-title,
+body.page-dois_sales_report .sr-title-row, body.page-dois_sales_report .btn-add-row { background:var(--sr-main) !important; color:#fff; }
+body.page-dois_sales_report .btn-add-row:hover { background:var(--sr-dark) !important; }
+body.page-dois_sales_report .di-table th { background:var(--sr-main); border-color:var(--sr-dark); }
+body.page-dois_sales_report .di-table th.sub, body.page-dois_sales_report .di-table th.sub2 { background:var(--sr-mid); }
+body.page-dois_sales_report .di-table tfoot td { background:var(--sr-tint2); border-color:var(--sr-line); color:var(--sr-ink); }
+body.page-dois_sales_report .di-table tfoot td.total-label, body.page-dois_sales_report .di-table tfoot td.grand-total, body.page-dois_sales_report .di-table tfoot td.lbl, body.page-dois_sales_report .di-table tfoot td.grand { background:var(--sr-main); border-color:var(--sr-dark); color:#fff; }
+body.page-dois_sales_report .sub-col-hdr { background:var(--sr-tint); border-bottom-color:var(--sr-line); }
+body.page-dois_sales_report .sub-col-hdr span { border-right-color:var(--sr-line); color:var(--sr-ink); }
+body.page-dois_sales_report .sub-footer { background:var(--sr-tint2); border-top-color:var(--sr-line); color:var(--sr-ink); }
+body.page-dois_sales_report .sub-footer span { border-right-color:var(--sr-line); }
+body.page-dois_sales_report .sub-inp:focus, body.page-dois_sales_report .di-inp:focus { background:var(--sr-pale); border-color:var(--sr-mid); box-shadow:0 0 0 2px rgba(192,86,33,.15); }
+body.page-dois_sales_report .sr-input:focus, body.page-dois_sales_report .sr-cashier-bar input:focus { border-color:var(--sr-main); box-shadow:0 0 0 3px rgba(192,86,33,.12); }
+body.page-dois_sales_report .lock-popover-date { color:var(--sr-main); }
+body.page-dois_sales_report .sr-row.for-row { background:var(--sr-pale); }
+body.page-dois_sales_report .sr-row.for-row .sr-label { color:var(--sr-ink); font-weight:800; }
+body.page-dois_sales_report .sr-row.green { background:var(--sr-main); }
+body.page-dois_sales_report .sr-row.gray-hdr { background:var(--sr-tint); }
+body.page-dois_sales_report .sr-row.gray-hdr .sr-label { color:var(--sr-ink); }
+body.page-dois_sales_report .sr-row.orange-hdr, body.page-dois_sales_report .sr-row.orange-sub { background:var(--sr-tint); }
+body.page-dois_sales_report .sr-row.pink-val { background:var(--sr-pale); }
+body.page-dois_sales_report .sr-row.pink-val .sr-label { color:var(--sr-ink); }
+body.page-dois_sales_report .sr-row.pink-val .sr-value-wrap input { background:var(--sr-tint); border-color:var(--sr-line); }
+body.page-dois_sales_report .sr-row.net { background:var(--sr-tint2); }
+body.page-dois_sales_report .sr-row.net .sr-label, body.page-dois_sales_report .sr-row.net .sr-input.readout { color:var(--sr-ink); }
+body.page-dois_sales_report .sr-row.coh, body.page-dois_sales_report .sr-row.short { background:var(--sr-main); }
+body.page-dois_sales_report .sr-row .sr-input.readout { background:#fff; }
+body.page-dois_sales_report .sr-row.short .sr-input.readout { color:#000; -webkit-text-fill-color:#000; opacity:1; font-weight:900; }
+body.page-dois_sales_report .sr-note { color:var(--sr-dark); }
+body.page-dois_sales_report .sr-row.green .sr-note, body.page-dois_sales_report .sr-row.coh .sr-note, body.page-dois_sales_report .sr-row.short .sr-note { color:#fff !important; opacity:.9; }
+
+
+@media (max-width:1500px) and (min-width:1101px) {
+  body.page-dois_sales_report .sub-grid, body.page-dois_sales_report .sub-grid.three-col, body.page-dois_sales_report .sub-grid.four-col { grid-template-columns:repeat(2,1fr); }
+  body.page-dois_sales_report .sub-col:nth-child(2n) { border-right:none; }
+}
+
+
+/* ── Recovery (light brown) ── */
+
+body.page-recovery_sales_report {
+  --sr-main:#8b5e3c;   /* headers, title bars, Add buttons          */
+  --sr-dark:#6b452a;   /* borders on the main colour                */
+  --sr-mid:#a97b57;     /* sub-header cells                          */
+  --sr-tint:#f3e6da;   /* light fills (column headers, input wells) */
+  --sr-tint2:#ead7c3; /* totals rows / Net Sales                   */
+  --sr-pale:#fbf7f3;   /* palest fill                               */
+  --sr-line:#d8bfa6;   /* soft grid lines                           */
+  --sr-ink:#4e3220;     /* dark text on light fills                  */
+}
+
+
+/* Layout: Summary Report in the LEFT column, report on the right */
+body.page-recovery_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
+body.page-recovery_sales_report .sr-split .sr-main { order:1; flex:1 1 0; min-width:0; }
+body.page-recovery_sales_report .sr-split .sr-wrap {
+  order:-1; flex:0 0 440px; width:440px; max-width:440px; margin:0;
+  position:sticky; top:8px; height:calc(100vh - 72px); align-self:flex-start;
+  border-radius:var(--radius);
+}
+body.page-recovery_sales_report .sr-split .sr-card { height:100%; display:flex; flex-direction:column; overflow-x:hidden; overflow-y:auto; }
+body.page-recovery_sales_report .sr-split .sr-title-row { flex:0 0 auto; padding:0; height:clamp(26px,5vh,48px); display:flex; align-items:center; justify-content:center; }
+body.page-recovery_sales_report .sr-split .sr-title-row .sr-main-title { font-size:clamp(.7rem,2.2vh,1.05rem); }
+body.page-recovery_sales_report .sr-split .sr-row { flex:1 1 0; min-height:24px; padding:0 12px; gap:8px; border-bottom:0; overflow:hidden; }
+body.page-recovery_sales_report .sr-split .sr-label { font-size:clamp(.5rem,1.5vh,.8rem); line-height:1.15; padding-right:6px; }
+body.page-recovery_sales_report .sr-split .sr-label span { font-size:clamp(.4rem,1.05vh,.62rem) !important; }
+body.page-recovery_sales_report .sr-split .sr-value-wrap { width:clamp(80px,9vw,128px); align-self:stretch; display:flex; align-items:center; }
+body.page-recovery_sales_report .sr-split .sr-input { padding:0 8px; line-height:1; font-size:clamp(.55rem,1.8vh,.95rem) !important; }
+body.page-recovery_sales_report .sr-split .sr-value-wrap .sr-input { height:80%; max-height:36px; min-height:14px; }
+body.page-recovery_sales_report .sr-split .sr-input.readout { font-size:clamp(.55rem,1.9vh,1rem) !important; }
+body.page-recovery_sales_report .sr-split .sr-note { font-size:clamp(.4rem,1.05vh,.62rem); }
+body.page-recovery_sales_report .sr-split .sr-row.coh .sr-label span { display:none; }
+@media (max-height:900px) { body.page-recovery_sales_report .sr-split .sr-label span { display:none; } }
+@media (max-width:1100px) {
+  body.page-recovery_sales_report .sr-split { flex-direction:column; }
+  body.page-recovery_sales_report .sr-split .sr-wrap { order:0; flex:none; width:100%; max-width:none; position:static; height:auto; }
+  body.page-recovery_sales_report .sr-split .sr-main { order:1; width:100%; }
+  body.page-recovery_sales_report .sr-split .sr-card { height:auto; overflow:hidden; }
+  body.page-recovery_sales_report .sr-split .sr-row { flex:none; min-height:40px; }
+  body.page-recovery_sales_report .sr-split .sr-label span { display:inline; }
+}
+
+/* Theme: one single colour everywhere (like Stella) */
+body.page-recovery_sales_report .sr-header-card { background:var(--sr-main); }
+body.page-recovery_sales_report .sr-section-title, body.page-recovery_sales_report .sr-section-title.dark-red, body.page-recovery_sales_report .sr-section-title.dark-green,
+body.page-recovery_sales_report .sub-col:nth-child(n) .sub-col-title, body.page-recovery_sales_report .sub-col-title,
+body.page-recovery_sales_report .sr-title-row, body.page-recovery_sales_report .btn-add-row { background:var(--sr-main) !important; color:#fff; }
+body.page-recovery_sales_report .btn-add-row:hover { background:var(--sr-dark) !important; }
+body.page-recovery_sales_report .di-table th { background:var(--sr-main); border-color:var(--sr-dark); }
+body.page-recovery_sales_report .di-table th.sub, body.page-recovery_sales_report .di-table th.sub2 { background:var(--sr-mid); }
+body.page-recovery_sales_report .di-table tfoot td { background:var(--sr-tint2); border-color:var(--sr-line); color:var(--sr-ink); }
+body.page-recovery_sales_report .di-table tfoot td.total-label, body.page-recovery_sales_report .di-table tfoot td.grand-total, body.page-recovery_sales_report .di-table tfoot td.lbl, body.page-recovery_sales_report .di-table tfoot td.grand { background:var(--sr-main); border-color:var(--sr-dark); color:#fff; }
+body.page-recovery_sales_report .sub-col-hdr { background:var(--sr-tint); border-bottom-color:var(--sr-line); }
+body.page-recovery_sales_report .sub-col-hdr span { border-right-color:var(--sr-line); color:var(--sr-ink); }
+body.page-recovery_sales_report .sub-footer { background:var(--sr-tint2); border-top-color:var(--sr-line); color:var(--sr-ink); }
+body.page-recovery_sales_report .sub-footer span { border-right-color:var(--sr-line); }
+body.page-recovery_sales_report .sub-inp:focus, body.page-recovery_sales_report .di-inp:focus { background:var(--sr-pale); border-color:var(--sr-mid); box-shadow:0 0 0 2px rgba(139,94,60,.15); }
+body.page-recovery_sales_report .sr-input:focus, body.page-recovery_sales_report .sr-cashier-bar input:focus { border-color:var(--sr-main); box-shadow:0 0 0 3px rgba(139,94,60,.12); }
+body.page-recovery_sales_report .lock-popover-date { color:var(--sr-main); }
+body.page-recovery_sales_report .sr-row.for-row { background:var(--sr-pale); }
+body.page-recovery_sales_report .sr-row.for-row .sr-label { color:var(--sr-ink); font-weight:800; }
+body.page-recovery_sales_report .sr-row.green { background:var(--sr-main); }
+body.page-recovery_sales_report .sr-row.gray-hdr { background:var(--sr-tint); }
+body.page-recovery_sales_report .sr-row.gray-hdr .sr-label { color:var(--sr-ink); }
+body.page-recovery_sales_report .sr-row.orange-hdr, body.page-recovery_sales_report .sr-row.orange-sub { background:var(--sr-tint); }
+body.page-recovery_sales_report .sr-row.pink-val { background:var(--sr-pale); }
+body.page-recovery_sales_report .sr-row.pink-val .sr-label { color:var(--sr-ink); }
+body.page-recovery_sales_report .sr-row.pink-val .sr-value-wrap input { background:var(--sr-tint); border-color:var(--sr-line); }
+body.page-recovery_sales_report .sr-row.net { background:var(--sr-tint2); }
+body.page-recovery_sales_report .sr-row.net .sr-label, body.page-recovery_sales_report .sr-row.net .sr-input.readout { color:var(--sr-ink); }
+body.page-recovery_sales_report .sr-row.coh, body.page-recovery_sales_report .sr-row.short { background:var(--sr-main); }
+body.page-recovery_sales_report .sr-row .sr-input.readout { background:#fff; }
+body.page-recovery_sales_report .sr-row.short .sr-input.readout { color:#000; -webkit-text-fill-color:#000; opacity:1; font-weight:900; }
+body.page-recovery_sales_report .sr-note { color:var(--sr-dark); }
+body.page-recovery_sales_report .sr-row.green .sr-note, body.page-recovery_sales_report .sr-row.coh .sr-note, body.page-recovery_sales_report .sr-row.short .sr-note { color:#fff !important; opacity:.9; }
+
+
+@media (max-width:1500px) and (min-width:1101px) {
+  body.page-recovery_sales_report .sub-grid, body.page-recovery_sales_report .sub-grid.three-col, body.page-recovery_sales_report .sub-grid.four-col { grid-template-columns:repeat(2,1fr); }
+  body.page-recovery_sales_report .sub-col:nth-child(2n) { border-right:none; }
+}
+
+
+/* Recovery-specific tables */
+body.page-recovery_sales_report .ss-table thead tr:first-child th, body.page-recovery_sales_report .ss-action-th { background:var(--sr-main) !important; color:#fff !important; border-color:var(--sr-dark) !important; }
+body.page-recovery_sales_report .ss-table thead tr.sub-hdr th { background:var(--sr-tint) !important; color:var(--sr-ink) !important; border-color:var(--sr-line) !important; }
+body.page-recovery_sales_report .ss-table tfoot td, body.page-recovery_sales_report .ss-table tfoot td[style] { background:var(--sr-tint2) !important; color:var(--sr-ink) !important; border-color:var(--sr-line) !important; }
+body.page-recovery_sales_report .ss-table tbody tr:nth-child(even), body.page-recovery_sales_report .mt-table tbody tr:nth-child(even) { background:var(--sr-pale); }
+body.page-recovery_sales_report .ss-table tbody tr:hover, body.page-recovery_sales_report .ss-table tbody tr:hover .ss-action-cell { background:var(--sr-tint); }
+body.page-recovery_sales_report .ss-table tbody tr:nth-child(even) .ss-action-cell { background:var(--sr-pale); }
+body.page-recovery_sales_report .cb-table th, body.page-recovery_sales_report .mt-table th, body.page-recovery_sales_report .mt-table thead tr { background:var(--sr-main) !important; color:#fff; border-color:var(--sr-dark); }
+body.page-recovery_sales_report .cb-table tfoot td, body.page-recovery_sales_report .mt-table tfoot td { background:var(--sr-tint2); color:var(--sr-ink); border-color:var(--sr-line); }
+body.page-recovery_sales_report .ss-inp:focus, body.page-recovery_sales_report .cb-inp:focus, body.page-recovery_sales_report .mt-inp:focus { background:var(--sr-pale); border-color:var(--sr-mid); }
+body.page-recovery_sales_report .btn-ss-save, body.page-recovery_sales_report .btn-guide { background:var(--sr-main); color:#fff; }
+body.page-recovery_sales_report .btn-ss-save:hover, body.page-recovery_sales_report .btn-guide:hover { background:var(--sr-dark); }
+body.page-recovery_sales_report .sr-section[style*="border-top"] { border-top-color:var(--sr-main) !important; }
+body.page-recovery_sales_report .shift-inp:focus, body.page-recovery_sales_report .svc-display.open, body.page-recovery_sales_report .styl-display.open, body.page-recovery_sales_report .svc-search:focus, body.page-recovery_sales_report .styl-search:focus { border-color:var(--sr-main); box-shadow:0 0 0 2px rgba(139,94,60,.12); }
+body.page-recovery_sales_report .svc-opt.active, body.page-recovery_sales_report .styl-opt.styl-active { background:var(--sr-tint); color:var(--sr-ink); }
+body.page-recovery_sales_report .cb-tot-cell { color:var(--sr-ink); }
+@media (max-width:1500px) {
+  body.page-recovery_sales_report .cb-layout { grid-template-columns:1fr; }
+  body.page-recovery_sales_report .gc-grid, body.page-recovery_sales_report .gc-grid.three-col { grid-template-columns:1fr; }
+}
+
+
+/* ── Pub Express (dark red) ── */
+
+body.page-pub_express_sales_report {
+  --sr-main:#7f1d1d;   /* headers, title bars, Add buttons          */
+  --sr-dark:#5f1414;   /* borders on the main colour                */
+  --sr-mid:#9b3a3a;     /* sub-header cells                          */
+  --sr-tint:#f7dcdc;   /* light fills (column headers, input wells) */
+  --sr-tint2:#efc9c9; /* totals rows / Net Sales                   */
+  --sr-pale:#fdf5f5;   /* palest fill                               */
+  --sr-line:#e3adad;   /* soft grid lines                           */
+  --sr-ink:#5c1212;     /* dark text on light fills                  */
+}
+
+
+/* Layout: Summary Report in the LEFT column, report on the right */
+body.page-pub_express_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
+body.page-pub_express_sales_report .sr-split .sr-main { order:1; flex:1 1 0; min-width:0; }
+body.page-pub_express_sales_report .sr-split .sr-summary {
+  order:-1; flex:0 0 440px; width:440px; max-width:440px; margin:0;
+  position:sticky; top:8px; height:calc(100vh - 72px); align-self:flex-start;
+}
+body.page-pub_express_sales_report .sr-split .sr-sum-card { height:100%; display:flex; flex-direction:column; overflow-x:hidden; overflow-y:auto; border-radius:var(--radius); }
+body.page-pub_express_sales_report .sr-split .sr-sum-title { flex:0 0 auto; padding:0; height:clamp(26px,5vh,48px); display:flex; align-items:center; justify-content:center; font-size:clamp(.7rem,2.2vh,1.05rem); }
+body.page-pub_express_sales_report .sr-split .sr-row { flex:1 1 0; min-height:24px; padding:0 12px; gap:8px; border-bottom:0; overflow:hidden; }
+body.page-pub_express_sales_report .sr-split .sr-row.sub-row { padding-left:26px; }
+body.page-pub_express_sales_report .sr-split .sr-row.divider { flex:0 0 auto; min-height:14px; padding:2px 12px; }
+body.page-pub_express_sales_report .sr-split .sr-lbl { font-size:clamp(.5rem,1.5vh,.8rem); line-height:1.15; padding-right:6px; }
+body.page-pub_express_sales_report .sr-split .sr-lbl span { font-size:clamp(.4rem,1.05vh,.62rem) !important; }
+body.page-pub_express_sales_report .sr-split .sr-val-wrap { width:clamp(80px,9vw,128px); align-self:stretch; display:flex; align-items:center; }
+body.page-pub_express_sales_report .sr-split .sr-inp { padding:0 8px; line-height:1; height:80%; max-height:36px; min-height:14px; font-size:clamp(.55rem,1.8vh,.95rem) !important; }
+body.page-pub_express_sales_report .sr-split .sr-note { font-size:clamp(.4rem,1.05vh,.62rem); }
+body.page-pub_express_sales_report .sr-split .sr-row.coh-row .sr-lbl span { display:none; }
+@media (max-height:900px) { body.page-pub_express_sales_report .sr-split .sr-lbl span { display:none; } }
+@media (max-width:1500px) { body.page-pub_express_sales_report .sr-two-col { grid-template-columns:1fr; } }
+@media (max-width:1100px) {
+  body.page-pub_express_sales_report .sr-split { flex-direction:column; }
+  body.page-pub_express_sales_report .sr-split .sr-summary { order:0; flex:none; width:100%; max-width:none; position:static; height:auto; }
+  body.page-pub_express_sales_report .sr-split .sr-main { order:1; width:100%; }
+  body.page-pub_express_sales_report .sr-split .sr-sum-card { height:auto; overflow:hidden; }
+  body.page-pub_express_sales_report .sr-split .sr-row { flex:none; min-height:40px; }
+  body.page-pub_express_sales_report .sr-split .sr-lbl span { display:inline; }
+}
+
+/* Theme: one single colour everywhere (like Stella) */
+body.page-pub_express_sales_report .sr-header-card { background:var(--sr-main); }
+body.page-pub_express_sales_report .sr-card-title, body.page-pub_express_sales_report .sr-card-title.green, body.page-pub_express_sales_report .sr-card-title.orange, body.page-pub_express_sales_report .sr-card-title.red, body.page-pub_express_sales_report .sr-card-title.gold,
+body.page-pub_express_sales_report .sub-sec-title, body.page-pub_express_sales_report .sub-sec-title.blue, body.page-pub_express_sales_report .sub-sec-title.gold, body.page-pub_express_sales_report .sub-sec-title.red, body.page-pub_express_sales_report .sub-sec-title.teal, body.page-pub_express_sales_report .sub-sec-title.purple,
+body.page-pub_express_sales_report .sr-sum-title { background:var(--sr-main) !important; color:#fff !important; }
+body.page-pub_express_sales_report .btn-add-sub { background:var(--sr-dark); color:#fff; }
+body.page-pub_express_sales_report .btn-add-sub:hover { background:#000; }
+body.page-pub_express_sales_report .denom-table th { background:var(--sr-main); color:#fff; border-color:var(--sr-dark); }
+body.page-pub_express_sales_report .denom-table td.denom-label { background:var(--sr-pale); }
+body.page-pub_express_sales_report .denom-table tfoot td { background:var(--sr-tint2); color:var(--sr-ink); border-color:var(--sr-line); }
+body.page-pub_express_sales_report .denom-table tfoot td.total-lbl { background:var(--sr-main); color:#fff; border-color:var(--sr-dark); }
+body.page-pub_express_sales_report .denom-inp:focus, body.page-pub_express_sales_report .sub-inp:focus { background:var(--sr-pale); border-color:var(--sr-mid); box-shadow:0 0 0 2px rgba(127,29,29,.15); }
+body.page-pub_express_sales_report .sub-sec-hdr { background:var(--sr-tint); border-bottom-color:var(--sr-line); }
+body.page-pub_express_sales_report .sub-sec-hdr span { color:var(--sr-ink); border-right-color:var(--sr-line); }
+body.page-pub_express_sales_report .sub-sec-footer { background:var(--sr-tint2); border-top-color:var(--sr-line); color:var(--sr-ink); }
+body.page-pub_express_sales_report .sub-sec-footer span { border-right-color:var(--sr-line); }
+body.page-pub_express_sales_report .sr-inp:focus { border-color:var(--sr-main); box-shadow:0 0 0 3px rgba(127,29,29,.12); }
+body.page-pub_express_sales_report .lock-popover-date { color:var(--sr-main); }
+body.page-pub_express_sales_report .sr-row.for-row { background:var(--sr-pale); }
+body.page-pub_express_sales_report .sr-row.for-row .sr-lbl { color:var(--sr-ink); font-weight:800; }
+body.page-pub_express_sales_report .sr-row.green, body.page-pub_express_sales_report .sr-row.blue-sub, body.page-pub_express_sales_report .sr-row.coh-row, body.page-pub_express_sales_report .sr-row.short-row { background:var(--sr-main); }
+body.page-pub_express_sales_report .sr-row.green .sr-inp.ro { color:var(--sr-ink); }
+body.page-pub_express_sales_report .sr-row.sub-row { background:var(--sr-pale); }
+body.page-pub_express_sales_report .sr-row.sub-row .sr-lbl { color:var(--sr-ink); }
+body.page-pub_express_sales_report .sr-row.gray-hdr { background:var(--sr-tint); }
+body.page-pub_express_sales_report .sr-row.gray-hdr .sr-lbl { color:var(--sr-ink); }
+body.page-pub_express_sales_report .sr-row.pink-val { background:var(--sr-pale); }
+body.page-pub_express_sales_report .sr-row.pink-val .sr-lbl { color:var(--sr-ink); }
+body.page-pub_express_sales_report .sr-row.pink-val .sr-val-wrap input, body.page-pub_express_sales_report .sr-row.pink-val .sr-val-wrap .sr-inp { background:var(--sr-tint); border-color:var(--sr-line); }
+body.page-pub_express_sales_report .sr-row.divider { background:var(--sr-tint); }
+body.page-pub_express_sales_report .sr-row.divider div { color:var(--sr-ink); }
+body.page-pub_express_sales_report .sr-row.tc-row { background:var(--sr-pale); }
+body.page-pub_express_sales_report .sr-row.tc-row .sr-lbl { color:var(--sr-ink); }
+body.page-pub_express_sales_report .sr-row.net { background:var(--sr-tint2); }
+body.page-pub_express_sales_report .sr-row.net .sr-lbl, body.page-pub_express_sales_report .sr-row.net .sr-inp.ro { color:var(--sr-ink); }
+body.page-pub_express_sales_report .sr-row .sr-inp.ro { background:#fff; }
+body.page-pub_express_sales_report .sr-row.short-row .sr-inp.ro { color:#000; -webkit-text-fill-color:#000; opacity:1; font-weight:900; }
+body.page-pub_express_sales_report .sr-note.dark { color:var(--sr-dark); }
+body.page-pub_express_sales_report .sr-row.green .sr-note, body.page-pub_express_sales_report .sr-row.coh-row .sr-note, body.page-pub_express_sales_report .sr-row.short-row .sr-note { color:#fff !important; opacity:.9; }
+
+/* Dois: Gross Sales formula hint is too long for the left column (Stella hides it too) */
+body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label span { display:none; }

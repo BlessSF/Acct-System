@@ -443,7 +443,7 @@ $activePage = 'pub_express_sales_report';
 include '../layout.php';
 ?>
 
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 <style>
 /* Cash Advance / Payroll headers — kept here so they show correctly even if style.css is old/cached */
 .page-pub_express_sales_report .sub-sec-title.teal   { background:#0f6b6b !important; color:#fff !important; }
@@ -454,6 +454,8 @@ include '../layout.php';
 
 <!-- Page header -->
 <div class="sr-page">
+<div class="sr-split">
+<div class="sr-main">
 <div class="sr-header-card">
   <div>
     <div class="eyebrow">Pub Express Branch · Sales</div>
@@ -663,6 +665,7 @@ include '../layout.php';
 
   </div><!-- /sub-sections -->
 </div><!-- /sr-two-col -->
+</div><!-- /.sr-main -->
 
 <!-- ══════ SUMMARY REPORT ══════ -->
 <?php
@@ -695,9 +698,9 @@ $shortOverCalc  = $cohCalc - $netSalesCalc;
   <div class="sr-sum-title">Summary Report</div>
 
   <!-- Date -->
-  <div class="sr-row" style="background:#f5f8ff">
+  <div class="sr-row for-row">
     <div class="sr-lbl" style="text-align:left">For</div>
-    <div class="sr-val-wrap"><span class="sr-inp ro" style="display:block;background:#eef2ff;border-radius:6px;text-align:center;padding:6px 10px"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
+    <div class="sr-val-wrap"><span class="sr-inp ro" style="display:block;border-radius:6px;text-align:center;padding:6px 10px"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
   </div>
 
   <!-- Gross Sales -->
@@ -730,7 +733,7 @@ $shortOverCalc  = $cohCalc - $netSalesCalc;
   </div>
 
   <!-- Divider -->
-  <div class="sr-row divider"><div style="font-size:.6rem;color:#8899cc;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Payment Channels</div></div>
+  <div class="sr-row divider"><div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Payment Channels</div></div>
 
   <!-- Walk-in / POS -->
   <div class="sr-row gray-hdr">
@@ -759,7 +762,7 @@ $shortOverCalc  = $cohCalc - $netSalesCalc;
   </div>
 
   <!-- Divider -->
-  <div class="sr-row divider"><div style="font-size:.6rem;color:#8899cc;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Deductions</div></div>
+  <div class="sr-row divider"><div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Deductions</div></div>
 
   <!-- Marketing Pull-out (auto) -->
   <div class="sr-row pink-val">
@@ -781,15 +784,15 @@ $shortOverCalc  = $cohCalc - $netSalesCalc;
   <div class="sr-row divider"></div>
 
   <!-- Total TC -->
-  <div class="sr-row" style="background:#e8f5e9">
-    <div class="sr-lbl" style="font-weight:800;color:#1b5e20">Total TC</div>
-    <div class="sr-val-wrap"><input type="text" class="sr-inp ro" id="total_tc" value="<?= $fmt($declaredTcCalc) ?>" readonly tabindex="-1" style="color:#1b5e20;font-size:.92rem"></div>
+  <div class="sr-row tc-row">
+    <div class="sr-lbl" style="font-weight:800">Total TC</div>
+    <div class="sr-val-wrap"><input type="text" class="sr-inp ro" id="total_tc" value="<?= $fmt($declaredTcCalc) ?>" readonly tabindex="-1" style="font-size:.92rem"></div>
     <div class="sr-note dark">(auto from Declared TC)</div>
   </div>
   <!-- Declared TC -->
-  <div class="sr-row" style="background:#fff9c4">
-    <div class="sr-lbl" style="font-weight:700;color:#3e2f00">Declared TC</div>
-    <div class="sr-val-wrap"><input type="number" step="0.01" class="sr-inp" id="declared_tc" value="<?= $declaredTcCalc ? $num($declaredTcCalc) : '' ?>" placeholder="0.00" oninput="recalc()" style="border:2px dashed #e8b64c"></div>
+  <div class="sr-row tc-row alt">
+    <div class="sr-lbl" style="font-weight:700">Declared TC</div>
+    <div class="sr-val-wrap"><input type="number" step="0.01" class="sr-inp" id="declared_tc" value="<?= $declaredTcCalc ? $num($declaredTcCalc) : '' ?>" placeholder="0.00" oninput="recalc()" style="border:2px dashed var(--sr-mid,#e8b64c)"></div>
   </div>
 
   <!-- Divider -->
@@ -814,6 +817,7 @@ $shortOverCalc  = $cohCalc - $netSalesCalc;
 
 </div>
 </div><!-- /sr-summary -->
+</div><!-- /.sr-split -->
 </div><!-- /sr-page -->
 
 <script>
@@ -848,7 +852,7 @@ window.addEventListener('load', function () {
   document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) { clearTimeout(timer); run(); } });
   const sb = document.querySelector('button[onclick="saveAll()"]');
   if (sb) { const chip = document.createElement('span'); chip.textContent = '✓ Auto-save on';
-    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--accent);padding:6px 10px';
+    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--sr-main,var(--accent));padding:6px 10px';
     sb.replaceWith(chip); }
 });
 </script>
@@ -1025,7 +1029,7 @@ async function saveAll() {
       showToast('⚠ ' + data.warn, 'error');
       status.textContent = '⚠ Partially saved';
     } else {
-      status.textContent='✓ Saved'; status.style.color='var(--accent)';
+      status.textContent='✓ Saved'; status.style.color='var(--sr-main,var(--accent))';
       showToast('✓ Sales report saved','success');
     }
   } catch (err) {

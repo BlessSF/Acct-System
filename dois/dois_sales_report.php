@@ -510,7 +510,7 @@ $activePage = 'dois_sales_report';
 include '../layout.php';
 ?>
 
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 <style>
 /* Stella-style layout, scoped to this page */
 .page-dois_sales_report .locked-banner {
@@ -715,6 +715,8 @@ include '../layout.php';
 }
 </style>
 
+<div class="sr-split">
+<div class="sr-main">
 <!-- Header -->
 <div class="sr-header-card">
   <div>
@@ -974,11 +976,14 @@ include '../layout.php';
 <!-- ══════════════════════════════════════════════════════════
      SUMMARY REPORT — Dois Branch
 ════════════════════════════════════════════════════════════ -->
+</div><!-- /.sr-main -->
+
+<!-- Summary Report: LEFT column (CSS: .sr-split .sr-wrap { order:-1 }) -->
 <div class="sr-wrap">
 <div class="sr-card">
   <div class="sr-title-row"><div class="sr-main-title">Summary Report</div></div>
 
-  <div class="sr-row" style="background:#f8f9fb">
+  <div class="sr-row for-row">
     <div class="sr-label" style="text-align:left;flex:1">For</div>
     <div class="sr-value-wrap"><span class="sr-input readout" style="font-size:.8rem"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
   </div>
@@ -1092,6 +1097,7 @@ include '../layout.php';
   </div>
 </div>
 </div>
+</div><!-- /.sr-split -->
 
 
 <script>
@@ -1126,7 +1132,7 @@ window.addEventListener('load', function () {
   document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) { clearTimeout(timer); run(); } });
   const sb = document.querySelector('button[onclick="saveAll()"]');
   if (sb) { const chip = document.createElement('span'); chip.textContent = '✓ Auto-save on';
-    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--accent);padding:6px 10px';
+    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--sr-main,var(--accent));padding:6px 10px';
     sb.replaceWith(chip); }
 });
 </script>
@@ -1351,7 +1357,7 @@ async function saveAll() {
   const res  = await fetch('dois_sales_report.php', {method:'POST',body:fd3});
   const data = await res.json();
   if (data.ok) {
-    status.textContent = '✓ Saved'; status.style.color = 'var(--accent)';
+    status.textContent = '✓ Saved'; status.style.color = 'var(--sr-main,var(--accent))';
     showToast('✓ Sales report saved', 'success');
   } else {
     showToast('❌ ' + data.msg, 'error'); status.textContent = '❌ Error';
