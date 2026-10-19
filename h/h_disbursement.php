@@ -140,6 +140,29 @@ function hCogsEnsureTable(PDO $pdo): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 }
 
+// ── Self-repair: rows saved with id = 0 (table without AUTO_INCREMENT) can't be told apart,
+//    which made Delete fail ("Missing ID") or hit several rows. Give every row its own id. ──
+try {
+    $__idCol = $pdo->query("SHOW COLUMNS FROM h_disbursement LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
+    $__bad   = (int)$pdo->query("SELECT COUNT(*) FROM h_disbursement WHERE id=0")->fetchColumn();
+    $__noAI  = !$__idCol || stripos((string)($__idCol['Extra'] ?? ''), 'auto_increment') === false;
+    if ($__bad > 0 || $__noAI) {
+        if ($__bad > 0) {
+            $pdo->exec("SET @n := (SELECT COALESCE(MAX(id),0) FROM h_disbursement)");
+            $pdo->exec("UPDATE h_disbursement SET id = (@n := @n + 1) WHERE id = 0");
+            try { $pdo->exec("DELETE FROM h_expenses WHERE disbursement_id=0"); } catch (Throwable $e) {}
+        }
+        if ($__noAI) {
+            $hasPk = (bool)$pdo->query("SHOW KEYS FROM h_disbursement WHERE Key_name='PRIMARY'")->fetch();
+            if (!$hasPk) { try { $pdo->exec("ALTER TABLE h_disbursement ADD PRIMARY KEY (id)"); } catch (Throwable $e) {} }
+            try { $pdo->exec("ALTER TABLE h_disbursement MODIFY id int(11) NOT NULL AUTO_INCREMENT"); } catch (Throwable $e) {}
+        }
+        if ($__bad > 0 && $expSyncReady) {
+            foreach ($pdo->query("SELECT id FROM h_disbursement")->fetchAll(PDO::FETCH_COLUMN) as $__i) hPostToExpenses($pdo, (int)$__i);
+        }
+    }
+} catch (Throwable $e) {}
+
 // ── AJAX: Vendor lookup ────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['vendor_lookup'])) {
     header('Content-Type: application/json');

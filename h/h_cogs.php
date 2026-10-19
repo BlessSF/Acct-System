@@ -361,10 +361,6 @@ include '../layout.php';
     <div class="kpi-label">Purchases</div>
     <div class="kpi-val purple" id="kpi_purc"><?= number_format($rows ? $totals['purc'] : $purcAuto,2) ?></div>
   </div>
-  <div class="kpi-card" style="border-top:2px solid #8b5cf6">
-    <div class="kpi-label">Materials Purchases (Ledger)</div>
-    <div class="kpi-val purple" id="kpi_purc_ledger"><?= number_format($purcAuto,2) ?></div>
-  </div>
   <div class="kpi-card" style="border-top:2px solid var(--accent2)">
     <div class="kpi-label">End. Inventory</div>
     <div class="kpi-val red" id="kpi_end"><?= number_format($totals['end_inv'],2) ?></div>
