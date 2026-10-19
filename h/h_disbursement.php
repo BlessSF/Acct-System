@@ -114,8 +114,30 @@ if ($expSyncReady) {
     } catch (Throwable $e) { $expSyncReady = false; }
 }
 function hPostToExpenses(PDO $pdo, int $id): string {
-    try { return expSyncOne($pdo, 'h_disbursement', 'h_expenses', 'h_acc_titles', $id); }
+    try {
+        $r = expSyncOne($pdo, 'h_disbursement', 'h_expenses', 'h_acc_titles', $id);
+        hSyncCogsPurchases($pdo, $id);
+        return $r;
+    }
     catch (Throwable $e) { return 'error'; }
+}
+// Purchases - Non-Vat / Vatable also feed the PURC. column of H COGS (month total = Expenses "Purchases")
+function hSyncCogsPurchases(PDO $pdo, ?int $id = null): void {
+    try {
+        $date = null;
+        if ($id) { $q = $pdo->prepare("SELECT entry_date FROM h_disbursement WHERE id=?"); $q->execute([$id]); $date = $q->fetchColumn() ?: null; }
+        hCogsEnsureTable($pdo);
+        expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', $date, true, 'h_month_end_inv');
+    } catch (Throwable $e) {}
+}
+function hCogsEnsureTable(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `h_cogs` (
+    `id` int(11) NOT NULL AUTO_INCREMENT, `cogs_date` date NOT NULL, `cogs_year` int(4) NOT NULL, `cogs_month` tinyint(2) NOT NULL,
+    `store_name` varchar(50) NOT NULL DEFAULT 'H', `beg` decimal(12,2) NOT NULL DEFAULT 0.00, `purc` decimal(12,2) NOT NULL DEFAULT 0.00,
+    `end_inv` decimal(12,2) NOT NULL DEFAULT 0.00, `cos` decimal(12,2) NOT NULL DEFAULT 0.00, `mktg_cost` decimal(12,2) NOT NULL DEFAULT 0.00,
+    `saved_by` varchar(100) DEFAULT NULL, `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(), PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 }
 
 // ── AJAX: Vendor lookup ────────────────────────────────────
@@ -186,9 +208,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_update'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
     header('Content-Type: application/json');
     $id = (int)($_POST['id'] ?? 0);
+    if ($id <= 0) { echo json_encode(['ok' => false, 'msg' => 'Missing ID']); exit; }
     try {
-        $pdo->prepare("DELETE FROM h_disbursement WHERE id=?")->execute([$id]);
-        try { expSyncDelete($pdo, 'h_expenses', $id); } catch (Throwable $ignored) {}
+        $pdo->prepare("DELETE FROM h_disbursement WHERE id=? LIMIT 1")->execute([$id]);
+        try { expSyncDelete($pdo, 'h_expenses', $id); hSyncCogsPurchases($pdo, null); } catch (Throwable $ignored) {}
         echo json_encode(['ok' => true]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);

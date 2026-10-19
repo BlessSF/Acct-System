@@ -256,3 +256,47 @@ function expSyncCreateExpenses(PDO $pdo, string $table = 'h_expenses'): void {
 function expSyncCreateHExpenses(PDO $pdo): void { expSyncCreateExpenses($pdo, 'h_expenses'); }
 // Same default title → column map is used by every branch.
 const EXP_SYNC_DEFAULTS = EXP_SYNC_H_DEFAULTS;
+
+/**
+ * Keep a branch's COGS "PURC." equal to the Purchases column of its Expenses ledger
+ * (Disbursement "Purchases - Non-Vat" / "Purchases - Vatable" land in that column).
+ *
+ *  - month already has COGS row(s): the last row's PURC. is set so that the month's
+ *    PURC. total equals the ledger total, and COS is recomputed (BEG + PURC - END - MKTG).
+ *  - no COGS row: nothing is created (the page shows the ledger total in the Purchases card).
+ * Every month that already has a COGS row is refreshed too, which covers an entry
+ * whose date was moved to another month or that was deleted.
+ */
+function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, string $store,
+                              ?string $date = null, bool $create = true, string $meiTable = ''): void {
+    $cogsTable = preg_replace('/[^a-z0-9_]/i', '', $cogsTable);
+    $expTable  = preg_replace('/[^a-z0-9_]/i', '', $expTable);
+    // remove the rows an earlier version auto-created (untouched ones only)
+    try { $pdo->prepare("DELETE FROM `$cogsTable` WHERE store_name=? AND saved_by='Auto (Disbursement)'")->execute([$store]); } catch (Throwable $e) {}
+    $months = [];
+    $q = $pdo->prepare("SELECT DISTINCT cogs_year y, cogs_month m FROM `$cogsTable` WHERE store_name=?");
+    $q->execute([$store]);
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $months["{$r['y']}-{$r['m']}"] = [(int)$r['y'], (int)$r['m'], false];
+    if ($date && preg_match('/^(\d{4})-(\d{2})-\d{2}$/', $date, $mm)) {
+        $months[(int)$mm[1] . '-' . (int)$mm[2]] = [(int)$mm[1], (int)$mm[2], $create];
+    }
+    foreach ($months as [$y, $m, $mayCreate]) {
+        $t = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM `$expTable` WHERE YEAR(expense_date)=? AND MONTH(expense_date)=?");
+        $t->execute([$y, $m]);
+        $total = round((float)$t->fetchColumn(), 2);
+
+        $rs = $pdo->prepare("SELECT * FROM `$cogsTable` WHERE store_name=? AND cogs_year=? AND cogs_month=? ORDER BY cogs_date ASC, id ASC");
+        $rs->execute([$store, $y, $m]);
+        $rows = $rs->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($rows) {
+            $last = array_pop($rows);
+            $others = 0.0;
+            foreach ($rows as $r) $others += (float)$r['purc'];
+            $purc = round($total - $others, 2);
+            if ((float)$last['purc'] === $purc) continue;
+            $cos = round((float)$last['beg'] + $purc - (float)$last['end_inv'] - (float)$last['mktg_cost'], 2);
+            $pdo->prepare("UPDATE `$cogsTable` SET purc=?, cos=? WHERE id=?")->execute([$purc, $cos, $last['id']]);
+        }
+    }
+}

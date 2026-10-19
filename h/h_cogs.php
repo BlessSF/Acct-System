@@ -32,6 +32,13 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `h_cogs` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
+// ── PURC. comes from Disbursement ("Purchases - Non-Vat" / "Purchases - Vatable" → H Expenses Purchases) ──
+$__es = __DIR__ . '/../lib/expense_sync.php';
+if (is_file($__es)) {
+    require_once $__es;
+    try { expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false); } catch (Throwable $e) {}
+}
+
 // ── Filters ───────────────────────────────────────────────
 $fYear  = (int)($_GET['year']  ?? date('Y'));
 $fMonth = (int)($_GET['month'] ?? date('n'));
@@ -138,6 +145,9 @@ $meiTotal = (float)$meiStmt->fetchColumn();
 $purcAutoStmt = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM h_expenses WHERE YEAR(expense_date)=? AND MONTH(expense_date)=?");
 $purcAutoStmt->execute([$fYear,$fMonth]);
 $purcAuto = (float)$purcAutoStmt->fetchColumn();
+$purcUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(purc),0) FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=?");
+$purcUsedStmt->execute([$fYear,$fMonth]);
+$purcNew = max(0, round($purcAuto - (float)$purcUsedStmt->fetchColumn(), 2));
 
 // ── Previous month's Ending Inventory — auto-suggests this month's BEG. ─
 // (mirrors the spreadsheet chain: each month's BEG = prior month's END)
@@ -349,7 +359,7 @@ include '../layout.php';
   </div>
   <div class="kpi-card" style="border-top:2px solid #8b5cf6">
     <div class="kpi-label">Purchases</div>
-    <div class="kpi-val purple" id="kpi_purc"><?= number_format($totals['purc'],2) ?></div>
+    <div class="kpi-val purple" id="kpi_purc"><?= number_format($rows ? $totals['purc'] : $purcAuto,2) ?></div>
   </div>
   <div class="kpi-card" style="border-top:2px solid #8b5cf6">
     <div class="kpi-label">Materials Purchases (Ledger)</div>
@@ -457,7 +467,7 @@ include '../layout.php';
             font-family:var(--font-m);font-size:.72rem;color:#5b21b6">
   <span style="font-size:1rem">🧾</span>
   <span>
-    <strong>PURC.</strong> for a new row is auto-suggested from the
+    <strong>PURC.</strong> for a new row is auto-filled from the
     <strong>H Expenses ledger's Purchases total</strong> for
     <?= $months[$fMonth-1] . ' ' . $fYear ?>:
     <strong style="color:#6d28d9"><?= number_format($purcAuto,2) ?></strong>
@@ -492,8 +502,8 @@ include '../layout.php';
           </td>
           <td><input type="number" step="0.01" class="cogs-input" value="<?= $r['beg'] ?>"
                      placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
-          <td><input type="number" step="0.01" class="cogs-input" value="<?= $r['purc'] ?>"
-                     placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
+          <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="number" step="0.01" class="cogs-input purc-auto-field" value="<?= $r['purc'] ?>"
+                     placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700"></td>
           <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
             <input type="number" step="0.01" class="cogs-input end-auto-field"
                    value="<?= $r['end_inv'] ?>"
@@ -552,7 +562,8 @@ const MEI_TOTAL  = <?= $meiTotal ?>;
 // Previous month's Ending Inventory — auto-suggests BEG. on a new row
 const PREV_END_INV = <?= $prevEndInv ?>;
 // This month's Purchases total (from H Expenses ledger's Purchases total) — auto-suggests PURC. on a new row
-const PURC_AUTO = <?= $purcAuto ?>;
+const PURC_AUTO = <?= $purcNew ?>;
+const PURC_LEDGER = <?= $purcAuto ?>;
 
 // Default date: first day of selected month/year
 function defaultDate() {
@@ -572,7 +583,7 @@ function addRow() {
       <input type="date" class="date-input" value="${defaultDate()}" onchange="markDirty(this)">
     </td>
     <td><input type="number" step="0.01" class="cogs-input beg-auto-field" value="${PREV_END_INV.toFixed(2)}" placeholder="0.00" oninput="calcCos(this);markDirty(this)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto-suggested from prior month's Ending Inventory — editable"></td>
-    <td><input type="number" step="0.01" class="cogs-input purc-auto-field" value="${PURC_AUTO.toFixed(2)}" placeholder="0.00" oninput="calcCos(this);markDirty(this)" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto-suggested from this month's Purchases total — editable"></td>
+    <td><input type="number" step="0.01" class="cogs-input purc-auto-field" value="${PURC_AUTO.toFixed(2)}" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
     <td title="Auto-suggested from Month End Inventory grand total — editable"><input type="number" step="0.01" class="cogs-input end-auto-field" value="${MEI_TOTAL.toFixed(2)}" oninput="calcCos(this);markDirty(this)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
     <td><input type="number" step="0.01" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
     <td><input type="number" step="0.01" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
@@ -729,7 +740,7 @@ function updateKPIs() {
   });
   const fmt = n => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('kpi_beg').textContent  = fmt(beg);
-  document.getElementById('kpi_purc').textContent = fmt(purc);
+  document.getElementById('kpi_purc').textContent = fmt(document.querySelector('#cogsBody tr[data-id]') ? purc : PURC_LEDGER);
   document.getElementById('kpi_end').textContent  = fmt(end);
   document.getElementById('kpi_cos').textContent  = fmt(cos);
   document.getElementById('kpi_mktg').textContent = fmt(mktg);
