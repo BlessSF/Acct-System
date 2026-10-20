@@ -182,6 +182,28 @@ function oicCalcMetrics(array $r): array
  * module table, and guarded so the Dashboard never breaks if it is
  * queried before anyone has opened the Daily Report.
  */
+/**
+ * One row per store + date: merge up duplicates (the newest row wins) and add the
+ * UNIQUE key if the table was created without it, so saving a day again updates it.
+ */
+function ensureUniqueStoreDate(PDO $pdo, string $table): void
+{
+    static $done = [];
+    if (isset($done[$table])) return;
+    $done[$table] = true;
+    try {
+        $table = preg_replace('/[^a-z0-9_]/i', '', $table);
+        if (!$pdo->query("SHOW TABLES LIKE '$table'")->fetch()) return;
+        $has = false;
+        foreach ($pdo->query("SHOW KEYS FROM `$table` WHERE Non_unique=0")->fetchAll(PDO::FETCH_ASSOC) as $k) {
+            if ($k['Key_name'] !== 'PRIMARY' && in_array($k['Column_name'], ['store_name', 'report_date'], true)) $has = true;
+        }
+        if ($has) return;
+        $pdo->exec("DELETE a FROM `$table` a JOIN `$table` b ON a.store_name=b.store_name AND a.report_date=b.report_date AND a.id < b.id");
+        $pdo->exec("ALTER TABLE `$table` ADD UNIQUE KEY `uniq_store_date` (`store_name`,`report_date`)");
+    } catch (Throwable $e) {}
+}
+
 function ensureHOicTable(?PDO $pdo = null): void
 {
     static $done = false;
@@ -209,6 +231,7 @@ function ensureHOicTable(?PDO $pdo = null): void
             UNIQUE KEY `uniq_store_date` (`store_name`,`report_date`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         oicNewColumnsReady('h_oic_report', oicEnsureNewColumns($pdo, 'h_oic_report'));
+        ensureUniqueStoreDate($pdo, 'h_oic_report');
         $done = true;
     } catch (Throwable $ignored) {}
 }
@@ -258,6 +281,7 @@ function ensureBranchOicTable(?PDO $pdo = null): void
             UNIQUE KEY `uniq_store_date` (`store_name`,`report_date`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         oicNewColumnsReady('branch_oic_report', oicEnsureNewColumns($pdo, 'branch_oic_report'));
+        ensureUniqueStoreDate($pdo, 'branch_oic_report');
         $done = true;
     } catch (Throwable $ignored) {}
 }
@@ -320,8 +344,8 @@ function branchSalesUnionSQL(): string
                COALESCE(o.np_threshold, 20)    AS np_threshold,
                s.saved_by AS created_by, s.created_at, s.updated_at,
                $grabExpr AS grab_sales_amt, $discountExpr AS walkin_discount
-         FROM $table s
-         LEFT JOIN branch_oic_report o ON o.store_name = '$label' AND o.report_date = s.report_date";
+         FROM (SELECT t.* FROM `$table` t WHERE t.id IN (SELECT MAX(id) FROM `$table` GROUP BY store_name, report_date)) s
+         LEFT JOIN (SELECT b.* FROM branch_oic_report b WHERE b.id IN (SELECT MAX(id) FROM branch_oic_report GROUP BY store_name, report_date)) o ON o.store_name = '$label' AND o.report_date = s.report_date";
     };
 
     // H — same idea, but its OIC rows live in h_oic_report (edited on the Daily Report page too).
@@ -342,8 +366,8 @@ function branchSalesUnionSQL(): string
                COALESCE(o.np_threshold, 20)    AS np_threshold,
                s.saved_by AS created_by, s.created_at, s.updated_at,
                s.grab_sales AS grab_sales_amt, s.discount AS walkin_discount
-         FROM h_sales_report s
-         LEFT JOIN h_oic_report o ON o.store_name = s.store_name AND o.report_date = s.report_date";
+         FROM (SELECT t.* FROM h_sales_report t WHERE t.id IN (SELECT MAX(id) FROM h_sales_report GROUP BY store_name, report_date)) s
+         LEFT JOIN (SELECT b.* FROM h_oic_report b WHERE b.id IN (SELECT MAX(id) FROM h_oic_report GROUP BY store_name, report_date)) o ON o.store_name = s.store_name AND o.report_date = s.report_date";
 
     $selects = [
         $withOic('stella_sales_report',      'Stella',      's.store_name', 's.discount', 's.other_expenses', 's.grab_sales'),

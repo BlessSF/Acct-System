@@ -32,6 +32,9 @@ require_once 'lib/audit_log.php';
 $pdo  = getPDO();
 $user = currentUser();
 $SALES_UNION = branchSalesUnionTable();
+// Repair: one saved report per store + date (duplicates from older saves are merged, newest wins)
+foreach (['stella_sales_report','dois_sales_report','pub_express_sales_report','h_sales_report','recovery_sales_report','commissary_oic_report','h_carwash_report'] as $__t) ensureUniqueStoreDate($pdo, $__t);
+ensureBranchOicTable($pdo); ensureHOicTable($pdo);
 
 /**
  * Posted OIC Report fields → [column => value] for the INSERT … ON DUPLICATE KEY UPDATE.
@@ -229,6 +232,10 @@ if ($fDate !== '') {
     $rows->execute(array_merge([$fYear, $fMonth], $bParams));
 }
 $reports = $rows->fetchAll();
+// One card per store + day (safety net; the data is also repaired below).
+$__seen = []; $__uniq = [];
+foreach ($reports as $__r) { $__k = $__r['store_name'] . '|' . $__r['report_date']; if (isset($__seen[$__k])) continue; $__seen[$__k] = 1; $__uniq[] = $__r; }
+$reports = $__uniq;
 
 // ── Excel (.xlsx) download of the OIC Report — same line items, order and flags as the OIC Excel sheet ──
 // ?export_oic=1 → the month on screen (or the single ?date=), for the branch being viewed. A card's own

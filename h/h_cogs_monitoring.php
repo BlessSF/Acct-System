@@ -1,10 +1,14 @@
 <?php
 // ============================================================
-//  h_cogs_monitoring.php — H Daily COGS Monitoring
-//  TOTAL COGS = SM Kitchen Copy + Gulay + Other Expenses + Bottled Water/Sodas
-//  (RHEA Copy / RHEA Copy Parcel are reference-only reconciliation columns)
-//  COGS % = Total COGS / Total Sales Per Day
-//  MP %   = Total MP / Total Sales Per Day
+//  h_cogs_monitoring.php — H COGS Monitoring
+//  Follows HERO_COGS_MONITORING_2026.xlsx (one tab per month):
+//    TOTAL COGS = RHEA/COMMI COPY (Billing to Commi COGS) + SUM(Gulay Store Copy .. Tube Ice)
+//               = F + H + I + K + L + M          (gas & manpower not included)
+//    COGS %     = TOTAL COGS / GROSS SALES       status: COGS PASSED if COGS % < 30.5%
+//    MP COST AVERAGE % = MANPOWER / GROSS SALES
+//    Summary: TOTAL COGS = BEG COGS + ACCU COGS − END COGS ; COGS% = TOTAL COGS / ACCU SALES
+//  Every change saves by itself. Amount cells accept Excel-style
+//  formulas, e.g.  =4510+650+290
 // ============================================================
 require_once '../config.php';
 require_once '../auth.php';
@@ -18,148 +22,129 @@ if (isBranch() && currentBranch() !== 'H') {
 $pdo  = getPDO();
 $user = currentUser();
 
-// ── Create table ─────────────────────────────────────────
-$pdo->exec("CREATE TABLE IF NOT EXISTS `h_cogs_monitoring` (
-    `id`                  int(11) NOT NULL AUTO_INCREMENT,
-    `entry_date`          date NOT NULL,
-    `store_name`          varchar(50) NOT NULL DEFAULT 'H',
-    `sm_kitchen_copy`     decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Billing to Commi (COGS)',
-    `rhea_copy`           decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Billing to Commi (COGS) — reference/reconciliation only',
-    `rhea_copy_parcel`    decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Reference/reconciliation only',
-    `gulay`               decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Store Expenses',
-    `other_expenses`      decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT '(COGS)',
-    `bottled_water_sodas` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT '(COGS) — Water ₱9 / Soda ₱36 per unit',
-    `transpo_df_expenses` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT '(NON COGS)',
-    `staff_meal_expenses` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT '(NON COGS)',
-    `office_supplies`     decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Frontline Expenses (NON COGS)',
-    `dining_supplies`     decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Frontline Expenses (NON COGS)',
-    `refund_misc`         decimal(12,2) NOT NULL DEFAULT 0.00,
-    `total_sales_per_day` decimal(12,2) NOT NULL DEFAULT 0.00,
-    `total_mp`            decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Manpower Cost',
-    `cogs_threshold_pct`  decimal(5,2)  NOT NULL DEFAULT 45.00,
-    `mp_threshold_pct`    decimal(5,2)  NOT NULL DEFAULT 7.00,
-    `sort_order`          int(4) NOT NULL DEFAULT 0,
-    `saved_by`            varchar(100) DEFAULT NULL,
-    `updated_at`          timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-    PRIMARY KEY (`id`)
+// ── Tables ───────────────────────────────────────────────
+const HC_KEYS = ['kitchen_cogs','kitchen_noncogs','commi_cogs','gulay_billing','gulay_store','gulay_exp',
+                 'direct','carwash','tube_ice','transpo','staff_meal','office','dining','misc',
+                 'gross','gas_kg','gas_amt','manpower'];
+$pdo->exec("CREATE TABLE IF NOT EXISTS `h_cogs_mon` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `entry_date` date NOT NULL,
+    " . implode(",\n    ", array_map(fn($k) => "`$k` decimal(14,2) NOT NULL DEFAULT 0.00", HC_KEYS)) . ",
+    `formulas` text DEFAULT NULL,
+    `saved_by` varchar(100) DEFAULT NULL,
+    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uniq_date` (`entry_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+$pdo->exec("CREATE TABLE IF NOT EXISTS `h_cogs_mon_set` (
+    `ym` char(7) NOT NULL,
+    `cogs_max_pct` decimal(5,2) NOT NULL DEFAULT 30.50,
+    `beg_cogs` decimal(14,2) NOT NULL DEFAULT 0.00,
+    `end_cogs` decimal(14,2) NOT NULL DEFAULT 0.00,
+    PRIMARY KEY (`ym`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
-// ── AJAX: Save row ───────────────────────────────────────
+// COGS columns of the sheet: F + H + I + K + L + M
+const HC_COGS = ['commi_cogs','gulay_store','gulay_exp','direct','carwash','tube_ice'];
+
+function hcCalc(array $r, float $max = 30.5): array {
+    $g = fn($k) => (float)($r[$k] ?? 0);
+    $cogs = 0; foreach (HC_COGS as $k) $cogs += $g($k);
+    $gross = $g('gross');
+    $pct   = $gross > 0 ? $cogs / $gross * 100 : 0;
+    return [
+        'cogs' => round($cogs, 2), 'gross' => $gross,
+        'cogsPct' => $pct, 'mpPct' => $gross > 0 ? $g('manpower') / $gross * 100 : 0,
+        'status' => $gross > 0 ? ($pct < $max ? 'COGS PASSED' : 'COGS OVER COST') : '',
+    ];
+}
+
+// ── AJAX: save one day (empty row = delete) ──────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['ajax_action'] ?? '') === 'save_row') {
     header('Content-Type: application/json');
     try {
-        $id         = (int)($_POST['id'] ?? 0);
-        $store_name = isBranch() ? currentBranch() : 'H';
-        $entryDate  = $_POST['entry_date'] ?? date('Y-m-d');
-
-        $num = fn($k, $def = 0) => (float)($_POST[$k] ?? $def);
-        $smKitchen  = $num('sm_kitchen_copy');
-        $rhea       = $num('rhea_copy');
-        $rheaParcel = $num('rhea_copy_parcel');
-        $gulay      = $num('gulay');
-        $other      = $num('other_expenses');
-        $bottled    = $num('bottled_water_sodas');
-        $transpo    = $num('transpo_df_expenses');
-        $staffMeal  = $num('staff_meal_expenses');
-        $office     = $num('office_supplies');
-        $dining     = $num('dining_supplies');
-        $refund     = $num('refund_misc');
-        $sales      = $num('total_sales_per_day');
-        $totalMp    = $num('total_mp');
-        $cogsTh     = $num('cogs_threshold_pct', 45);
-        $mpTh       = $num('mp_threshold_pct', 7);
-        $so         = (int)($_POST['sort_order'] ?? 0);
-
-        $totalCogs = round($smKitchen + $gulay + $other + $bottled, 2);
-        $cogsPct   = $sales > 0 ? round($totalCogs / $sales * 100, 1) : 0;
-        $mpPct     = $sales > 0 ? round($totalMp   / $sales * 100, 1) : 0;
-
-        if ($id > 0) {
-            $stmt = $pdo->prepare("UPDATE h_cogs_monitoring SET
-                entry_date=?,store_name=?,sm_kitchen_copy=?,rhea_copy=?,rhea_copy_parcel=?,
-                gulay=?,other_expenses=?,bottled_water_sodas=?,transpo_df_expenses=?,staff_meal_expenses=?,
-                office_supplies=?,dining_supplies=?,refund_misc=?,total_sales_per_day=?,total_mp=?,
-                cogs_threshold_pct=?,mp_threshold_pct=?,sort_order=?,saved_by=? WHERE id=?");
-            $stmt->execute([$entryDate,$store_name,$smKitchen,$rhea,$rheaParcel,
-                $gulay,$other,$bottled,$transpo,$staffMeal,
-                $office,$dining,$refund,$sales,$totalMp,
-                $cogsTh,$mpTh,$so,$user['name'],$id]);
-        } else {
-            $stmt = $pdo->prepare("INSERT INTO h_cogs_monitoring
-                (entry_date,store_name,sm_kitchen_copy,rhea_copy,rhea_copy_parcel,
-                 gulay,other_expenses,bottled_water_sodas,transpo_df_expenses,staff_meal_expenses,
-                 office_supplies,dining_supplies,refund_misc,total_sales_per_day,total_mp,
-                 cogs_threshold_pct,mp_threshold_pct,sort_order,saved_by)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->execute([$entryDate,$store_name,$smKitchen,$rhea,$rheaParcel,
-                $gulay,$other,$bottled,$transpo,$staffMeal,
-                $office,$dining,$refund,$sales,$totalMp,
-                $cogsTh,$mpTh,$so,$user['name']]);
-            $id = (int)$pdo->lastInsertId();
+        $date = $_POST['entry_date'] ?? '';
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { echo json_encode(['ok'=>false,'msg'=>'Bad date']); exit; }
+        $vals = []; $any = false;
+        foreach (HC_KEYS as $k) { $vals[$k] = round((float)str_replace(',', '', $_POST[$k] ?? 0), 2); if ($vals[$k] != 0) $any = true; }
+        $fm = [];
+        $in = json_decode($_POST['formulas'] ?? '{}', true) ?: [];
+        foreach ($in as $k => $f) {
+            if (in_array($k, HC_KEYS, true) && is_string($f) && preg_match('/^=[0-9+\-*\/(). ]{1,200}$/', $f)) $fm[$k] = $f;
         }
-        echo json_encode(['ok'=>true,'id'=>$id,'totalCogs'=>$totalCogs,'cogsPct'=>$cogsPct,
-            'cogsStatus'=>$cogsPct > $cogsTh ? 'COGS OVER COST' : 'COGS PASSED',
-            'mpPct'=>$mpPct,'mpStatus'=>$mpPct < $mpTh ? 'MP PASSED' : 'MP FAILED']);
+        if (!$any) {
+            $pdo->prepare("DELETE FROM h_cogs_mon WHERE entry_date=?")->execute([$date]);
+            echo json_encode(['ok'=>true,'deleted'=>true]); exit;
+        }
+        $cols = array_merge(['entry_date'], HC_KEYS, ['formulas','saved_by']);
+        $params = array_merge([$date], array_values($vals), [$fm ? json_encode($fm) : null, $user['name']]);
+        $upd = implode(',', array_map(fn($k)=>"`$k`=VALUES(`$k`)", array_merge(HC_KEYS, ['formulas','saved_by'])));
+        $pdo->prepare("INSERT INTO h_cogs_mon (`".implode('`,`',$cols)."`) VALUES (".implode(',',array_fill(0,count($cols),'?')).") ON DUPLICATE KEY UPDATE $upd")->execute($params);
+        echo json_encode(['ok'=>true]);
     } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
     exit;
 }
 
-// ── AJAX: Delete row ──────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['ajax_action'] ?? '') === 'delete_row') {
+// ── AJAX: save the month settings (COGS limit, BEG / END COGS) ──
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['ajax_action'] ?? '') === 'save_settings') {
     header('Content-Type: application/json');
-    $id = (int)($_POST['id'] ?? 0);
-    $pdo->prepare("DELETE FROM h_cogs_monitoring WHERE id=?")->execute([$id]);
-    echo json_encode(['ok'=>true]);
+    try {
+        $ym = $_POST['ym'] ?? '';
+        if (!preg_match('/^\d{4}-\d{2}$/', $ym)) { echo json_encode(['ok'=>false,'msg'=>'Bad month']); exit; }
+        $n = fn($k) => round((float)str_replace(',', '', $_POST[$k] ?? 0), 2);
+        $pdo->prepare("INSERT INTO h_cogs_mon_set (ym,cogs_max_pct,beg_cogs,end_cogs) VALUES (?,?,?,?)
+            ON DUPLICATE KEY UPDATE cogs_max_pct=VALUES(cogs_max_pct),beg_cogs=VALUES(beg_cogs),end_cogs=VALUES(end_cogs)")
+            ->execute([$ym,$n('cogs_max_pct'),$n('beg_cogs'),$n('end_cogs')]);
+        echo json_encode(['ok'=>true]);
+    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
     exit;
 }
 
-// ── Filters ───────────────────────────────────────────────
-$months = ['January','February','March','April','May','June',
-           'July','August','September','October','November','December'];
+// ── Filters / data ───────────────────────────────────────
+$months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 $fYear  = (int)($_GET['year']  ?? date('Y'));
-$fMonth = (int)($_GET['month'] ?? date('n'));
-$fMonth = max(1, min(12, $fMonth));
+$fMonth = max(1, min(12, (int)($_GET['month'] ?? date('n'))));
+$ym     = sprintf('%04d-%02d', $fYear, $fMonth);
+$days   = (int)date('t', strtotime("$ym-01"));
 
-[$bClause, $bParams] = branchFilter('store_name');
-$stmt = $pdo->prepare("SELECT * FROM h_cogs_monitoring WHERE YEAR(entry_date)=? AND MONTH(entry_date)=? AND $bClause ORDER BY entry_date,sort_order,id");
-$stmt->execute(array_merge([$fYear, $fMonth], $bParams));
-$rows = $stmt->fetchAll();
+$st = $pdo->prepare("SELECT * FROM h_cogs_mon WHERE entry_date BETWEEN ? AND ? ORDER BY entry_date");
+$st->execute(["$ym-01", "$ym-".sprintf('%02d',$days)]);
+$byDate = [];
+foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $byDate[$r['entry_date']] = $r;
 
-function calcCogsRow(array $r): array {
-    $totalCogs = round((float)$r['sm_kitchen_copy'] + (float)$r['gulay'] + (float)$r['other_expenses'] + (float)$r['bottled_water_sodas'], 2);
-    $sales     = (float)$r['total_sales_per_day'];
-    $cogsPct   = $sales > 0 ? round($totalCogs / $sales * 100, 1) : 0;
-    $mpPct     = $sales > 0 ? round((float)$r['total_mp'] / $sales * 100, 1) : 0;
-    $cogsTh    = (float)$r['cogs_threshold_pct'];
-    $mpTh      = (float)$r['mp_threshold_pct'];
-    return [
-        'totalCogs'  => $totalCogs,
-        'cogsPct'    => $cogsPct,
-        'cogsStatus' => $cogsPct > $cogsTh ? 'COGS OVER COST' : 'COGS PASSED',
-        'mpPct'      => $mpPct,
-        'mpStatus'   => $mpPct < $mpTh ? 'MP PASSED' : 'MP FAILED',
-    ];
-}
+$ss = $pdo->prepare("SELECT * FROM h_cogs_mon_set WHERE ym=?");
+$ss->execute([$ym]);
+$set = $ss->fetch(PDO::FETCH_ASSOC) ?: ['cogs_max_pct'=>30.5,'beg_cogs'=>0,'end_cogs'=>0];
+$maxPct = (float)$set['cogs_max_pct'];
 
-// ── CSV Export ────────────────────────────────────────────
+$tot = array_fill_keys(HC_KEYS, 0.0);
+foreach ($byDate as $r) foreach (HC_KEYS as $k) $tot[$k] += (float)$r[$k];
+$tc = hcCalc($tot, $maxPct);
+
+// ── CSV export (same column order as the Excel) ──────────
+$CSV_HEAD = ['DATE','HERO KITCHEN COPY - BILLING TO COMMI (COGS)','HERO KITCHEN COPY - BILLING TO COMMI (NON COGS)',
+    'RHEA/COMMI COPY - BILLING TO COMMI (COGS)','RHEA/COMMI COPY - GULAY BILLING','GULAY STORE COPY (COMMI BILL)','GULAY (STORE EXPENSES)',
+    'DIRECT PURCHASES (ASSTD)','CARWASH DIRECT PURCHASES','TUBE ICE, DRINKS, ETC.','TRANSPO/DF (NON COGS)','STAFF MEAL (NON COGS)',
+    'OFFICE SUPPLIES (NON COGS)','DINING SUPPLIES (NON COGS)','MISCELLANEOUS (NON COGS)','TOTAL COGS','COGS %','GROSS SALES','AUTO WARNED',
+    'GAS KG','GAS AMOUNT','MANPOWER','MP COST AVERAGE %'];
 if (isset($_GET['export_csv'])) {
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="h_cogs_monitoring_'.date('Y_m',mktime(0,0,0,$fMonth,1,$fYear)).'.csv"');
+    header('Content-Disposition: attachment; filename="h_cogs_monitoring_'.$ym.'.csv"');
     $out = fopen('php://output','w');
-    fputcsv($out,['H COGS Monitoring — '.$months[$fMonth-1].' '.$fYear]);
-    fputcsv($out,['DATE','SM KITCHEN COPY','RHEA COPY','RHEA COPY (PARCEL)','GULAY','OTHER EXPENSES',
-        'BOTTLED WATER/SODAS','TRANSPO/DF','STAFF MEAL','OFFICE SUPPLIES','DINING SUPPLIES','REFUND/MISC',
-        'TOTAL SALES PER DAY','TOTAL COGS','COGS %','AUTO WARNED','TOTAL MP','MP %','MP STATUS']);
-    foreach ($rows as $r) {
-        $c = calcCogsRow($r);
-        fputcsv($out,[
-            $r['entry_date'], $r['sm_kitchen_copy'], $r['rhea_copy'], $r['rhea_copy_parcel'],
-            $r['gulay'], $r['other_expenses'], $r['bottled_water_sodas'], $r['transpo_df_expenses'],
-            $r['staff_meal_expenses'], $r['office_supplies'], $r['dining_supplies'], $r['refund_misc'],
-            $r['total_sales_per_day'], $c['totalCogs'], $c['cogsPct'].'%', $c['cogsStatus'],
-            $r['total_mp'], $c['mpPct'].'%', $c['mpStatus'],
-        ]);
+    fputcsv($out, ['H COGS Monitoring — '.$months[$fMonth-1].' '.$fYear]);
+    fputcsv($out, $CSV_HEAD);
+    $line = function($label, $r, $c) {
+        return [$label,$r['kitchen_cogs'],$r['kitchen_noncogs'],$r['commi_cogs'],$r['gulay_billing'],$r['gulay_store'],$r['gulay_exp'],
+            $r['direct'],$r['carwash'],$r['tube_ice'],$r['transpo'],$r['staff_meal'],$r['office'],$r['dining'],$r['misc'],
+            $c['cogs'], $c['gross'] > 0 ? round($c['cogsPct'],2).'%' : '', $r['gross'], $c['status'],
+            $r['gas_kg'],$r['gas_amt'],$r['manpower'], $c['gross'] > 0 ? round($c['mpPct'],2).'%' : ''];
+    };
+    for ($d = 1; $d <= $days; $d++) {
+        $date = sprintf('%s-%02d', $ym, $d); $r = $byDate[$date] ?? null;
+        if (!$r) { fputcsv($out, [$date]); continue; }
+        fputcsv($out, $line($date, $r, hcCalc($r, $maxPct)));
     }
+    fputcsv($out, $line('TOTAL', $tot, $tc));
     fclose($out);
     exit;
 }
@@ -167,284 +152,286 @@ if (isset($_GET['export_csv'])) {
 $pageTitle  = 'H COGS Monitoring';
 $activePage = 'h_cogs_monitoring';
 include '../layout.php';
+
+$n2  = fn($v) => ((float)$v == 0) ? '' : number_format((float)$v, 2, '.', '');
+$fmt = fn($v) => number_format((float)$v, 2);
+$pct = fn($v) => number_format((float)$v, 2) . '%';
+$accuCogs = $tc['cogs'];
+$totalCogsSum = (float)$set['beg_cogs'] + $accuCogs - (float)$set['end_cogs'];
+
+// column groups in sheet order (key => label)
+$G_KITCHEN = ['kitchen_cogs'=>'BILLING TO COMMI<br>(COGS)','kitchen_noncogs'=>'BILLING TO COMMI<br>(NON COGS)'];
+$G_COMMI   = ['commi_cogs'=>'BILLING TO COMMI<br>(COGS)','gulay_billing'=>'GULAY<br>BILLING'];
+$G_GULAY   = ['gulay_store'=>'GULAY STORE COPY<br>(COMMI BILL)','gulay_exp'=>'GULAY<br>(STORE EXPENSES)'];
+$G_OTHERS  = ['direct'=>'DIRECT PURCHASES<br>(ASSTD)','carwash'=>'CARWASH DIRECT<br>PURCHASES','tube_ice'=>'TUBE ICE,<br>DRINKS, ETC.'];
+$G_NONCOGS = ['transpo'=>1,'staff_meal'=>1,'office'=>1,'dining'=>1,'misc'=>1];
 ?>
 
 <div class="section-header">
   <div>
     <div class="section-title">H COGS <span>Monitoring</span></div>
-    <div class="section-subtitle">Daily COGS & Manpower — <?=$months[$fMonth-1]?> <?=$fYear?></div>
+    <div class="section-subtitle">Daily COGS, gross sales &amp; manpower — <?=$months[$fMonth-1]?> <?=$fYear?> · saves automatically · amount cells accept formulas like <b>=4510+650+290</b></div>
   </div>
   <a class="btn btn-primary" href="?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>">⬇ Download CSV</a>
 </div>
 
-<!-- Month / Year tabs -->
-<div class="card" style="padding:12px 18px;margin-bottom:18px">
+<div class="card" style="padding:12px 18px;margin-bottom:14px">
   <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
     <?php for($m=1;$m<=12;$m++): ?>
     <a href="?month=<?=$m?>&year=<?=$fYear?>"
-       style="padding:5px 13px;border-radius:6px;font-size:.74rem;font-weight:600;text-decoration:none;transition:all .15s;
-              <?=$fMonth===$m?'background:var(--accent);color:#031a12;':'color:var(--subtext2);'?>">
-      <?=substr($months[$m-1],0,3)?>
-    </a>
+       style="padding:5px 13px;border-radius:6px;font-size:.74rem;font-weight:600;text-decoration:none;
+              <?=$fMonth===$m?'background:var(--accent);color:#031a12;':'color:var(--subtext2);'?>"><?=substr($months[$m-1],0,3)?></a>
     <?php endfor; ?>
     <div style="margin-left:auto">
-      <select onchange="window.location='?month=<?=$fMonth?>&year='+this.value"
-              class="form-control" style="padding:5px 10px;font-size:.74rem;font-weight:600;max-width:90px;
-                     background:var(--surf2);border:1px solid rgba(34,211,165,.3);color:var(--accent)">
-        <?php for($y=2050;$y>=2020;$y--): ?>
-        <option value="<?=$y?>" <?=$fYear===$y?'selected':''?>><?=$y?></option>
-        <?php endfor; ?>
+      <select onchange="window.location='?month=<?=$fMonth?>&year='+this.value" class="form-control"
+              style="padding:5px 10px;font-size:.74rem;font-weight:600;max-width:90px">
+        <?php for($y=2050;$y>=2020;$y--): ?><option value="<?=$y?>" <?=$fYear===$y?'selected':''?>><?=$y?></option><?php endfor; ?>
       </select>
     </div>
   </div>
 </div>
 
+<!-- Summary cards -->
+<div class="cm-cards">
+  <div class="cm-card"><div class="l">GROSS SALES</div><div class="v" id="c_gross"><?=$fmt($tc['gross'])?></div></div>
+  <div class="cm-card"><div class="l">TOTAL COGS</div><div class="v" id="c_cogs"><?=$fmt($tc['cogs'])?></div></div>
+  <div class="cm-card" id="c_cogs_box"><div class="l">COGS %</div><div class="v"><span id="c_cogsPct"><?=number_format($tc['cogsPct'],2)?></span>%</div><div class="s" id="c_cogsSt"></div></div>
+  <div class="cm-card"><div class="l">MANPOWER</div><div class="v" id="c_mp"><?=$fmt($tot['manpower'])?></div></div>
+  <div class="cm-card"><div class="l">MP COST AVERAGE %</div><div class="v"><span id="c_mpPct"><?=number_format($tc['mpPct'],2)?></span>%</div></div>
+  <div class="cm-card"><div class="l">KITCHEN COPY − COMMI COPY</div><div class="v" id="c_diff"><?=$fmt($tot['kitchen_cogs'] - $tot['commi_cogs'])?></div><div class="s">Billing to Commi (COGS)</div></div>
+</div>
+
 <!-- Table -->
 <div class="card" style="padding:0">
   <div style="overflow-x:auto">
-  <table class="cogs-tbl" id="cogsTbl">
+  <table class="cm-tbl" id="cmTbl">
     <thead>
       <tr>
-        <th rowspan="2" style="min-width:110px">DATE</th>
-        <th colspan="3">COMMI BILL</th>
-        <th rowspan="2" style="min-width:110px">GULAY<br><span class="sub">(Store Exp.)</span></th>
-        <th rowspan="2" style="min-width:110px">OTHER EXP.<br><span class="sub">(COGS)</span></th>
-        <th rowspan="2" style="min-width:120px">BOTTLED WATER<br>&amp; SODAS <span class="sub">(COGS)</span></th>
-        <th rowspan="2" style="min-width:100px">TRANSPO/DF<br><span class="sub">(NON COGS)</span></th>
-        <th rowspan="2" style="min-width:100px">STAFF MEAL<br><span class="sub">(NON COGS)</span></th>
-        <th colspan="2">FRONTLINE EXP. <span class="sub">(NON COGS)</span></th>
-        <th rowspan="2" style="min-width:100px">REFUND/<br>MISC</th>
-        <th rowspan="2" style="min-width:120px">TOTAL SALES<br>PER DAY</th>
-        <th colspan="2">COGS</th>
-        <th rowspan="2" style="min-width:130px">AUTO WARNED</th>
-        <th colspan="2">MANPOWER COST</th>
-        <th rowspan="2" style="min-width:110px">MP STATUS</th>
-        <th rowspan="2" style="min-width:150px">THRESHOLDS<br><span class="sub">COGS% / MP%</span></th>
-        <th rowspan="2" style="min-width:100px">ACTION</th>
+        <th rowspan="2" style="min-width:104px">DATE</th>
+        <th colspan="2">HERO KITCHEN COPY</th>
+        <th colspan="2">RHEA / COMMI COPY</th>
+        <th colspan="2">GULAY EXPENSES</th>
+        <th colspan="3">OTHERS EXPENSES (COGS)</th>
+        <th>TRANSPO/DF<br>(NON COGS)</th><th>STAFF MEAL<br>(NON COGS)</th><th colspan="2">FRONTLINE EXPENSES<br>(NON COGS)</th><th>MISCELLANEOUS<br>(NON COGS)</th>
+        <th colspan="2" class="calc-h">TOTAL COGS<br><small>(not incl. gas &amp; MP)</small></th>
+        <th rowspan="2">GROSS<br>SALES</th>
+        <th rowspan="2" class="calc-h">AUTO WARNED<br>(IF COGS EXCEED)</th>
+        <th colspan="2">GAS CONSUMPTIONS</th>
+        <th rowspan="2">MANPOWER</th><th rowspan="2" class="calc-h">MP COST<br>AVERAGE (%)</th>
+        <th rowspan="2" style="min-width:34px"></th>
       </tr>
       <tr>
-        <th style="min-width:110px">SM KITCHEN<br><span class="sub">(COGS)</span></th>
-        <th style="min-width:110px">RHEA COPY<br><span class="sub">(COGS, ref.)</span></th>
-        <th style="min-width:100px">RHEA<br>(PARCEL)</th>
-        <th style="min-width:100px">OFFICE<br>SUPPLIES</th>
-        <th style="min-width:100px">DINING<br>SUPPLIES</th>
-        <th style="min-width:110px">TOTAL COGS</th>
-        <th style="min-width:70px">%</th>
-        <th style="min-width:100px">TOTAL MP</th>
-        <th style="min-width:70px">%</th>
+        <?php foreach ($G_KITCHEN + $G_COMMI + $G_GULAY + $G_OTHERS as $k => $l): ?><th><?=$l?></th><?php endforeach; ?>
+        <th>&nbsp;</th><th>&nbsp;</th><th>OFFICE<br>SUPPLIES</th><th>DINING SUPPLIES<br>(CLEANING MATERIALS)</th><th>&nbsp;</th>
+        <th class="calc-h">TOTAL COGS</th><th class="calc-h">%</th>
+        <th>KG</th><th>AMOUNT</th>
       </tr>
     </thead>
-    <tbody id="cogsTbody">
-      <?php foreach ($rows as $r): $c = calcCogsRow($r); ?>
-      <tr data-id="<?=$r['id']?>">
-        <td><input class="ci" type="date" value="<?=$r['entry_date']?>"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['sm_kitchen_copy']?>" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['rhea_copy']?>" placeholder="0.00" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['rhea_copy_parcel']?>" placeholder="0.00" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['gulay']?>" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['other_expenses']?>" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['bottled_water_sodas']?>" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['transpo_df_expenses']?>" placeholder="0.00" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['staff_meal_expenses']?>" placeholder="0.00" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['office_supplies']?>" placeholder="0.00" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['dining_supplies']?>" placeholder="0.00" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['refund_misc']?>" placeholder="0.00" onfocus="this.select()"></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['total_sales_per_day']?>" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-        <td><input class="ci calc" type="number" value="<?=$c['totalCogs']?>" readonly tabindex="-1"></td>
-        <td><input class="ci calc" type="text" value="<?=$c['cogsPct']?>%" readonly tabindex="-1"></td>
-        <td><span class="badge <?=$c['cogsStatus']==='COGS PASSED'?'badge-ok':'badge-bad'?>" data-role="cogsStatus"><?=$c['cogsStatus']?></span></td>
-        <td><input class="ci" type="number" step="0.01" min="0" value="<?=$r['total_mp']?>" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-        <td><input class="ci calc" type="text" value="<?=$c['mpPct']?>%" readonly tabindex="-1"></td>
-        <td><span class="badge <?=$c['mpStatus']==='MP PASSED'?'badge-ok':'badge-bad'?>" data-role="mpStatus"><?=$c['mpStatus']?></span></td>
-        <td class="th-cell">
-          <input class="ci th-inp" type="number" step="0.1" min="0" value="<?=$r['cogs_threshold_pct']?>" title="COGS Max %" oninput="calcRow(this)">
-          <input class="ci th-inp" type="number" step="0.1" min="0" value="<?=$r['mp_threshold_pct']?>" title="MP Max %" oninput="calcRow(this)">
-        </td>
-        <td class="act-td">
-          <button class="btn-sv" onclick="saveRow(this)">Save</button>
-          <button class="btn-dl" onclick="deleteRow(this)">✕</button>
-          <div class="row-st"></div>
-        </td>
+    <tbody id="cmBody">
+    <?php for ($d = 1; $d <= $days; $d++):
+        $date = sprintf('%s-%02d', $ym, $d); $r = $byDate[$date] ?? [];
+        $c = hcCalc($r, $maxPct); $fmap = json_decode($r['formulas'] ?? '', true) ?: [];
+        $dow = date('D', strtotime($date));
+        $inp = function($k) use ($r,$n2,$fmap) {
+            $f = $fmap[$k] ?? '';
+            return '<td><input class="ci" data-k="'.$k.'" inputmode="decimal" autocomplete="off" value="'.$n2($r[$k] ?? 0).'"'
+                 .($f ? ' data-f="'.htmlspecialchars($f,ENT_QUOTES).'" title="'.htmlspecialchars($f,ENT_QUOTES).'"' : '').'></td>';
+        };
+    ?>
+      <tr data-date="<?=$date?>" class="<?= in_array($dow,['Sat','Sun'],true)?'wk':'' ?>">
+        <td class="dcell"><b><?=$d?></b> <span><?=$dow?></span></td>
+        <?php foreach (array_merge(array_keys($G_KITCHEN), array_keys($G_COMMI), array_keys($G_GULAY), array_keys($G_OTHERS), array_keys($G_NONCOGS)) as $k) echo $inp($k); ?>
+        <td class="calc" data-c="cogs"><?= $c['cogs'] ? $fmt($c['cogs']) : '' ?></td>
+        <td class="calc" data-c="cogsPct"><?= $c['gross'] > 0 ? $pct($c['cogsPct']) : '' ?></td>
+        <?= $inp('gross') ?>
+        <td class="calc st" data-c="status"><?= $c['status'] ?></td>
+        <?= $inp('gas_kg') ?><?= $inp('gas_amt') ?>
+        <?= $inp('manpower') ?>
+        <td class="calc" data-c="mpPct"><?= $c['gross'] > 0 ? $pct($c['mpPct']) : '' ?></td>
+        <td class="stc"><span class="dot" title=""></span></td>
       </tr>
-      <?php endforeach; ?>
+    <?php endfor; ?>
     </tbody>
+    <tfoot>
+      <tr class="tot">
+        <td>TOTAL</td>
+        <?php foreach (array_merge(array_keys($G_KITCHEN), array_keys($G_COMMI), array_keys($G_GULAY), array_keys($G_OTHERS), array_keys($G_NONCOGS)) as $k): ?><td data-t="<?=$k?>"><?=$fmt($tot[$k])?></td><?php endforeach; ?>
+        <td data-t="cogs"><?=$fmt($tc['cogs'])?></td>
+        <td data-t="cogsPct"><?=$pct($tc['cogsPct'])?></td>
+        <td data-t="gross"><?=$fmt($tot['gross'])?></td>
+        <td data-t="status"><?=$tc['status']?></td>
+        <td data-t="gas_kg"><?=$fmt($tot['gas_kg'])?></td><td data-t="gas_amt"><?=$fmt($tot['gas_amt'])?></td>
+        <td data-t="manpower"><?=$fmt($tot['manpower'])?></td>
+        <td data-t="mpPct"><?=$pct($tc['mpPct'])?></td>
+        <td></td>
+      </tr>
+    </tfoot>
   </table>
   </div>
-  <button class="btn-add" onclick="addRow()">+ Add Row</button>
+</div>
+
+<!-- Month settings + Total COGS % Average Summary -->
+<div class="card cm-set" style="margin-top:14px">
+  <div class="cm-set-t">Total COGS % Average Summary — <?=$months[$fMonth-1]?> <?=$fYear?></div>
+  <div class="cm-set-g">
+    <label>ACCU SALES (gross sales total)<input class="ci" id="a_sales" readonly value="<?=$fmt($tc['gross'])?>"></label>
+    <label>BEG COGS<input class="ci" id="s_beg" inputmode="decimal" value="<?=$n2($set['beg_cogs'])?>"></label>
+    <label>ACCU COGS (total COGS)<input class="ci" id="a_cogs" readonly value="<?=$fmt($accuCogs)?>"></label>
+    <label>END COGS (month end amount)<input class="ci" id="s_end" inputmode="decimal" value="<?=$n2($set['end_cogs'])?>"></label>
+    <label>COGS limit % (COGS PASSED if below)<input class="ci" id="s_max" inputmode="decimal" value="<?=rtrim(rtrim(number_format($maxPct,2,'.',''),'0'),'.')?>"></label>
+  </div>
+  <div class="cm-tg">
+    <div><span>TOTAL COGS (BEG + ACCU − END)</span><b id="t_total"><?=$fmt($totalCogsSum)?></b></div>
+    <div><span>COGS %</span><b id="t_pct"><?= $tc['gross'] > 0 ? $pct($totalCogsSum / $tc['gross'] * 100) : '0.00%' ?></b></div>
+  </div>
 </div>
 
 <style>
-.cogs-tbl { width:100%; border-collapse:collapse; font-family:var(--font-m); font-size:.74rem; }
-.cogs-tbl thead th {
-  background:var(--surf2); color:var(--subtext); text-transform:uppercase;
-  font-size:.6rem; letter-spacing:.04em; padding:7px 6px; border:1px solid var(--border);
-  text-align:center; line-height:1.3;
-}
-.cogs-tbl thead .sub { font-size:.56rem; color:var(--subtext2); text-transform:none; font-weight:400; }
-.cogs-tbl tbody td { padding:4px 5px; border:1px solid var(--border); text-align:center; }
-.cogs-tbl .ci {
-  width:100%; min-width:80px; padding:5px 6px; border:1px solid var(--border); border-radius:6px;
-  background:var(--surface); color:var(--text); font-family:var(--font-m); font-size:.72rem;
-  text-align:center;
-}
-.cogs-tbl .ci.calc { background:var(--surf3); color:var(--subtext2); font-weight:600; }
-.cogs-tbl .th-cell { display:flex; flex-direction:column; gap:3px; padding:5px; }
-.cogs-tbl .th-inp { min-width:60px; }
-.badge {
-  display:inline-block; font-family:var(--font-m); font-size:.6rem; font-weight:700;
-  padding:4px 8px; border-radius:20px; white-space:nowrap;
-}
-.badge-ok  { background:rgba(34,211,165,.12); color:var(--accent); border:1px solid rgba(34,211,165,.2); }
-.badge-bad { background:rgba(248,113,113,.12); color:var(--accent2); border:1px solid rgba(248,113,113,.2); }
-.act-td { white-space:nowrap; }
-.btn-sv, .btn-dl {
-  font-family:var(--font-m); font-size:.66rem; padding:5px 8px; border-radius:6px;
-  border:1px solid var(--border); cursor:pointer; margin-right:3px;
-}
-.btn-sv { background:var(--accent); color:#031a12; border-color:var(--accent); font-weight:600; }
-.btn-dl { background:rgba(248,113,113,.08); color:var(--accent2); border-color:rgba(248,113,113,.2); }
-.row-st { display:none; font-size:.64rem; color:var(--accent); margin-top:3px; }
-.btn-add {
-  margin:12px 16px 16px; padding:9px 14px; width:calc(100% - 32px);
-  background:rgba(34,211,165,.05); border:1px dashed rgba(34,211,165,.25);
-  color:var(--accent); border-radius:8px; cursor:pointer;
-  font-family:var(--font-m); font-size:.74rem; letter-spacing:.02em;
-}
-.btn-add:hover { background:rgba(34,211,165,.1); }
+.cm-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+.cm-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 14px; }
+.cm-card .l { font-family:var(--font-m); font-size:.58rem; letter-spacing:.06em; color:var(--subtext2); }
+.cm-card .v { font-family:var(--font-m); font-size:1.05rem; font-weight:800; margin-top:3px; }
+.cm-card .s { font-family:var(--font-m); font-size:.62rem; font-weight:700; margin-top:2px; color:var(--subtext2); }
+.cm-card.bad .v, .cm-card.bad .s { color:#c0182b; }
+.cm-card.ok .s { color:#15803d; }
+.cm-tbl { width:100%; border-collapse:collapse; font-family:var(--font-m); font-size:.72rem; }
+.cm-tbl thead th { background:#2f855a; color:#fff; font-size:.56rem; letter-spacing:.03em; padding:6px 5px; border:1px solid #256b49; text-align:center; line-height:1.3; white-space:nowrap; }
+.cm-tbl thead th small { font-weight:500; opacity:.85; font-size:.5rem; }
+.cm-tbl thead th.calc-h { background:#1f6b3f; }
+.cm-tbl tbody td { padding:2px 3px; border:1px solid var(--border); text-align:right; }
+.cm-tbl tbody tr.wk td { background:rgba(47,133,90,.05); }
+.cm-tbl td.dcell { text-align:left; padding:3px 8px; white-space:nowrap; position:sticky; left:0; background:var(--surface); z-index:1; }
+.cm-tbl td.dcell span { color:var(--subtext2); font-size:.6rem; margin-left:4px; }
+.cm-tbl td.calc { background:#f0fdf4; font-weight:700; padding:4px 8px; white-space:nowrap; color:#14532d; }
+.cm-tbl td.calc.over { color:#c0182b; background:#fef2f2; }
+.cm-tbl td.calc.st { font-size:.6rem; text-align:center; }
+.cm-tbl .ci, .cm-set .ci { width:100%; min-width:84px; padding:4px 6px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-family:var(--font-m); font-size:.72rem; text-align:right; }
+.cm-tbl .ci:hover { border-color:var(--border); }
+.cm-tbl .ci:focus, .cm-set .ci:focus { outline:none; border-color:#2f855a; background:#fff; box-shadow:0 0 0 2px rgba(47,133,90,.15); }
+.cm-tbl tfoot td { background:#bbf7d0; color:#14532d; font-weight:800; padding:6px 8px; border:1px solid #86d9a5; text-align:right; white-space:nowrap; }
+.cm-tbl tfoot td:first-child { text-align:left; }
+.cm-tbl tfoot td[data-t="status"] { font-size:.6rem; text-align:center; }
+.stc { width:34px; text-align:center; }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:transparent; }
+.dot.saving { background:#d69e2e; } .dot.ok { background:#2f855a; } .dot.err { background:#c0182b; }
+.cm-set { padding:14px 18px; }
+.cm-set-t { font-family:var(--font-m); font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#2f855a; margin-bottom:10px; }
+.cm-set-g { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+.cm-set-g label { font-family:var(--font-m); font-size:.6rem; color:var(--subtext2); text-transform:uppercase; letter-spacing:.04em; display:flex; flex-direction:column; gap:4px; }
+.cm-set .ci { border:1px solid var(--border); background:var(--surface); text-align:right; padding:7px 9px; }
+.cm-set .ci[readonly] { background:#f0fdf4; font-weight:700; color:#14532d; }
+.cm-tg { display:flex; gap:22px; flex-wrap:wrap; margin-top:14px; padding-top:12px; border-top:1px dashed var(--border); }
+.cm-tg div { display:flex; flex-direction:column; gap:2px; }
+.cm-tg span { font-family:var(--font-m); font-size:.58rem; letter-spacing:.05em; color:var(--subtext2); }
+.cm-tg b { font-family:var(--font-m); font-size:.95rem; color:#14532d; }
 </style>
 
 <script>
-const gv = el => parseFloat(el?.value) || 0;
+const YM = '<?=$ym?>';
+const KEYS = <?=json_encode(HC_KEYS)?>;
+const COGS = <?=json_encode(HC_COGS)?>;
+const money = n => Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-function calcRow(inp) {
-  const tr = inp.closest('tr');
-  const ci = tr.querySelectorAll('.ci');
-  // 0 date,1 sm_kitchen,2 rhea,3 rhea_parcel,4 gulay,5 other,6 bottled,7 transpo,8 staff_meal,
-  // 9 office,10 dining,11 refund,12 sales,13 total_cogs(calc),14 cogs_pct(calc),
-  // 15 total_mp,16 mp_pct(calc),17 cogs_threshold,18 mp_threshold
-  const smKitchen = gv(ci[1]);
-  const gulay     = gv(ci[4]);
-  const other     = gv(ci[5]);
-  const bottled   = gv(ci[6]);
-  const sales     = gv(ci[12]);
-  const totalMp   = gv(ci[15]);
-  const cogsTh    = gv(ci[17]);
-  const mpTh      = gv(ci[18]);
-
-  const totalCogs = smKitchen + gulay + other + bottled;
-  const cogsPct   = sales > 0 ? (totalCogs / sales * 100) : 0;
-  const mpPct     = sales > 0 ? (totalMp   / sales * 100) : 0;
-
-  ci[13].value = totalCogs.toFixed(2);
-  ci[14].value = cogsPct.toFixed(1) + '%';
-  ci[16].value = mpPct.toFixed(1) + '%';
-
-  const cogsBadge = tr.querySelector('[data-role="cogsStatus"]');
-  const cogsOver  = cogsPct > cogsTh;
-  cogsBadge.textContent = cogsOver ? 'COGS OVER COST' : 'COGS PASSED';
-  cogsBadge.className = 'badge ' + (cogsOver ? 'badge-bad' : 'badge-ok');
-
-  const mpBadge = tr.querySelector('[data-role="mpStatus"]');
-  const mpPassed = mpPct < mpTh;
-  mpBadge.textContent = mpPassed ? 'MP PASSED' : 'MP FAILED';
-  mpBadge.className = 'badge ' + (mpPassed ? 'badge-ok' : 'badge-bad');
-}
-
-function addRow() {
-  const tbody = document.getElementById('cogsTbody');
-  const tr = document.createElement('tr');
-  tr.dataset.id = '0';
-  tr.innerHTML = `
-    <td><input class="ci" type="date" value="<?=date('Y-m-d')?>"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" onfocus="this.select()"></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-    <td><input class="ci calc" type="number" value="0.00" readonly tabindex="-1"></td>
-    <td><input class="ci calc" type="text" value="0.0%" readonly tabindex="-1"></td>
-    <td><span class="badge badge-ok" data-role="cogsStatus">COGS PASSED</span></td>
-    <td><input class="ci" type="number" step="0.01" min="0" placeholder="0.00" oninput="calcRow(this)" onfocus="this.select()"></td>
-    <td><input class="ci calc" type="text" value="0.0%" readonly tabindex="-1"></td>
-    <td><span class="badge badge-ok" data-role="mpStatus">MP PASSED</span></td>
-    <td class="th-cell">
-      <input class="ci th-inp" type="number" step="0.1" min="0" value="45" title="COGS Max %" oninput="calcRow(this)">
-      <input class="ci th-inp" type="number" step="0.1" min="0" value="7" title="MP Max %" oninput="calcRow(this)">
-    </td>
-    <td class="act-td">
-      <button class="btn-sv" onclick="saveRow(this)">Save</button>
-      <button class="btn-dl" onclick="deleteRow(this)">✕</button>
-      <div class="row-st"></div>
-    </td>`;
-  tbody.appendChild(tr);
-  tr.querySelector('input[type="date"]').focus();
-}
-
-async function saveRow(btn) {
-  const tr = btn.closest('tr');
-  const st = tr.querySelector('.row-st');
-  const ci = tr.querySelectorAll('.ci');
-  const fd = new FormData();
-  fd.append('ajax_action','save_row');
-  fd.append('id', tr.dataset.id||0);
-  fd.append('entry_date', ci[0].value);
-  fd.append('sm_kitchen_copy', gv(ci[1]));
-  fd.append('rhea_copy', gv(ci[2]));
-  fd.append('rhea_copy_parcel', gv(ci[3]));
-  fd.append('gulay', gv(ci[4]));
-  fd.append('other_expenses', gv(ci[5]));
-  fd.append('bottled_water_sodas', gv(ci[6]));
-  fd.append('transpo_df_expenses', gv(ci[7]));
-  fd.append('staff_meal_expenses', gv(ci[8]));
-  fd.append('office_supplies', gv(ci[9]));
-  fd.append('dining_supplies', gv(ci[10]));
-  fd.append('refund_misc', gv(ci[11]));
-  fd.append('total_sales_per_day', gv(ci[12]));
-  fd.append('total_mp', gv(ci[15]));
-  fd.append('cogs_threshold_pct', gv(ci[17]));
-  fd.append('mp_threshold_pct', gv(ci[18]));
-  fd.append('sort_order', Array.from(tr.parentElement.children).indexOf(tr));
-  btn.textContent='…'; btn.disabled=true;
-  try {
-    const r = await fetch('h_cogs_monitoring.php',{method:'POST',body:fd});
-    const d = await r.json();
-    if (d.ok) {
-      tr.dataset.id = d.id;
-      ci[13].value = Number(d.totalCogs).toFixed(2);
-      ci[14].value = Number(d.cogsPct).toFixed(1) + '%';
-      ci[16].value = Number(d.mpPct).toFixed(1) + '%';
-      const cogsBadge = tr.querySelector('[data-role="cogsStatus"]');
-      cogsBadge.textContent = d.cogsStatus;
-      cogsBadge.className = 'badge ' + (d.cogsStatus==='COGS PASSED' ? 'badge-ok' : 'badge-bad');
-      const mpBadge = tr.querySelector('[data-role="mpStatus"]');
-      mpBadge.textContent = d.mpStatus;
-      mpBadge.className = 'badge ' + (d.mpStatus==='MP PASSED' ? 'badge-ok' : 'badge-bad');
-      st.textContent='✓'; st.style.display='block';
-      setTimeout(()=>st.style.display='none',2000);
-    } else { alert('Error: '+d.msg); }
-  } catch(e){ alert('Network error'); }
-  btn.textContent='Save'; btn.disabled=false;
-}
-
-async function deleteRow(btn) {
-  const tr = btn.closest('tr');
-  const id = parseInt(tr.dataset.id)||0;
-  if (id>0 && !confirm('Delete this entry?')) return;
-  if (id>0) {
-    const fd=new FormData(); fd.append('ajax_action','delete_row'); fd.append('id',id);
-    await fetch('h_cogs_monitoring.php',{method:'POST',body:fd});
+// Excel-style input:  "=4510+650+290"  or a plain number
+function parseCell(el) {
+  const s = (el.value || '').trim();
+  if (s.startsWith('=')) {
+    const ex = s.slice(1);
+    if (/^[0-9+\-*\/(). ]+$/.test(ex)) { try { const v = Function('"use strict";return (' + ex + ')')(); if (isFinite(v)) return {v:Math.round(v*100)/100, f:'='+ex.trim()}; } catch(e) {} }
+    return {v:0, f:null};
   }
-  tr.remove();
+  return {v: parseFloat(s.replace(/,/g,'')) || 0, f:null};
 }
+function rowVals(tr) {
+  const o = {}; KEYS.forEach(k => { const el = tr.querySelector(`[data-k="${k}"]`); o[k] = el ? (el._v !== undefined ? el._v : parseCell(el).v) : 0; });
+  return o;
+}
+function setting(id) { return parseFloat((document.getElementById(id).value||'').replace(/,/g,'')) || 0; }
+function calc(o) {
+  let cogs = 0; COGS.forEach(k => cogs += o[k]);
+  const g = o.gross, pct = g > 0 ? cogs / g * 100 : 0;
+  return {cogs, gross:g, cogsPct:pct, mpPct: g>0 ? o.manpower/g*100 : 0,
+          status: g > 0 ? (pct < setting('s_max') ? 'COGS PASSED' : 'COGS OVER COST') : ''};
+}
+
+function refreshRow(tr) {
+  const o = rowVals(tr), c = calc(o);
+  const put = (n, t, over) => { const td = tr.querySelector(`[data-c="${n}"]`); td.textContent = t; td.classList.toggle('over', !!over); };
+  put('cogs',   c.cogs ? money(c.cogs) : '');
+  put('cogsPct',c.gross > 0 ? c.cogsPct.toFixed(2)+'%' : '', c.status === 'COGS OVER COST');
+  put('status', c.status, c.status === 'COGS OVER COST');
+  put('mpPct',  c.gross > 0 ? c.mpPct.toFixed(2)+'%' : '');
+}
+function refreshTotals() {
+  const T = {}; KEYS.forEach(k => T[k] = 0);
+  document.querySelectorAll('#cmBody tr').forEach(tr => { const o = rowVals(tr); KEYS.forEach(k => T[k] += o[k]); });
+  const c = calc(T);
+  const set = (k, t) => { const td = document.querySelector(`[data-t="${k}"]`); if (td) td.textContent = t; };
+  KEYS.forEach(k => set(k, money(T[k])));
+  set('cogs', money(c.cogs)); set('cogsPct', c.cogsPct.toFixed(2)+'%'); set('status', c.status); set('mpPct', c.mpPct.toFixed(2)+'%');
+  const txt = (id, t) => document.getElementById(id).textContent = t;
+  txt('c_gross', money(c.gross)); txt('c_cogs', money(c.cogs)); txt('c_cogsPct', c.cogsPct.toFixed(2));
+  txt('c_mp', money(T.manpower)); txt('c_mpPct', c.mpPct.toFixed(2)); txt('c_diff', money(T.kitchen_cogs - T.commi_cogs));
+  const over = c.status === 'COGS OVER COST';
+  document.getElementById('c_cogs_box').className = 'cm-card ' + (c.gross ? (over ? 'bad' : 'ok') : '');
+  txt('c_cogsSt', c.status);
+  // Total COGS % Average Summary:  TOTAL COGS = BEG + ACCU − END ;  COGS% = TOTAL COGS / ACCU SALES
+  document.getElementById('a_sales').value = money(c.gross);
+  document.getElementById('a_cogs').value  = money(c.cogs);
+  const total = setting('s_beg') + c.cogs - setting('s_end');
+  txt('t_total', money(total)); txt('t_pct', (c.gross > 0 ? total / c.gross * 100 : 0).toFixed(2) + '%');
+}
+
+// ── autosave (per row, debounced) ──
+const timers = new WeakMap();
+function queueSave(tr) { clearTimeout(timers.get(tr)); setDot(tr, 'saving'); timers.set(tr, setTimeout(() => saveRow(tr), 600)); }
+function setDot(tr, s) { const d = tr.querySelector('.dot'); if (d) d.className = 'dot ' + s; }
+async function saveRow(tr) {
+  const fd = new FormData(); fd.append('ajax_action','save_row'); fd.append('entry_date', tr.dataset.date);
+  const fm = {};
+  KEYS.forEach(k => { const el = tr.querySelector(`[data-k="${k}"]`); const o = el._v !== undefined ? el._v : parseCell(el).v; fd.append(k, o); if (el.dataset.f) fm[k] = el.dataset.f; });
+  fd.append('formulas', JSON.stringify(fm));
+  try {
+    const r = await fetch('h_cogs_monitoring.php', {method:'POST', body:fd}); const d = await r.json();
+    setDot(tr, d.ok ? 'ok' : 'err'); if (!d.ok) alert('Save failed: ' + d.msg);
+    else setTimeout(() => { const x = tr.querySelector('.dot'); if (x && x.classList.contains('ok')) x.className = 'dot'; }, 1800);
+  } catch (e) { setDot(tr, 'err'); }
+}
+
+document.querySelectorAll('#cmBody .ci').forEach(el => {
+  const p = parseCell(el); el._v = p.v;
+  el.addEventListener('focus', () => { if (el.dataset.f) el.value = el.dataset.f; el.select(); });
+  el.addEventListener('input', () => { const p = parseCell(el); el._v = p.v; refreshRow(el.closest('tr')); refreshTotals(); queueSave(el.closest('tr')); });
+  el.addEventListener('blur', () => {
+    const p = parseCell(el); el._v = p.v;
+    if (p.f) { el.dataset.f = p.f; el.title = p.f; } else { delete el.dataset.f; el.title = ''; }
+    el.value = p.v ? p.v.toFixed(2) : '';
+    refreshRow(el.closest('tr')); refreshTotals(); queueSave(el.closest('tr'));
+  });
+  el.addEventListener('keydown', e => {            // Enter / ↓ move down, ↑ moves up (like the sheet)
+    if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const tr = el.closest('tr'), idx = [...tr.children].indexOf(el.closest('td'));
+    const nx = (e.key === 'ArrowUp') ? tr.previousElementSibling : tr.nextElementSibling;
+    nx?.children[idx]?.querySelector('.ci')?.focus();
+  });
+});
+document.querySelectorAll('#cmBody tr').forEach(refreshRow);
+
+// ── month settings (autosave) ──
+let setTimer = null;
+document.querySelectorAll('.cm-set .ci:not([readonly])').forEach(el => {
+  el.addEventListener('focus', () => el.select());
+  el.addEventListener('input', () => { refreshTotals(); document.querySelectorAll('#cmBody tr').forEach(refreshRow);
+    clearTimeout(setTimer); setTimer = setTimeout(saveSettings, 700); });
+});
+async function saveSettings() {
+  const fd = new FormData(); fd.append('ajax_action','save_settings'); fd.append('ym', YM);
+  fd.append('cogs_max_pct', setting('s_max')); fd.append('beg_cogs', setting('s_beg')); fd.append('end_cogs', setting('s_end'));
+  try { await fetch('h_cogs_monitoring.php', {method:'POST', body:fd}); } catch (e) {}
+}
+refreshTotals();
 </script>
 
   </div></div>
 </body>
-</html>
