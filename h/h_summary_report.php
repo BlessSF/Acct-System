@@ -60,6 +60,12 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 } catch (Throwable $ignored) {}
 
+// One row per store per date — remove any old duplicates and enforce it.
+try {
+    require_once __DIR__ . '/../lib/branch_sales.php';
+    ensureUniqueStoreDate($pdo, 'h_report_entries');
+} catch (Throwable $ignored) {}
+
 // ── Handle AJAX save (per-row) ────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     header('Content-Type: application/json');
@@ -279,6 +285,20 @@ $SALES_MAP = [
 // default, but a manually-saved value always takes priority.
 $NEVER_LOCK = ['cancelled_transaction'];
 
+// ── Live sync: current H Sales Report values for this month (polled by JS) ──
+if (isset($_GET['ajax_sync'])) {
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    $out = [];
+    foreach ($salesRows as $d => $sr) {
+        $o = [];
+        foreach ($SALES_MAP as $k => $src) $o[$k] = round((float)($sr[$src] ?? 0), 2);
+        $out[$d] = $o;
+    }
+    echo json_encode(['ok' => true, 'rows' => $out]);
+    exit;
+}
+
 // ── Load saved quota ──────────────────────────────────────
 $savedQuota = 0;
 try {
@@ -389,6 +409,10 @@ include '../layout.php';
 .sri.neg   { color: #be123c !important; font-weight: 600; }
 
 /* ── Save button ── */
+.asv { font-size:.68rem; font-weight:600; color:var(--subtext); }
+.asv.saving { color:#b45309; }
+.asv.ok { color:#15803d; }
+.asv.err { color:#be123c; }
 .bsr {
   padding: 4px 8px; font-size: .6rem;
   font-family: var(--font-m); font-weight: 700;
@@ -446,7 +470,7 @@ include '../layout.php';
 <div class="section-header">
   <div>
     <div class="section-title" style="color:#1a1d23">H <span style="color:var(--accent)">Summary Report</span></div>
-    <div class="section-subtitle">Daily spreadsheet entry · each row has its own Save button · Save All saves every row</div>
+    <div class="section-subtitle">Auto-saves as you type (empty rows are never saved) · linked cells update by themselves from the Sales Report</div>
   </div>
 </div>
 
@@ -465,7 +489,6 @@ include '../layout.php';
     <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
     <?php endfor; ?>
   </select>
-  <button type="button" class="btn btn-primary btn-sm" onclick="saveAll()">💾 Save All</button>
   <a href="#" class="btn btn-ghost btn-sm" style="color:var(--accent3);border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)" onclick="downloadCSV(event)">⬇ Download Excel</a>
 </form>
 
@@ -544,7 +567,7 @@ include '../layout.php';
       <th class="g-income col-num">OTHER SALES</th>
       <!-- NOTES 2 -->
       <th class="g-text col-txt">REMARKS (2)</th>
-      <th class="th-act">SAVE</th>
+      <th class="th-act">AUTO-SAVE</th>
     </tr>
   </thead>
 
@@ -585,7 +608,7 @@ include '../layout.php';
   <tr id="<?=$rid?>" data-date="<?=$ds?>" data-saved="<?=$saved?1:0?>" data-fromsr="<?=$hasSR?1:0?>">
     <td class="td-date">
       <?=$dayN?>-<?=date('M',strtotime($ds))?> <small style="color:var(--subtext);font-size:.6rem"><?=$dayNm?></small>
-      <span class="sdot <?=$saved?'ok':($fromSR?'auto':'new')?>" id="dot_<?=$rid?>" title="<?=$fromSR?'Auto-filled from H Sales Report — click Save to lock in':''?>"></span>
+      <span class="sdot <?=$saved?'ok':($fromSR?'auto':'new')?>" id="dot_<?=$rid?>" title="<?=$fromSR?'Auto-filled from H Sales Report — saves automatically':''?>"></span>
     </td>
 
     <!-- AUTO-CALC SALES -->
@@ -628,9 +651,7 @@ include '../layout.php';
     <td class="g-text"><input type="text" class="sri txt" data-col="remarks2" data-row="<?=$rid?>" value="<?=htmlspecialchars($row['remarks2']??'')?>" placeholder="…" oninput="changed(this)"></td>
 
     <td class="td-act">
-      <button class="bsr" id="btn_<?=$rid?>" onclick="saveRow('<?=$rid?>','<?=$ds?>')">
-        <?=$saved?'Update':'Save'?>
-      </button>
+      <span class="asv" id="btn_<?=$rid?>"><?=$saved?'Saved':'—'?></span>
     </td>
   </tr>
   <?php endforeach; ?>
@@ -651,7 +672,6 @@ include '../layout.php';
 </div>
 
 <div style="display:flex;justify-content:flex-end;margin-top:12px;gap:10px">
-  <button class="btn btn-primary" onclick="saveAll()">💾 Save All Rows</button>
 </div>
 
 <!-- ── TARGET SALES SUMMARY PANEL ── -->
@@ -795,22 +815,49 @@ function recalcTotals() {
   recalcHSummary();
 }
 
-// ── Mark row dirty on input ───────────────────────────────
+// ── Auto-save: debounced per row ──────────────────────────
+const saveTimers = {};
+const AUTOCOLS = ['gross_sales_excl_mktg','store_gross','total_deductions','short_over','total_swipe'];
+// true when the row has anything typed/linked (blank rows are never saved)
+function rowHasInput(rid) {
+  const tr = document.getElementById(rid);
+  if (!tr) return false;
+  return [...tr.querySelectorAll('input[data-col]')].some(function(el){
+    const c = el.dataset.col;
+    if (AUTOCOLS.indexOf(c) >= 0) return false;
+    if (c === 'remarks' || c === 'remarks2') return el.value.trim() !== '';
+    return (parseFloat(el.value) || 0) !== 0;
+  });
+}
+function setStat(rid, cls, txt) {
+  const b = document.getElementById('btn_' + rid);
+  if (b) { b.className = 'asv ' + cls; b.textContent = txt; }
+}
 function changed(el) {
   const rid = el.dataset.row;
   recalc(rid);
   recalcTotals();
-  const btn = document.getElementById('btn_' + rid);
-  btn.textContent = 'Save';
-  btn.className = 'bsr';
-  document.getElementById(rid).dataset.saved = '0';
+  const tr = document.getElementById(rid);
+  const wasSaved = tr.dataset.saved === '1' || tr.dataset.wasSaved === '1';
+  if (wasSaved) tr.dataset.wasSaved = '1';
+  if (!rowHasInput(rid) && !wasSaved) {          // nothing entered → nothing to save
+    clearTimeout(saveTimers[rid]);
+    setStat(rid, '', '—');
+    return;
+  }
+  tr.dataset.saved = '0';
   document.getElementById('dot_' + rid).className = 'sdot new';
+  setStat(rid, 'saving', 'Typing…');
+  clearTimeout(saveTimers[rid]);
+  saveTimers[rid] = setTimeout(function(){ saveRow(rid, tr.dataset.date); }, 600);
 }
 
 // ── Save single row ───────────────────────────────────────
 async function saveRow(rid, ds) {
-  const btn = document.getElementById('btn_' + rid);
-  btn.textContent = '…'; btn.className = 'bsr saving';
+  clearTimeout(saveTimers[rid]);
+  const trr = document.getElementById(rid);
+  if (!rowHasInput(rid) && trr.dataset.saved !== '1' && trr.dataset.wasSaved !== '1') { setStat(rid, '', '—'); return; }
+  setStat(rid, 'saving', 'Saving…');
 
   const fd = new FormData();
   fd.append('ajax_save', '1');
@@ -829,19 +876,66 @@ async function saveRow(rid, ds) {
     const res  = await fetch('h_summary_report.php', {method:'POST', body:fd});
     const data = await res.json();
     if (data.ok) {
-      btn.textContent = 'Update'; btn.className = 'bsr ok';
+      setStat(rid, 'ok', 'Saved ✓');
       document.getElementById(rid).dataset.saved = '1';
+      document.getElementById(rid).dataset.wasSaved = '1';
       document.getElementById('dot_' + rid).className = 'sdot ok';
-      setTimeout(function(){ if (btn.className.includes('ok')) btn.className = 'bsr'; }, 2200);
     } else {
-      btn.textContent = 'Error'; btn.className = 'bsr err';
+      setStat(rid, 'err', 'Error');
       showToast('❌ ' + data.msg, 'error');
-      setTimeout(function(){ btn.textContent = 'Save'; btn.className = 'bsr'; }, 3000);
     }
   } catch(e) {
-    btn.textContent = 'Error'; btn.className = 'bsr err';
+    setStat(rid, 'err', 'Error');
     showToast('❌ Network error', 'error');
   }
+}
+
+// ── Live sync with the H Sales Report ─────────────────────
+// Every few seconds, pull the Sales Report figures and refresh the linked
+// (blue) cells, so edits there show up here with no button pressed.
+const SYNC_NEVER = ['cancelled_transaction'];
+let syncBusy = false;
+async function syncFromSales() {
+  if (syncBusy || document.hidden) return;
+  syncBusy = true;
+  try {
+    const res = await fetch('h_summary_report.php' + location.search + (location.search ? '&' : '?') + 'ajax_sync=1&_=' + Date.now(), {cache:'no-store'});
+    const data = await res.json();
+    if (!data.ok) return;
+    const fmt = v => v != 0 ? Number(v).toFixed(2) : '';
+    Object.keys(data.rows).forEach(function(ds) {
+      const rid = 'r' + ds.replace(/-/g, '');
+      const tr = document.getElementById(rid);
+      if (!tr) return;
+      let changedAny = false;
+      const vals = data.rows[ds];
+      Object.keys(vals).forEach(function(col) {
+        const el = tr.querySelector(`[data-col="${col}"]`);
+        if (!el || el === document.activeElement) return;
+        const nv = fmt(vals[col]);
+        if (SYNC_NEVER.indexOf(col) >= 0) {
+          // editable cell: only follow the Sales Report if the user hasn't overridden it
+          const prev = el.dataset.srv;
+          if (prev === undefined) { el.dataset.srv = nv; return; }
+          if (el.value === prev || el.value === '') {
+            if (el.value !== nv) { el.value = nv; changedAny = true; }
+          }
+          el.dataset.srv = nv;
+          return;
+        }
+        if (el.readOnly !== true) { el.readOnly = true; el.tabIndex = -1; el.classList.add('calc'); el.removeAttribute('oninput'); }
+        if (el.value !== nv) { el.value = nv; changedAny = true; }
+      });
+      if (tr.dataset.fromsr !== '1') { tr.dataset.fromsr = '1'; changedAny = true; }
+      if (changedAny) {
+        recalc(rid);
+        clearTimeout(saveTimers[rid]);
+        saveTimers[rid] = setTimeout(function(){ saveRow(rid, ds); }, 300);
+      }
+    });
+    recalcTotals();
+  } catch(e) { /* offline — try again next tick */ }
+  finally { syncBusy = false; }
 }
 
 // ── Save all rows ─────────────────────────────────────────
@@ -953,6 +1047,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('#srt tbody tr').forEach(function(r){ recalc(r.id); });
   recalcTotals();
   recalcHSummary();
+  setInterval(syncFromSales, 4000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) syncFromSales(); });
 });
 </script>
 <script src="../assets/js/keynav.js"></script>
