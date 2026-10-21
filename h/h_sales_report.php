@@ -825,6 +825,7 @@ include '../layout.php';
 <div class="sr-wrap">
 <div class="sr-card">
   <div class="sr-title-row"><div class="sr-main-title">Summary Report</div></div>
+  <div class="sr-inputnote"><span class="sr-inputnote-box"></span> Glowing blue boxes = you can type here. The other boxes are filled in automatically.</div>
 
   <div class="sr-row for-row">
     <div class="sr-label" style="text-align:left;flex:1">For</div>
@@ -927,6 +928,26 @@ include '../layout.php';
 </div>
 </div>
 </div><!-- /.sr-split -->
+
+<style>
+/* Summary Report: cells you can type in = white with a blue glow (tinted/pink cells are auto-calculated) */
+.sr-wrap input.sr-input:not([readonly]),
+.sr-wrap textarea.sr-remarks {
+  background:#fff !important; color:#1a1d23 !important;
+  border:2px solid #0284c7 !important;
+  box-shadow:0 0 0 3px rgba(2,132,199,.55), 0 0 14px 2px rgba(2,132,199,.7) !important;
+  transition:box-shadow .15s, border-color .15s;
+}
+.sr-wrap input.sr-input:not([readonly]):hover,
+.sr-wrap textarea.sr-remarks:hover { box-shadow:0 0 0 3px rgba(2,132,199,.75), 0 0 18px 3px rgba(2,132,199,.85) !important; }
+.sr-wrap input.sr-input:not([readonly]):focus,
+.sr-wrap textarea.sr-remarks:focus {
+  border-color:#0369a1 !important;
+  box-shadow:0 0 0 4px rgba(2,132,199,.85), 0 0 22px 4px rgba(2,132,199,.9) !important;
+}
+.sr-inputnote { display:flex; align-items:center; gap:8px; padding:7px 12px; background:#fff; color:#0c4a6e; font-size:.68rem; font-weight:600; line-height:1.3; border-bottom:1px solid #e5e7eb; }
+.sr-inputnote-box { flex:0 0 auto; width:22px; height:13px; border-radius:4px; background:#fff; border:2px solid #0284c7; box-shadow:0 0 0 2px rgba(2,132,199,.55), 0 0 8px 1px rgba(2,132,199,.7); }
+</style>
 
 <script>
 // ── AUTO-SAVE: every change saves by itself — no Save button / Enter needed ──
