@@ -1405,5 +1405,54 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 </script>
+<script>
+// ── Excel-style paste: copy several cells in Excel / Google Sheets, paste into any box,
+//    and the values spread across the columns and down the rows (new rows are added). ──
+(function () {
+  function ctx(el) {
+    const sub = el.closest('.sub-row');
+    if (sub) {
+      const col = sub.closest('.sub-col'); const sec = col && col.dataset.section;
+      return { rows: () => [...col.querySelectorAll('.sub-rows .sub-row')], add: () => addSubRow(sec), row: sub };
+    }
+    const tr = el.closest('tbody tr'), table = el.closest('table');
+    if (!tr || !table) return null;
+    const body = tr.parentElement;
+    let add = null;
+    if (table.id === 'di-table') add = () => addDiRow();
+    else if (table.classList.contains('extra-table')) add = () => addExtraRow(table.dataset.section);
+    else return null;
+    return { rows: () => [...body.querySelectorAll('tr')], add, row: tr };
+  }
+  const cellsOf = row => [...row.querySelectorAll('input,textarea')].filter(i => !['button','hidden'].includes(i.type) && !i.readOnly && !i.disabled);
+  function put(inp, val) {
+    val = String(val).trim();
+    if (inp.type === 'number') {
+      const n = parseFloat(val.replace(/[^0-9.\-]/g, ''));
+      if (val === '') inp.value = ''; else if (isFinite(n)) inp.value = n; else return;
+    } else inp.value = val;
+    inp.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+  document.addEventListener('paste', function (ev) {
+    const el = ev.target;
+    if (!el || !el.matches || !el.matches('input,textarea') || el.readOnly || el.disabled) return;
+    if (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED) return;
+    const c = ctx(el); if (!c) return;
+    const text = (ev.clipboardData || window.clipboardData).getData('text');
+    if (!text || (text.indexOf('\t') < 0 && !/\r?\n./.test(text))) return;   // single value → normal paste
+    const data = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map(l => l.split('\t'));
+    ev.preventDefault();
+    const r0 = c.rows().indexOf(c.row), c0 = cellsOf(c.row).indexOf(el);
+    if (r0 < 0 || c0 < 0) return;
+    data.forEach(function (line, i) {
+      let rows = c.rows();
+      while (rows.length <= r0 + i) { c.add(); const n = c.rows(); if (n.length === rows.length) return; rows = n; }
+      const cells = cellsOf(rows[r0 + i]);
+      line.forEach((v, j) => { if (cells[c0 + j]) put(cells[c0 + j], v); });
+    });
+    if (typeof showToast === 'function') showToast('✓ Pasted ' + data.length + ' row' + (data.length > 1 ? 's' : ''), 'success');
+  });
+})();
+</script>
 </body>
 </html>
