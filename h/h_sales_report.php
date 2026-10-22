@@ -1339,5 +1339,71 @@ document.addEventListener('DOMContentLoaded', () => {
   if (REPORT_LOCKED) lockPage();
 });
 </script>
+<script>
+// ── Keyboard navigation: arrow keys / Enter move between the boxes you can type in ──
+(function () {
+  const EXCL = '#filterForm,.sr-controls,.lock-wrap,#lockPopover,aside,nav,.sidebar';
+  function editable(el) {
+    if (!el || !el.matches || !el.matches('input,textarea,select')) return false;
+    const t = (el.type || '').toLowerCase();
+    if (['hidden','button','submit','checkbox','radio','date','file'].includes(t)) return false;
+    if (el.readOnly || el.disabled || el.tabIndex < 0) return false;
+    if (el.closest(EXCL)) return false;
+    return el.offsetParent !== null;
+  }
+  const panelOf = el => el.closest('.sr-split > *') || el.closest('.sr-section,.sr-card') || document.body;
+  function all(panel) {
+    return [...document.querySelectorAll('input,textarea,select')].filter(e => editable(e) && panelOf(e) === panel)
+      .map(e => { const r = e.getBoundingClientRect(); return {e, x:r.left + r.width/2, y:r.top + r.height/2, h:r.height}; });
+  }
+  function target(el, key) {
+    const list = all(panelOf(el));
+    const r = el.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2, tol = Math.max(8, r.height*0.6);
+    const others = list.filter(o => o.e !== el);
+    if (key === 'ArrowRight' || key === 'ArrowLeft') {
+      const dir = key === 'ArrowRight' ? 1 : -1;
+      const row = others.filter(o => Math.abs(o.y - cy) < tol && (o.x - cx) * dir > 4)
+                        .sort((a,b) => Math.abs(a.x-cx) - Math.abs(b.x-cx));
+      if (row.length) return row[0].e;
+      // end of the line → wrap to the next / previous line
+      const lines = others.filter(o => (o.y - cy) * dir > tol);
+      if (!lines.length) return null;
+      const ny = lines.reduce((m,o) => Math.min(m, Math.abs(o.y-cy)), 1e9);
+      const next = lines.filter(o => Math.abs(Math.abs(o.y-cy) - ny) < tol);
+      next.sort((a,b) => dir * (a.x - b.x));
+      return next[0].e;
+    }
+    const dir = key === 'ArrowDown' || key === 'Enter' ? 1 : -1;
+    const lines = others.filter(o => (o.y - cy) * dir > tol);
+    if (!lines.length) return null;
+    const ny = lines.reduce((m,o) => Math.min(m, Math.abs(o.y-cy)), 1e9);
+    const next = lines.filter(o => Math.abs(Math.abs(o.y-cy) - ny) < tol);
+    next.sort((a,b) => Math.abs(a.x-cx) - Math.abs(b.x-cx));
+    return next[0].e;
+  }
+  document.addEventListener('keydown', function (ev) {
+    const k = ev.key, el = ev.target;
+    if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter'].includes(k)) return;
+    if (ev.ctrlKey || ev.altKey || ev.metaKey || ev.shiftKey || !editable(el)) return;
+    const isText = el.tagName === 'TEXTAREA' || ['text','search','tel','email','url'].includes((el.type||'text').toLowerCase());
+    if (isText && el.selectionStart != null) {
+      const s = el.selectionStart, e = el.selectionEnd, len = el.value.length;
+      if (k === 'ArrowLeft'  && !(s === 0 && e === 0) && !(s === 0 && e === len)) return;
+      if (k === 'ArrowRight' && !(s === len && e === len) && !(s === 0 && e === len)) return;
+      if (el.tagName === 'TEXTAREA') {
+        if (k === 'Enter') return;
+        if (k === 'ArrowUp'   && s !== 0) return;
+        if (k === 'ArrowDown' && e !== len) return;
+      }
+    }
+    const t = target(el, k);
+    if (!t) return;
+    ev.preventDefault();
+    t.focus();
+    try { t.scrollIntoView({block:'nearest', inline:'nearest'}); } catch (x) {}
+    try { if (t.select) t.select(); } catch (x) {}
+  });
+})();
+</script>
 </body>
 </html>
