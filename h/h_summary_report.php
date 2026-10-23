@@ -27,6 +27,7 @@ try {
         `z_reading_gross`       decimal(12,2) DEFAULT 0.00,
         `cash_for_depo`         decimal(12,2) DEFAULT 0.00,
         `sales_of_day_swipe`    decimal(12,2) DEFAULT 0.00,
+        `palawan_gcash`         decimal(12,2) DEFAULT 0.00,
         `deposit_swipe`         decimal(12,2) DEFAULT 0.00,
         `late_payment`          decimal(12,2) DEFAULT 0.00,
         `cancelled_transaction` decimal(12,2) DEFAULT 0.00,
@@ -60,6 +61,9 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 } catch (Throwable $ignored) {}
 
+// Palawan/Gcash column (added later) — add it to existing installs too.
+try { $pdo->exec("ALTER TABLE `h_report_entries` ADD COLUMN `palawan_gcash` decimal(12,2) DEFAULT 0.00 AFTER `sales_of_day_swipe`"); } catch (Throwable $ignored) {}
+
 // One row per store per date — remove any old duplicates and enforce it.
 try {
     require_once __DIR__ . '/../lib/branch_sales.php';
@@ -77,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
 
     $numCols = [
         'gross_sales_excl_mktg','store_gross','z_reading_gross','cash_for_depo',
-        'sales_of_day_swipe','deposit_swipe','late_payment',
+        'sales_of_day_swipe','palawan_gcash','deposit_swipe','late_payment',
         'cancelled_transaction','unpaid','paid','advance_payment',
         'grab','bank_trans','gc_sponsor_marketing','gc_sold','discount',
         'marketing_pull_out','personal','expenses','other_expenses','sc_for_depo',
@@ -141,6 +145,7 @@ if (isset($_GET['export_csv'])) {
         'z_reading_gross'       => 'Z Reading Gross (Incl SC/Mktg)',
         'cash_for_depo'         => 'Cash for Depo',
         'sales_of_day_swipe'    => 'Sales of the Day (Swipe)',
+        'palawan_gcash'         => 'Palawan/Gcash',
         'deposit_swipe'         => 'Deposit Swipe',
         'late_payment'          => 'Late Payment',
         'cancelled_transaction' => 'Cancelled Transaction',
@@ -265,6 +270,7 @@ $SALES_MAP = [
     'z_reading_gross'       => 'z_reading_gross',
     'cash_for_depo'         => 'coh',
     'sales_of_day_swipe'    => 'maya_swipe',
+    'palawan_gcash'         => 'gcash',
     'deposit_swipe'         => 'deposit_swipe_card',
     'late_payment'          => 'late_payment_card',
     'unpaid'                => 'unpaid_med_credit',
@@ -311,7 +317,7 @@ try {
 // ── Column keys (numeric, for tfoot totals) ───────────────
 $COLS = [
     'gross_sales_excl_mktg','store_gross','z_reading_gross','cash_for_depo',
-    'sales_of_day_swipe','deposit_swipe','late_payment',
+    'sales_of_day_swipe','palawan_gcash','deposit_swipe','late_payment',
     'cancelled_transaction','unpaid','paid','advance_payment',
     'grab','bank_trans','gc_sponsor_marketing','gc_sold','discount',
     'marketing_pull_out','personal','expenses','other_expenses','sc_for_depo',
@@ -510,7 +516,7 @@ include '../layout.php';
       <!-- AUTO-CALC SALES -->
       <th colspan="2" class="g-calc">AUTO-CALCULATED</th>
       <!-- SALES / INCOME -->
-      <th colspan="5" class="g-income">SALES / INCOME</th>
+      <th colspan="6" class="g-income">SALES / INCOME</th>
       <!-- COLLECTIONS -->
       <th colspan="9" class="g-income">COLLECTIONS</th>
       <!-- DEDUCTIONS -->
@@ -536,6 +542,7 @@ include '../layout.php';
       <th class="g-income col-num">Z READING GROSS (INCL SC/MKTG)</th>
       <th class="g-income col-num">CASH FOR DEPO</th>
       <th class="g-income col-num">SALES OF THE DAY (SWIPE)</th>
+      <th class="g-income col-num">PALAWAN/GCASH</th>
       <th class="g-income col-num">DEPOSIT SWIPE</th>
       <th class="g-income col-num">LATE PAYMENT</th>
       <!-- COLLECTIONS -->
@@ -618,6 +625,7 @@ include '../layout.php';
     <td class="g-income"><input type="number" step="0.01" class="<?=$cls('z_reading_gross')?>" data-col="z_reading_gross"       data-row="<?=$rid?>" value="<?=$dv('z_reading_gross')?>"       placeholder="0.00" <?=$attrs('z_reading_gross')?>></td>
     <td class="g-income"><input type="number" step="0.01" class="<?=$cls('cash_for_depo')?>" data-col="cash_for_depo"         data-row="<?=$rid?>" value="<?=$dv('cash_for_depo')?>"         placeholder="0.00" <?=$attrs('cash_for_depo')?>></td>
     <td class="g-income"><input type="number" step="0.01" class="<?=$cls('sales_of_day_swipe')?>" data-col="sales_of_day_swipe"    data-row="<?=$rid?>" value="<?=$dv('sales_of_day_swipe')?>"    placeholder="0.00" <?=$attrs('sales_of_day_swipe')?>></td>
+    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('palawan_gcash')?>" data-col="palawan_gcash"         data-row="<?=$rid?>" value="<?=$dv('palawan_gcash')?>"         placeholder="0.00" <?=$attrs('palawan_gcash')?>></td>
     <td class="g-income"><input type="number" step="0.01" class="<?=$cls('deposit_swipe')?>" data-col="deposit_swipe"         data-row="<?=$rid?>" value="<?=$dv('deposit_swipe')?>"         placeholder="0.00" <?=$attrs('deposit_swipe')?>></td>
     <td class="g-income"><input type="number" step="0.01" class="<?=$cls('late_payment')?>" data-col="late_payment"          data-row="<?=$rid?>" value="<?=$dv('late_payment')?>"          placeholder="0.00" <?=$attrs('late_payment')?>></td>
     <!-- COLLECTIONS -->
