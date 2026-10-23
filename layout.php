@@ -23,7 +23,8 @@ if (isCashier()) {
     // and their branch's Sales Report page(s) — kept in sync with
     // cashierSalesReportPaths() so this fallback never re-blocks a page
     // enforceCashierAccess() already lets through.
-    $allowedPages = ['dashboard', $dailyReportKey, 'daily_carwash'];
+    $allowedPages = [$dailyReportKey, 'daily_carwash'];
+    if (branchHasDashboard()) $allowedPages[] = 'dashboard';
     foreach (cashierSalesReportPaths() as $srPath) {
         $allowedPages[] = pathinfo($srPath, PATHINFO_FILENAME);
     }
@@ -484,10 +485,12 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
 
     <?php if (isCashier()): ?>
 
+    <?php if (branchHasDashboard()): ?>
     <div class="nav-section">Overview</div>
     <a href="<?= BASE_URL ?>/dashboard.php" class="nav-item <?= ($activePage==='dashboard')?'active':'' ?>">
       <span class="ni">⊞</span> Dashboard
     </a>
+    <?php endif; ?>
 
     <div class="nav-section">Records</div>
     <?php $isDemicCashier = in_array(currentBranch(), ['DemicLab-Main', 'DemicLab-Jaro'], true); ?>
@@ -514,10 +517,12 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
 
     <?php else: ?>
 
+    <?php if (branchHasDashboard()): ?>
     <div class="nav-section">Overview</div>
     <a href="<?= BASE_URL ?>/dashboard.php" class="nav-item <?= ($activePage==='dashboard')?'active':'' ?>">
       <span class="ni">⊞</span> Dashboard
     </a>
+    <?php endif; ?>
     <?php if (in_array($_SESSION['user_role'] ?? '', ['manager', 'accounting'], true)): ?>
     <a href="<?= BASE_URL ?>/daily_report.php" class="nav-item <?= ($activePage==='daily_all')?'active':'' ?>">
       <span class="ni">📋</span> Daily Report (All Branch)

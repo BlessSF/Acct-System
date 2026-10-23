@@ -99,6 +99,13 @@ function currentBranch(): ?string {
     return $_SESSION['user_branch'] ?? null;
 }
 
+// Whether this login gets the Dashboard page at all. The H branch's
+// OIC and Cashier logins do NOT — they work from their Daily Report /
+// Sales Report pages only. Management and every other branch keep it.
+function branchHasDashboard(): bool {
+    return !(isBranch() && currentBranch() === 'H');
+}
+
 // The one Daily Report page a Cashier/OIC login is allowed to reach for
 // their branch, as a path relative to the app root (for redirects/links).
 // Demic branches use demicmain/demic_daily_report.php (which has its own
@@ -132,7 +139,8 @@ function cashierSalesReportPaths(): array {
 // compared against basename($_SERVER['SCRIPT_NAME']) in
 // enforceCashierAccess(), which strips any folder path.
 function cashierAllowedSharedPages(): array {
-    $pages = ['dashboard.php', basename(cashierDailyReportPath())];
+    $pages = [basename(cashierDailyReportPath())];
+    if (branchHasDashboard()) array_unshift($pages, 'dashboard.php');
     foreach (cashierSalesReportPaths() as $srPath) {
         $pages[] = basename($srPath);
     }

@@ -6,6 +6,13 @@ require_once 'config.php';
 require_once 'auth.php';
 requireLogin();
 
+// H branch OIC / Cashier logins have no Dashboard — send them straight
+// to their Daily Report instead (also covers the post-login redirect).
+if (!branchHasDashboard()) {
+    header('Location: ' . BASE_URL . '/' . cashierDailyReportPath());
+    exit;
+}
+
 $pdo = getPDO();
 
 // ── Live Gross Sales source ────────────────────────────────
