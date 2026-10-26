@@ -199,9 +199,66 @@ function ensureUniqueStoreDate(PDO $pdo, string $table): void
             if ($k['Key_name'] !== 'PRIMARY' && in_array($k['Column_name'], ['store_name', 'report_date'], true)) $has = true;
         }
         if ($has) return;
+
+        // Legacy table with NO primary key (every id = 0, e.g. an import that lost its
+        // keys): the id-based cleanup below can't tell rows apart, and every save then
+        // inserts a brand-new row instead of updating. Rebuild it once, keeping only the
+        // newest row per store + date. The old table is kept as <table>_bak_<date>.
+        $hasPk = (bool)$pdo->query("SHOW KEYS FROM `$table` WHERE Key_name='PRIMARY'")->fetch();
+        if (!$hasPk) {
+            $cols = $pdo->query("SHOW COLUMNS FROM `$table`")->fetchAll(PDO::FETCH_COLUMN);
+            if (in_array('id', $cols, true) && in_array('store_name', $cols, true) && in_array('report_date', $cols, true)) {
+                $copy = array_values(array_filter($cols, fn($c) => $c !== 'id'));
+                $list = '`' . implode('`,`', $copy) . '`';
+                $ord  = [];
+                if (in_array('updated_at', $cols, true)) $ord[] = '`updated_at` DESC';
+                if (in_array('created_at', $cols, true)) $ord[] = '`created_at` DESC';
+                $tmp  = $table . '_rebuild_tmp';
+                $bak  = $table . '_bak_' . date('Ymd_His');
+                $pdo->exec("DROP TABLE IF EXISTS `$tmp`");
+                $pdo->exec("CREATE TABLE `$tmp` LIKE `$table`");
+                $pdo->exec("ALTER TABLE `$tmp` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`), ADD UNIQUE KEY `uniq_store_date` (`store_name`,`report_date`)");
+                $pdo->exec("INSERT IGNORE INTO `$tmp` ($list) SELECT $list FROM `$table`" . ($ord ? ' ORDER BY ' . implode(', ', $ord) : ''));
+                $pdo->exec("RENAME TABLE `$table` TO `$bak`, `$tmp` TO `$table`");
+                return;
+            }
+        }
+
         $pdo->exec("DELETE a FROM `$table` a JOIN `$table` b ON a.store_name=b.store_name AND a.report_date=b.report_date AND a.id < b.id");
         $pdo->exec("ALTER TABLE `$table` ADD UNIQUE KEY `uniq_store_date` (`store_name`,`report_date`)");
     } catch (Throwable $e) {}
+}
+
+/**
+ * Store Gross per date for the H Summary Report, exactly as that page shows it:
+ *   Store Gross = Z Reading Gross + Discount - SC for Depo - Marketing Pull Out
+ * Dates that have an H Sales Report row use its figures; other dates use the
+ * newest saved Summary row (duplicates in h_report_entries are ignored).
+ * Returns ['YYYY-MM-DD' => float].
+ */
+function hStoreGrossByDate(PDO $pdo, int $year, int $month): array
+{
+    $out = [];
+    try {   // dates not in the Sales Report: newest saved Summary row per date
+        $st = $pdo->prepare("SELECT report_date, z_reading_gross, discount, sc_for_depo, marketing_pull_out
+            FROM `h_report_entries` WHERE store_name='H' AND YEAR(report_date)=? AND MONTH(report_date)=?
+            ORDER BY updated_at ASC, created_at ASC");
+        $st->execute([$year, $month]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {          // later row overwrites earlier = newest wins
+            $out[$r['report_date']] = (float)$r['z_reading_gross'] + (float)$r['discount']
+                                    - (float)$r['sc_for_depo'] - (float)$r['marketing_pull_out'];
+        }
+    } catch (Throwable $e) {}
+    try {   // the H Sales Report takes priority
+        $st = $pdo->prepare("SELECT report_date, z_reading_gross, discount, service_charge, marketing_pull_out
+            FROM `h_sales_report` WHERE store_name='H' AND YEAR(report_date)=? AND MONTH(report_date)=?");
+        $st->execute([$year, $month]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $out[$r['report_date']] = (float)$r['z_reading_gross'] + (float)$r['discount']
+                                    - (float)$r['service_charge'] - (float)$r['marketing_pull_out'];
+        }
+    } catch (Throwable $e) {}
+    return $out;
 }
 
 function ensureHOicTable(?PDO $pdo = null): void

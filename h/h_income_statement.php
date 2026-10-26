@@ -178,11 +178,12 @@ $v = fn($k) => $row ? number_format((float)($row[$k] ?? 0), 2, '.', '') : '0.00'
 // Net Sales = SUM(store_gross) for the selected month
 $expYear  = (int)date('Y', strtotime($stmtDate));
 $expMonth = (int)date('n', strtotime($stmtDate));
+// Same figure the H Summary Report's STORE GROSS total shows (one value per
+// date — duplicate saved rows can no longer inflate it).
 $storeGrossTotal = 0;
 try {
-    $sgStmt = $pdo->prepare("SELECT COALESCE(SUM(`store_gross`),0) FROM `h_report_entries` WHERE store_name='H' AND YEAR(report_date)=? AND MONTH(report_date)=?");
-    $sgStmt->execute([$expYear, $expMonth]);
-    $storeGrossTotal = (float)$sgStmt->fetchColumn();
+    require_once __DIR__ . '/../lib/branch_sales.php';
+    $storeGrossTotal = round(array_sum(hStoreGrossByDate($pdo, $expYear, $expMonth)), 2);
 } catch (Throwable $ignored) {}
 $netSalesAuto = number_format($storeGrossTotal, 2, '.', '');
 // ── Expenses column totals (for the selected month) ──────
