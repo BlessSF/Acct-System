@@ -596,14 +596,14 @@ include '../layout.php';
     $dv    = function($k) use ($row, $sr, $SALES_MAP, $NEVER_LOCK, $hasSR) {
         if ($hasSR && isset($SALES_MAP[$k]) && !in_array($k, $NEVER_LOCK, true)) {
             $v = (float)($sr[$SALES_MAP[$k]] ?? 0);
-            return $v != 0 ? number_format($v, 2, '.', '') : '';
+            return $v != 0 ? number_format($v, 2, '.', ',') : '';
         }
         if ($row && isset($row[$k]) && (float)$row[$k] != 0) {
-            return number_format((float)$row[$k], 2, '.', '');
+            return number_format((float)$row[$k], 2, '.', ',');
         }
         if ($hasSR && isset($SALES_MAP[$k]) && in_array($k, $NEVER_LOCK, true)) {
             $v = (float)($sr[$SALES_MAP[$k]] ?? 0);
-            return $v != 0 ? number_format($v, 2, '.', '') : '';
+            return $v != 0 ? number_format($v, 2, '.', ',') : '';
         }
         return '';
     };
@@ -619,42 +619,42 @@ include '../layout.php';
     </td>
 
     <!-- AUTO-CALC SALES -->
-    <td class="g-calc"><input type="number" step="0.01" class="sri calc" data-col="gross_sales_excl_mktg" data-row="<?=$rid?>" value="<?=$dv('gross_sales_excl_mktg')?>" readonly tabindex="-1"></td>
-    <td class="g-calc"><input type="number" step="0.01" class="sri calc" data-col="store_gross"           data-row="<?=$rid?>" value="<?=$dv('store_gross')?>"           readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="gross_sales_excl_mktg" data-row="<?=$rid?>" value="<?=$dv('gross_sales_excl_mktg')?>" readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="store_gross"           data-row="<?=$rid?>" value="<?=$dv('store_gross')?>"           readonly tabindex="-1"></td>
     <!-- SALES / INCOME -->
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('z_reading_gross')?>" data-col="z_reading_gross"       data-row="<?=$rid?>" value="<?=$dv('z_reading_gross')?>"       placeholder="0.00" <?=$attrs('z_reading_gross')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('cash_for_depo')?>" data-col="cash_for_depo"         data-row="<?=$rid?>" value="<?=$dv('cash_for_depo')?>"         placeholder="0.00" <?=$attrs('cash_for_depo')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('sales_of_day_swipe')?>" data-col="sales_of_day_swipe"    data-row="<?=$rid?>" value="<?=$dv('sales_of_day_swipe')?>"    placeholder="0.00" <?=$attrs('sales_of_day_swipe')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('palawan_gcash')?>" data-col="palawan_gcash"         data-row="<?=$rid?>" value="<?=$dv('palawan_gcash')?>"         placeholder="0.00" <?=$attrs('palawan_gcash')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('deposit_swipe')?>" data-col="deposit_swipe"         data-row="<?=$rid?>" value="<?=$dv('deposit_swipe')?>"         placeholder="0.00" <?=$attrs('deposit_swipe')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('late_payment')?>" data-col="late_payment"          data-row="<?=$rid?>" value="<?=$dv('late_payment')?>"          placeholder="0.00" <?=$attrs('late_payment')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('z_reading_gross')?>" data-col="z_reading_gross"       data-row="<?=$rid?>" value="<?=$dv('z_reading_gross')?>"       placeholder="0.00" <?=$attrs('z_reading_gross')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('cash_for_depo')?>" data-col="cash_for_depo"         data-row="<?=$rid?>" value="<?=$dv('cash_for_depo')?>"         placeholder="0.00" <?=$attrs('cash_for_depo')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('sales_of_day_swipe')?>" data-col="sales_of_day_swipe"    data-row="<?=$rid?>" value="<?=$dv('sales_of_day_swipe')?>"    placeholder="0.00" <?=$attrs('sales_of_day_swipe')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('palawan_gcash')?>" data-col="palawan_gcash"         data-row="<?=$rid?>" value="<?=$dv('palawan_gcash')?>"         placeholder="0.00" <?=$attrs('palawan_gcash')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('deposit_swipe')?>" data-col="deposit_swipe"         data-row="<?=$rid?>" value="<?=$dv('deposit_swipe')?>"         placeholder="0.00" <?=$attrs('deposit_swipe')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('late_payment')?>" data-col="late_payment"          data-row="<?=$rid?>" value="<?=$dv('late_payment')?>"          placeholder="0.00" <?=$attrs('late_payment')?>></td>
     <!-- COLLECTIONS -->
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('cancelled_transaction')?>" data-col="cancelled_transaction" data-row="<?=$rid?>" value="<?=$dv('cancelled_transaction')?>" placeholder="0.00" <?=$attrs('cancelled_transaction')?>></td>
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('unpaid')?>" data-col="unpaid"                data-row="<?=$rid?>" value="<?=$dv('unpaid')?>"                placeholder="0.00" <?=$attrs('unpaid')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="sri" data-col="paid"                  data-row="<?=$rid?>" value="<?=$dv('paid')?>"                  placeholder="0.00" oninput="changed(this)"></td>
-    <td class="g-income"><input type="number" step="0.01" class="sri" data-col="advance_payment"       data-row="<?=$rid?>" value="<?=$dv('advance_payment')?>"       placeholder="0.00" oninput="changed(this)"></td>
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('grab')?>" data-col="grab"                  data-row="<?=$rid?>" value="<?=$dv('grab')?>"                  placeholder="0.00" <?=$attrs('grab')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="<?=$cls('bank_trans')?>" data-col="bank_trans"            data-row="<?=$rid?>" value="<?=$dv('bank_trans')?>"            placeholder="0.00" <?=$attrs('bank_trans')?>></td>
-    <td class="g-income"><input type="number" step="0.01" class="sri" data-col="gc_sponsor_marketing"  data-row="<?=$rid?>" value="<?=$dv('gc_sponsor_marketing')?>"  placeholder="0.00" oninput="changed(this)"></td>
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('gc_sold')?>" data-col="gc_sold"               data-row="<?=$rid?>" value="<?=$dv('gc_sold')?>"               placeholder="0.00" <?=$attrs('gc_sold')?>></td>
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('discount')?>" data-col="discount"              data-row="<?=$rid?>" value="<?=$dv('discount')?>"              placeholder="0.00" <?=$attrs('discount')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('cancelled_transaction')?>" data-col="cancelled_transaction" data-row="<?=$rid?>" value="<?=$dv('cancelled_transaction')?>" placeholder="0.00" <?=$attrs('cancelled_transaction')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('unpaid')?>" data-col="unpaid"                data-row="<?=$rid?>" value="<?=$dv('unpaid')?>"                placeholder="0.00" <?=$attrs('unpaid')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="paid"                  data-row="<?=$rid?>" value="<?=$dv('paid')?>"                  placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="advance_payment"       data-row="<?=$rid?>" value="<?=$dv('advance_payment')?>"       placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('grab')?>" data-col="grab"                  data-row="<?=$rid?>" value="<?=$dv('grab')?>"                  placeholder="0.00" <?=$attrs('grab')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('bank_trans')?>" data-col="bank_trans"            data-row="<?=$rid?>" value="<?=$dv('bank_trans')?>"            placeholder="0.00" <?=$attrs('bank_trans')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="gc_sponsor_marketing"  data-row="<?=$rid?>" value="<?=$dv('gc_sponsor_marketing')?>"  placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('gc_sold')?>" data-col="gc_sold"               data-row="<?=$rid?>" value="<?=$dv('gc_sold')?>"               placeholder="0.00" <?=$attrs('gc_sold')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('discount')?>" data-col="discount"              data-row="<?=$rid?>" value="<?=$dv('discount')?>"              placeholder="0.00" <?=$attrs('discount')?>></td>
     <!-- DEDUCTIONS -->
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('marketing_pull_out')?>" data-col="marketing_pull_out"    data-row="<?=$rid?>" value="<?=$dv('marketing_pull_out')?>"    placeholder="0.00" <?=$attrs('marketing_pull_out')?>></td>
-    <td class="g-deduct"><input type="number" step="0.01" class="sri" data-col="personal"              data-row="<?=$rid?>" value="<?=$dv('personal')?>"              placeholder="0.00" oninput="changed(this)"></td>
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('expenses')?>" data-col="expenses"              data-row="<?=$rid?>" value="<?=$dv('expenses')?>"              placeholder="0.00" <?=$attrs('expenses')?>></td>
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('other_expenses')?>" data-col="other_expenses"        data-row="<?=$rid?>" value="<?=$dv('other_expenses')?>"        placeholder="0.00" <?=$attrs('other_expenses')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('marketing_pull_out')?>" data-col="marketing_pull_out"    data-row="<?=$rid?>" value="<?=$dv('marketing_pull_out')?>"    placeholder="0.00" <?=$attrs('marketing_pull_out')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="personal"              data-row="<?=$rid?>" value="<?=$dv('personal')?>"              placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('expenses')?>" data-col="expenses"              data-row="<?=$rid?>" value="<?=$dv('expenses')?>"              placeholder="0.00" <?=$attrs('expenses')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('other_expenses')?>" data-col="other_expenses"        data-row="<?=$rid?>" value="<?=$dv('other_expenses')?>"        placeholder="0.00" <?=$attrs('other_expenses')?>></td>
     <!-- SC FOR DEPO -->
-    <td class="g-deduct"><input type="number" step="0.01" class="<?=$cls('sc_for_depo')?>" data-col="sc_for_depo"           data-row="<?=$rid?>" value="<?=$dv('sc_for_depo')?>"           placeholder="0.00" <?=$attrs('sc_for_depo')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('sc_for_depo')?>" data-col="sc_for_depo"           data-row="<?=$rid?>" value="<?=$dv('sc_for_depo')?>"           placeholder="0.00" <?=$attrs('sc_for_depo')?>></td>
     <!-- AUTO-CALCULATED -->
-    <td class="g-calc"><input type="number" step="0.01" class="sri calc" data-col="total_deductions"   data-row="<?=$rid?>" value="<?=$dv('total_deductions')?>"      readonly tabindex="-1"></td>
-    <td class="g-calc"><input type="number" step="0.01" class="sri calc" data-col="short_over"         data-row="<?=$rid?>" value="<?=$dv('short_over')?>"            readonly tabindex="-1"></td>
-    <td class="g-calc"><input type="number" step="0.01" class="sri calc" data-col="total_swipe"        data-row="<?=$rid?>" value="<?=$dv('total_swipe')?>"           readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="total_deductions"   data-row="<?=$rid?>" value="<?=$dv('total_deductions')?>"      readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="short_over"         data-row="<?=$rid?>" value="<?=$dv('short_over')?>"            readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="total_swipe"        data-row="<?=$rid?>" value="<?=$dv('total_swipe')?>"           readonly tabindex="-1"></td>
     <!-- OTHER INPUT -->
-    <td class="g-income"><input type="number" step="0.01" class="sri" data-col="cash_deposit"          data-row="<?=$rid?>" value="<?=$dv('cash_deposit')?>"          placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="cash_deposit"          data-row="<?=$rid?>" value="<?=$dv('cash_deposit')?>"          placeholder="0.00" oninput="changed(this)"></td>
     <!-- REMARKS 1 -->
     <td class="g-text"><input type="text" class="sri txt" data-col="remarks"  data-row="<?=$rid?>" value="<?=htmlspecialchars($row['remarks'] ??'')?>"  placeholder="…" oninput="changed(this)"></td>
     <!-- OTHER SALES -->
-    <td class="g-income"><input type="number" step="0.01" class="sri" data-col="other_sales"           data-row="<?=$rid?>" value="<?=$dv('other_sales')?>"           placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="other_sales"           data-row="<?=$rid?>" value="<?=$dv('other_sales')?>"           placeholder="0.00" oninput="changed(this)"></td>
     <!-- REMARKS 2 -->
     <td class="g-text"><input type="text" class="sri txt" data-col="remarks2" data-row="<?=$rid?>" value="<?=htmlspecialchars($row['remarks2']??'')?>" placeholder="…" oninput="changed(this)"></td>
 
@@ -736,9 +736,44 @@ include '../layout.php';
 const COLS = <?=json_encode($COLS)?>;
 
 // ── Helpers ───────────────────────────────────────────────
+// Number cells show thousands commas (1,234,567.89). num() strips them back
+// out for math/saving; fmt2() puts them in for display.
+function num(v) { return parseFloat(String(v == null ? '' : v).replace(/,/g, '')) || 0; }
+function fmt2(n) { return Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+// Live comma formatting while typing (keeps the cursor in the right place).
+function liveFormat(el) {
+  const c = el.dataset.col;
+  if (c === 'remarks' || c === 'remarks2' || el.readOnly) return;
+  const old = el.value, pos = el.selectionStart == null ? old.length : el.selectionStart;
+  let sig = 0;
+  for (let i = 0; i < pos; i++) if (/[\d.\-]/.test(old[i])) sig++;
+  let t = old.replace(/[^\d.\-]/g, '');
+  const neg = t.charAt(0) === '-';
+  t = t.replace(/-/g, '');
+  const dot = t.indexOf('.');
+  let ip = dot < 0 ? t : t.slice(0, dot);
+  const fp = dot < 0 ? '' : t.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  ip = ip.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const out = (neg ? '-' : '') + ip + (dot < 0 ? '' : '.' + fp);
+  if (out !== old) {
+    el.value = out;
+    let k = 0, q = 0;
+    while (q < out.length && k < sig) { if (/[\d.\-]/.test(out[q])) k++; q++; }
+    try { el.setSelectionRange(q, q); } catch (e) {}
+  }
+}
+// On leaving a cell, tidy it to 2 decimals (1,234.50).
+document.addEventListener('focusout', function(e) {
+  const el = e.target;
+  if (!el.matches || !el.matches('#srt input.sri[data-col]') || el.readOnly) return;
+  const c = el.dataset.col;
+  if (c === 'remarks' || c === 'remarks2' || el.value.trim() === '') return;
+  el.value = fmt2(num(el.value));
+});
+
 function gv(rid, col) {
   const e = document.querySelector(`#${rid} [data-col="${col}"]`);
-  return e ? (parseFloat(e.value) || 0) : 0;
+  return e ? num(e.value) : 0;
 }
 
 // ── Auto-calculations ─────────────────────────────────────
@@ -762,12 +797,12 @@ function recalc(rid) {
   // GROSS SALES EXCL MKTG = Z Reading Gross − Marketing Pull Out   [B = D − R]
   const grossSales = zReading - mktgPullOut;
   const gsEl = document.querySelector(`#${rid} [data-col="gross_sales_excl_mktg"]`);
-  if (gsEl) gsEl.value = hasInput ? grossSales.toFixed(2) : '';
+  if (gsEl) gsEl.value = hasInput ? fmt2(grossSales) : '';
 
   // STORE GROSS = Z Reading Gross + Discount − SC for Depo − Marketing Pull Out   [C = D + Q − V − R]
   const storeGross = zReading + disc - scForDepo - mktgPullOut;
   const sgEl = document.querySelector(`#${rid} [data-col="store_gross"]`);
-  if (sgEl) sgEl.value = hasInput ? storeGross.toFixed(2) : '';
+  if (sgEl) sgEl.value = hasInput ? fmt2(storeGross) : '';
 
   // TOTAL DEDUCTIONS = Sales of Day Swipe + Unpaid + Paid + Advance Payment +
   //   Grab + Bank Trans + GC Sponsor/Mktg + GC Sold + Discount +
@@ -785,14 +820,14 @@ function recalc(rid) {
            + gv(rid, 'other_expenses')
            + gv(rid, 'personal');
   const tdEl = document.querySelector(`#${rid} [data-col="total_deductions"]`);
-  if (tdEl) tdEl.value = hasInput ? td.toFixed(2) : '';
+  if (tdEl) tdEl.value = hasInput ? fmt2(td) : '';
 
   // SHORT / OVER = Total Deductions + Cash for Depo − Store Gross   [X = W + E − C]
   const so = td + cashForDepo - storeGross;
   if (!preserveSR) {
     const soEl = document.querySelector(`#${rid} [data-col="short_over"]`);
     if (soEl) {
-      soEl.value = hasInput ? so.toFixed(2) : '';
+      soEl.value = hasInput ? fmt2(so) : '';
       soEl.classList.toggle('neg', hasInput && so < 0);
     }
   }
@@ -804,7 +839,7 @@ function recalc(rid) {
              + gv(rid, 'late_payment')
              + gv(rid, 'paid');
     const tsEl = document.querySelector(`#${rid} [data-col="total_swipe"]`);
-    if (tsEl) tsEl.value = hasInput ? ts.toFixed(2) : '';
+    if (tsEl) tsEl.value = hasInput ? fmt2(ts) : '';
   }
 }
 
@@ -815,7 +850,7 @@ function recalcTotals() {
     if (!el) return;
     let s = 0;
     document.querySelectorAll(`[data-col="${col}"]`).forEach(function(i) {
-      s += parseFloat(i.value) || 0;
+      s += num(i.value);
     });
     el.textContent = s === 0 ? '—' : s.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     el.style.color = (col === 'short_over' && s < 0) ? 'var(--accent2)' : '';
@@ -834,7 +869,7 @@ function rowHasInput(rid) {
     const c = el.dataset.col;
     if (AUTOCOLS.indexOf(c) >= 0) return false;
     if (c === 'remarks' || c === 'remarks2') return el.value.trim() !== '';
-    return (parseFloat(el.value) || 0) !== 0;
+    return num(el.value) !== 0;
   });
 }
 function setStat(rid, cls, txt) {
@@ -842,6 +877,7 @@ function setStat(rid, cls, txt) {
   if (b) { b.className = 'asv ' + cls; b.textContent = txt; }
 }
 function changed(el) {
+  liveFormat(el);
   const rid = el.dataset.row;
   recalc(rid);
   recalcTotals();
@@ -873,7 +909,7 @@ async function saveRow(rid, ds) {
 
   COLS.forEach(function(col) {
     const el = document.querySelector(`#${rid} [data-col="${col}"]`);
-    fd.append(col, el ? (el.value || '0') : '0');
+    fd.append(col, el ? (String(el.value || '0').replace(/,/g, '')) : '0');
   });
   ['remarks','remarks2'].forEach(function(col) {
     const el = document.querySelector(`#${rid} [data-col="${col}"]`);
@@ -910,7 +946,7 @@ async function syncFromSales() {
     const res = await fetch('h_summary_report.php' + location.search + (location.search ? '&' : '?') + 'ajax_sync=1&_=' + Date.now(), {cache:'no-store'});
     const data = await res.json();
     if (!data.ok) return;
-    const fmt = v => v != 0 ? Number(v).toFixed(2) : '';
+    const fmt = v => v != 0 ? fmt2(v) : '';
     Object.keys(data.rows).forEach(function(ds) {
       const rid = 'r' + ds.replace(/-/g, '');
       const tr = document.getElementById(rid);
@@ -993,7 +1029,7 @@ function recalcHSummary() {
 
   let totalGross = 0;
   document.querySelectorAll('#srt tbody [data-col="store_gross"]').forEach(function(el) {
-    totalGross += parseFloat(el.value) || 0;
+    totalGross += num(el.value);
   });
 
   const pctEl    = document.getElementById('hSalesPct');
