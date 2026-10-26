@@ -577,7 +577,7 @@ include '../layout.php';
         </span>
       </div>
       <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input" id="net_sales" data-field="net_sales"
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-input" id="net_sales" data-field="net_sales"
                value="<?= $netSalesAuto ?>"
                readonly tabindex="-1"
                style="background:#f0fdf4;color:var(--accent);font-weight:700;cursor:default;border-color:rgba(15,123,92,.2)">
@@ -591,7 +591,7 @@ include '../layout.php';
     <div class="is-row">
       <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
       <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
                value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
                oninput="recalc()">
         <?php if ($show_pct): ?>
@@ -612,7 +612,7 @@ include '../layout.php';
     <div class="is-row" style="padding-left:28px">
       <div class="is-label" style="color:var(--subtext2);font-size:.75rem">Other Income – Royalty</div>
       <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input" id="other_income_royalty" data-field="other_income_royalty"
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-input" id="other_income_royalty" data-field="other_income_royalty"
                value="<?=$v('other_income_royalty')?>" oninput="recalc()">
         <div class="is-pct" id="pct_other_income_royalty">—</div>
       </div>
@@ -635,7 +635,7 @@ include '../layout.php';
     <div class="is-row">
       <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
       <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
                value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
                oninput="recalc()">
         <div class="is-pct" id="pct_<?=$field?>">—</div>
@@ -665,7 +665,7 @@ include '../layout.php';
     <div class="is-row">
       <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
       <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
                value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
                oninput="recalc()">
         <div class="is-pct" id="pct_<?=$field?>">—</div>
@@ -714,7 +714,7 @@ include '../layout.php';
     <div class="is-row">
       <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
       <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
                value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
                oninput="recalc()">
         <div class="is-pct" id="pct_<?=$field?>">—</div>
@@ -751,7 +751,7 @@ include '../layout.php';
         </span>
       </div>
       <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input is-input-auto" id="vat_payment" data-field="vat_payment"
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-input is-input-auto" id="vat_payment" data-field="vat_payment"
                value="<?= $row ? $v('vat_payment') : $vatAutoFmt ?>"
                oninput="recalc()"
                style="background:#f0fdf4;color:var(--accent);font-weight:700;border-color:rgba(15,123,92,.2)">
@@ -775,8 +775,40 @@ include '../layout.php';
 <script>
 const STMT_DATE  = <?= json_encode($stmtDate) ?>;
 
-function gv(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+// Amounts show thousands commas (1,234,567.89). num() strips them for math/saving.
+function num(v)  { return parseFloat(String(v == null ? '' : v).replace(/,/g, '')) || 0; }
+function gv(id)  { return num(document.getElementById(id)?.value); }
 function fmt(n)  { return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+// Live comma formatting while typing (keeps the cursor in place).
+function liveFormat(el) {
+  if (el.readOnly) return;
+  const old = el.value, pos = el.selectionStart == null ? old.length : el.selectionStart;
+  let sig = 0;
+  for (let i = 0; i < pos; i++) if (/[\d.\-]/.test(old[i])) sig++;
+  let t = old.replace(/[^\d.\-]/g, '');
+  const neg = t.charAt(0) === '-';
+  t = t.replace(/-/g, '');
+  const dot = t.indexOf('.');
+  let ip = dot < 0 ? t : t.slice(0, dot);
+  const fp = dot < 0 ? '' : t.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  ip = ip.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const out = (neg ? '-' : '') + ip + (dot < 0 ? '' : '.' + fp);
+  if (out !== old) {
+    el.value = out;
+    let k = 0, q = 0;
+    while (q < out.length && k < sig) { if (/[\d.\-]/.test(out[q])) k++; q++; }
+    try { el.setSelectionRange(q, q); } catch (e) {}
+  }
+}
+document.addEventListener('input', function(e) {
+  if (e.target.classList && e.target.classList.contains('is-input')) liveFormat(e.target);
+});
+// On leaving a field, tidy it to 2 decimals (1,234.50).
+document.addEventListener('focusout', function(e) {
+  const el = e.target;
+  if (!el.classList || !el.classList.contains('is-input') || el.readOnly) return;
+  el.value = fmt(num(el.value));
+});
 function pct(part, base) {
   if (!base) return '—';
   return Math.round(part / base * 100) + '%';
@@ -868,7 +900,7 @@ async function saveAll() {
   fd.append('stmt_date', STMT_DATE);
 
   document.querySelectorAll('.is-input').forEach(el => {
-    fd.append(el.dataset.field, el.value || '0');
+    fd.append(el.dataset.field, String(el.value || '0').replace(/,/g, ''));
   });
 
   try {
@@ -897,7 +929,10 @@ function showToast(msg, type) {
   setTimeout(() => t.remove(), 4000);
 }
 
-document.addEventListener('DOMContentLoaded', recalc);
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.is-input').forEach(function(el) { el.value = fmt(num(el.value)); });
+  recalc();
+});
 </script>
 <script src="../assets/js/keynav.js"></script>
 </body>
