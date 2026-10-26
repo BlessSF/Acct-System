@@ -118,9 +118,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_quota'])) {
     if (!$month) { echo json_encode(['ok'=>false,'msg'=>'Missing data']); exit; }
     try {
         try { $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS quota_target decimal(12,2) NOT NULL DEFAULT 0.00"); } catch(Throwable $ignored) {}
-        $pdo->prepare("INSERT INTO summary_reports (report_month,store_name,quota_target,created_by)
-            VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE quota_target=VALUES(quota_target), created_by=VALUES(created_by)")
-            ->execute([$month.'-01', 'H', $quota, $user['name']]);
+        // One row per month. The table can be missing its unique key (then every save
+        // used to add ANOTHER row and the page kept reading the oldest one), so update
+        // in place and trim any leftover duplicates instead of relying on the key.
+        $mDate = $month.'-01';
+        $cnt = $pdo->prepare("SELECT COUNT(*) FROM summary_reports WHERE store_name='H' AND report_month=?");
+        $cnt->execute([$mDate]);
+        $have = (int)$cnt->fetchColumn();
+        if ($have > 0) {
+            $pdo->prepare("UPDATE summary_reports SET quota_target=?, created_by=? WHERE store_name='H' AND report_month=?")
+                ->execute([$quota, $user['name'], $mDate]);
+            if ($have > 1) {
+                $pdo->exec("DELETE FROM summary_reports WHERE store_name='H' AND report_month=" . $pdo->quote($mDate) . " LIMIT " . ($have - 1));
+            }
+        } else {
+            $pdo->prepare("INSERT INTO summary_reports (report_month,store_name,quota_target,created_by) VALUES (?,?,?,?)")
+                ->execute([$mDate, 'H', $quota, $user['name']]);
+        }
         echo json_encode(['ok'=>true]);
     } catch(Throwable $e){ echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
     exit;
@@ -309,7 +323,7 @@ if (isset($_GET['ajax_sync'])) {
 $savedQuota = 0;
 try {
     try { $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS quota_target decimal(12,2) NOT NULL DEFAULT 0.00"); } catch(Throwable $ignored) {}
-    $qRow = $pdo->prepare("SELECT quota_target FROM summary_reports WHERE store_name='H' AND YEAR(report_month)=? AND MONTH(report_month)=? LIMIT 1");
+    $qRow = $pdo->prepare("SELECT quota_target FROM summary_reports WHERE store_name='H' AND YEAR(report_month)=? AND MONTH(report_month)=? ORDER BY updated_at DESC, created_at DESC LIMIT 1");
     $qRow->execute([$fYear, $fMonth]);
     $savedQuota = (float)($qRow->fetchColumn() ?: 0);
 } catch(Throwable $ignored) {}
@@ -702,14 +716,15 @@ include '../layout.php';
 
     <div style="padding:16px 20px;border-right:1px solid var(--border)">
       <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--subtext);margin-bottom:8px">Target Sales</div>
-      <input id="hQuotaInput" type="number" step="0.01" min="0"
-        value="<?= $savedQuota > 0 ? number_format($savedQuota,2,'.','') : '' ?>"
+      <input id="hQuotaInput" type="text" inputmode="decimal" autocomplete="off"
+        value="<?= $savedQuota > 0 ? number_format($savedQuota,2,'.',',') : '' ?>"
         placeholder="0.00"
         style="background:#fff;border:1px solid #d1d5db;border-radius:7px;color:#1a1d23;font-family:var(--font-m);font-size:.88rem;font-weight:700;padding:6px 10px;width:100%;outline:none;transition:border-color .15s"
-        oninput="recalcHSummary()"
+        oninput="liveFormat(this);recalcHSummary();queueQuotaSave()"
         onfocus="this.style.borderColor='#0f7b5c';this.style.boxShadow='0 0 0 3px rgba(15,123,92,.1)'"
-        onblur="this.style.borderColor='#d1d5db';this.style.boxShadow='none';saveHQuota()">
-      <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Input target amount</div>
+        onblur="this.style.borderColor='#d1d5db';this.style.boxShadow='none';if(this.value.trim()!=='')this.value=fmt2(num(this.value));saveHQuota()"
+        onkeydown="if(event.key==='Enter'){this.blur();}">
+      <div id="hQuotaHint" style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Input target amount · saves automatically</div>
     </div>
 
     <div style="padding:16px 20px;border-right:1px solid var(--border);background:#eff6ff">
@@ -1035,7 +1050,7 @@ document.addEventListener('keydown', function(e) {
 
 // ── Monthly performance panel ─────────────────────────────
 function recalcHSummary() {
-  const quota = parseFloat(document.getElementById('hQuotaInput')?.value) || 0;
+  const quota = num(document.getElementById('hQuotaInput')?.value);
   const days  = parseInt(document.getElementById('hDaysInput')?.value)   || 1;
 
   let totalGross = 0;
@@ -1081,9 +1096,21 @@ function recalcHSummary() {
 }
 
 // ── Save H quota via AJAX ──────────────────────────────────
+let quotaTimer = null;
+function queueQuotaSave() {                       // auto-save shortly after you stop typing
+  clearTimeout(quotaTimer);
+  setQuotaHint('Typing…', '');
+  quotaTimer = setTimeout(saveHQuota, 700);
+}
+function setQuotaHint(msg, color) {
+  const h = document.getElementById('hQuotaHint');
+  if (!h) return;
+  h.textContent = msg; h.style.color = color || '';
+}
 async function saveHQuota() {
-  const val = document.getElementById('hQuotaInput')?.value;
-  if (!val) return;
+  clearTimeout(quotaTimer);
+  const val = String(document.getElementById('hQuotaInput')?.value || '').replace(/,/g, '') || '0';
+  setQuotaHint('Saving…', '');
   const monthEl = document.querySelector('select[name="month"]');
   const yearEl  = document.querySelector('select[name="year"]');
   const m = monthEl ? monthEl.value.toString().padStart(2,'0') : '<?= date('m') ?>';
@@ -1093,8 +1120,18 @@ async function saveHQuota() {
   fd.append('report_month', y + '-' + m);
   fd.append('quota', val);
   try {
-    await fetch('h_summary_report.php', {method:'POST', body:fd});
-  } catch(e) { console.error('Quota save failed', e); }
+    const res  = await fetch('h_summary_report.php', {method:'POST', body:fd});
+    const data = await res.json();
+    if (data.ok) {
+      setQuotaHint('✓ Saved', 'var(--accent)');
+      setTimeout(function(){ setQuotaHint('Input target amount · saves automatically', ''); }, 2500);
+    } else {
+      setQuotaHint('❌ ' + (data.msg || 'Not saved'), 'var(--accent2)');
+    }
+  } catch(e) {
+    console.error('Quota save failed', e);
+    setQuotaHint('❌ Network error — not saved', 'var(--accent2)');
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────
