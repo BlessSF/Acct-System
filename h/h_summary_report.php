@@ -334,7 +334,8 @@ include '../layout.php';
 
 /* ── Scroll container ── */
 .sr-outer {
-  width: 100%; overflow-x: auto; overflow-y: visible;
+  width: 100%; overflow: auto;
+  max-height: calc(100vh - 260px);   /* refined by fitTable() in the script below */
   border-radius: var(--radius); border: 1px solid var(--border);
   background: var(--surface); scrollbar-width: thin;
   scrollbar-color: #c1c7d0 #f1f3f5;
@@ -359,6 +360,9 @@ include '../layout.php';
   font-size: .5rem; padding: 4px 6px;
   background: #ebedf0; letter-spacing: .05em; color: #374151;
 }
+
+/* 2nd header row sits right under the group row (height set by fitTable()) */
+.sr-table thead tr:nth-child(2) th { top: var(--grp-h, 20px); }
 
 /* ── Sticky date + action columns ── */
 .th-date {
@@ -442,6 +446,13 @@ include '../layout.php';
   text-align: center; color: var(--accent);
   font-size: .6rem; text-transform: uppercase; letter-spacing: .06em;
 }
+/* TOTAL row stays pinned to the bottom of the table while the rows scroll */
+.sr-table tfoot td {
+  position: sticky; bottom: 0; z-index: 15;
+  box-shadow: 0 -2px 6px rgba(0,0,0,.10);
+}
+.sr-table tfoot td:first-child { left: 0;  z-index: 35; }
+.sr-table tfoot td:last-child  { right: 0; z-index: 35; }
 
 /* ── Status dot ── */
 .sdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
@@ -1087,7 +1098,20 @@ async function saveHQuota() {
 }
 
 // ── Init ──────────────────────────────────────────────────
+// Size the table so it fits the screen: header row + TOTAL row stay pinned
+// and only the daily rows scroll in between.
+function fitTable() {
+  const o = document.querySelector('.sr-outer'), t = document.getElementById('srt');
+  if (!o || !t) return;
+  const g = t.querySelector('thead tr');
+  if (g) t.style.setProperty('--grp-h', g.offsetHeight + 'px');
+  const h = window.innerHeight - o.getBoundingClientRect().top - 14;
+  o.style.maxHeight = Math.max(320, h) + 'px';
+}
+window.addEventListener('resize', fitTable);
+
 document.addEventListener('DOMContentLoaded', function() {
+  fitTable();
   document.querySelectorAll('#srt tbody tr').forEach(function(r){ recalc(r.id); });
   recalcTotals();
   recalcHSummary();

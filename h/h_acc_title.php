@@ -289,6 +289,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_repost_all'])) {
     exit;
 }
 
+// -- AJAX: Reorder (drag / arrows) -- saves the new position of every title.
+// H Disbursement's Account Title dropdown (and the Sum / Trial Balance rows)
+// read the same sort_order, so they follow this order automatically.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_reorder'])) {
+    header('Content-Type: application/json');
+    $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', (string)($_POST['order'] ?? ''))))));
+    if (!$ids) { echo json_encode(['ok' => false, 'msg' => 'Nothing to reorder']); exit; }
+    try {
+        $pdo->beginTransaction();
+        $up = $pdo->prepare("UPDATE `h_acc_titles` SET `sort_order`=? WHERE id=?");
+        $n = 0;
+        foreach ($ids as $id) { $up->execute([++$n, $id]); }
+        // any title not in the posted list (e.g. added from another tab) goes after, in its old order
+        $in   = implode(',', array_fill(0, count($ids), '?'));
+        $rest = $pdo->prepare("SELECT id FROM `h_acc_titles` WHERE id NOT IN ($in) ORDER BY sort_order ASC, title ASC");
+        $rest->execute($ids);
+        foreach ($rest->fetchAll(PDO::FETCH_COLUMN) as $id) { $up->execute([++$n, $id]); }
+        $pdo->commit();
+        echo json_encode(['ok' => true]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ── AJAX: Delete ──────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
     header('Content-Type: application/json');
@@ -373,6 +399,13 @@ include '../layout.php';
   transition: background .1s;
 }
 .at-item:hover { background: #FBF7F4; }
+.at-grip { display: flex; align-items: center; gap: 2px; margin-right: 10px; flex: 0 0 auto; }
+.at-handle { cursor: grab; color: #a08c80; font-size: 1.05rem; line-height: 1; padding: 2px 4px; user-select: none; }
+.at-handle:active { cursor: grabbing; }
+.at-mv { border: 1px solid #e5ded8; background: #fff; color: #6D4C41; border-radius: 4px; width: 20px; height: 20px; font-size: .55rem; line-height: 1; cursor: pointer; padding: 0; }
+.at-mv:hover { background: #f4ece6; }
+.at-grip + .at-title-text { flex: 1; }
+.at-item.at-dragging { opacity: .45; background: #FFF3E0; }
 .at-item:last-child { border-bottom: none; }
 .at-del {
   padding: 4px 10px; font-size: .64rem; font-weight: 700;
@@ -506,6 +539,11 @@ include '../layout.php';
     <?php if ($titles): ?>
       <?php foreach ($titles as $t): ?>
       <li class="at-item" id="at-row-<?= $t['id'] ?>" data-title="<?= htmlspecialchars($t['title'], ENT_QUOTES) ?>">
+        <span class="at-grip">
+          <span class="at-handle" draggable="true" title="Drag to change position">&#8942;&#8942;</span>
+          <button type="button" class="at-mv" title="Move up" onclick="moveRow(<?= $t['id'] ?>, -1)">&#9650;</button>
+          <button type="button" class="at-mv" title="Move down" onclick="moveRow(<?= $t['id'] ?>, 1)">&#9660;</button>
+        </span>
         <span class="at-title-text" id="at-title-<?= $t['id'] ?>"><?= htmlspecialchars($t['title']) ?></span>
         <span class="at-item-actions">
           <?php $vm = vatModeClean($t['vat_mode'] ?? 'both'); ?>
@@ -562,7 +600,8 @@ async function addTitle() {
       li.className = 'at-item';
       li.id = 'at-row-' + data.id;
       li.dataset.title = data.title;
-      li.innerHTML = `<span class="at-title-text" id="at-title-${data.id}">${escHtml(data.title)}</span>
+      li.innerHTML = `<span class="at-grip"><span class="at-handle" draggable="true" title="Drag to change position">&#8942;&#8942;</span><button type="button" class="at-mv" title="Move up" onclick="moveRow(${data.id}, -1)">&#9650;</button><button type="button" class="at-mv" title="Move down" onclick="moveRow(${data.id}, 1)">&#9660;</button></span>
+        <span class="at-title-text" id="at-title-${data.id}">${escHtml(data.title)}</span>
         <span class="at-item-actions">
           <select class="at-vat-sel vat-${data.vat_mode}" id="at-vat-${data.id}" data-mode="${data.vat_mode}" title="VAT setting: does this title carry input tax?" onchange="setVat(${data.id}, this)">
             <option value="both"${data.vat_mode==='both'?' selected':''}>VAT or Non-VAT</option>
@@ -840,6 +879,67 @@ function updateCount() {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// -- Reorder: drag the handle (or use the arrows) -----------------------
+// The new order is saved straight away and is what the H Disbursement
+// Account Title dropdown uses.
+let atDragLi = null, atSaveTimer = null;
+function atList() { return document.getElementById('at-list'); }
+document.addEventListener('dragstart', function(e) {
+  const h = e.target.closest ? e.target.closest('.at-handle') : null;
+  if (!h) return;
+  atDragLi = h.closest('.at-item');
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', 'row'); e.dataTransfer.setDragImage(atDragLi, 24, 16); } catch (x) {}
+  setTimeout(function(){ if (atDragLi) atDragLi.classList.add('at-dragging'); }, 0);
+});
+document.addEventListener('dragover', function(e) {
+  if (!atDragLi) return;
+  const list = atList();
+  e.preventDefault();
+  const lr = list.getBoundingClientRect();
+  if (e.clientY < lr.top + 40) list.scrollTop -= 14;            // auto-scroll near the edges
+  else if (e.clientY > lr.bottom - 40) list.scrollTop += 14;
+  const over = e.target.closest ? e.target.closest('.at-item') : null;
+  if (!over || over === atDragLi || !list.contains(over)) return;
+  const r = over.getBoundingClientRect();
+  list.insertBefore(atDragLi, e.clientY > r.top + r.height / 2 ? over.nextSibling : over);
+});
+document.addEventListener('drop', function(e) { if (atDragLi) e.preventDefault(); });
+document.addEventListener('dragend', function() {
+  if (!atDragLi) return;
+  atDragLi.classList.remove('at-dragging');
+  atDragLi = null;
+  saveOrder();
+});
+function moveRow(id, dir) {
+  const li = document.getElementById('at-row-' + id);
+  if (!li) return;
+  if (dir < 0) {
+    const prev = li.previousElementSibling;
+    if (prev && prev.classList.contains('at-item')) li.parentNode.insertBefore(li, prev);
+  } else {
+    const next = li.nextElementSibling;
+    if (next && next.classList.contains('at-item')) li.parentNode.insertBefore(next, li);
+  }
+  li.scrollIntoView({block: 'nearest'});
+  clearTimeout(atSaveTimer);
+  atSaveTimer = setTimeout(saveOrder, 400);                    // batches rapid clicks
+}
+async function saveOrder() {
+  const ids = [...atList().querySelectorAll('.at-item')].map(function(li){ return li.id.replace('at-row-', ''); });
+  if (!ids.length) return;
+  try {
+    const fd = new FormData();
+    fd.append('ajax_reorder', '1');
+    fd.append('order', ids.join(','));
+    const data = await (await fetch('h_acc_title.php', { method: 'POST', body: fd })).json();
+    if (data.ok) showToast('\u2713 Order saved \u2014 Disbursement dropdown updated', 'success');
+    else showToast('\u2717 ' + (data.msg || 'Could not save order'), 'error');
+  } catch (e) {
+    showToast('\u2717 Network error \u2014 order not saved', 'error');
+  }
 }
 
 function showToast(msg, type) {
