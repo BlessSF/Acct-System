@@ -5,7 +5,7 @@
 //  Same layout as the "FS" sheet of the HERO disbursement workbook.
 //  Everything is connected, nothing has to be typed twice:
 //    Net Sales        ← H Summary Report (Store Gross)         (can be overtyped)
-//    Sales Discount   ← H Disbursement, title "Sales Discounts"
+//    Sales Discount   ← H Summary Report (Discount total)
 //    Cost of Sales    ← H COGS page (Cost of Sales of the month)
 //    Expense lines    ← H Disbursement, grouped by Account Title (see $FS_LINES below)
 //  Typed here (saved automatically): Other Income, Depreciation, VAT Payment, ROI WW&Owner
@@ -105,7 +105,6 @@ const IS_FIXED_KEYS = ['rent', 'water_elec', 'drinking_water', 'pest', 'common_a
 const IS_ADMIN_KEYS = ['office', 'gov_premium', 'medical', 'commission', 'bank_fees', 'staff_meal', 'representation', 'professional',
                        'communication', 'freight', 'repairs', 'marketing', 'taxes', 'construction', 'management', 'amortization', 'admin_shares', 'misc'];
 $OTHER_TITLE_GROUPS = [   // titles that are real but not an expense line of this statement
-    'Sales Discounts'     => ['Sales Discounts'],
     'Purchases (in COGS)' => ['Purchases - Non-Vat', 'Purchases - Vatable', 'Carwash Purchases'],
 ];
 
@@ -138,7 +137,19 @@ function hIsBuild(PDO $pdo, int $y, int $m, string $basis, array $FS_LINES, arra
 
     $L = []; $cnt = [];
     foreach ($FS_LINES as $key => [$label, $titles]) { [$L[$key], $cnt[$key]] = $take($titles); }
-    [$L['sales_discount'], $cnt['sales_discount']] = $take($OTHER_TITLE_GROUPS['Sales Discounts']);
+    // Sales Discount = the Discount total of the H Summary Report (same days/priority as Net Sales).
+    // (Disbursement entries titled "Sales Discounts", if any, are NOT added — they would double count — and show in the check box.)
+    $L['sales_discount'] = 0.0; $cnt['sales_discount'] = 0;
+    try {
+        $disc = [];
+        $st = $pdo->prepare("SELECT report_date, discount FROM `h_report_entries` WHERE store_name='H' AND YEAR(report_date)=? AND MONTH(report_date)=? ORDER BY updated_at ASC, created_at ASC");
+        $st->execute([$y, $m]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $disc[$r['report_date']] = (float)$r['discount'];
+        $st = $pdo->prepare("SELECT report_date, discount FROM `h_sales_report` WHERE store_name='H' AND YEAR(report_date)=? AND MONTH(report_date)=?");
+        $st->execute([$y, $m]);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $disc[$r['report_date']] = (float)$r['discount'];
+        $L['sales_discount'] = round(array_sum($disc), 2); $cnt['sales_discount'] = count(array_filter($disc));
+    } catch (Throwable $e) {}
     [$purch, $purchCnt] = $take($OTHER_TITLE_GROUPS['Purchases (in COGS)']);
 
     // Net Sales (auto) = Store Gross total of the H Summary Report
@@ -350,8 +361,8 @@ include '../layout.php';
         <td class="lbl"><?= htmlspecialchars($label) ?>
           <?php if ($key === 'net_sales'): ?>
             <span class="fs-tag" id="tag_net_sales"><?= $cur['netSalesTyped'] ? '✎ typed (clear to use Summary Report)' : '↳ Summary Report' ?></span>
-          <?php elseif ($key === 'sales_discount'): ?><span class="fs-tag">↳ Disbursement</span>
-          <?php elseif ($key === 'cogs'): ?><span class="fs-tag"><?= $cur['cogsRows'] ? '↳ H COGS' : '⚠ no H COGS for this month' ?></span>
+          <?php elseif ($key === 'sales_discount'): ?><span class="fs-tag">↳ Summary Report</span>
+          <?php elseif ($key === 'cogs'): ?><?php if ($cur['cogsRows']): ?><span class="fs-tag">↳ H COGS</span><?php else: ?><a class="fs-tag" style="background:#fff1f2;color:#be123c;border-color:#fecdd3;text-decoration:none" href="h_cogs.php?year=<?= (int)$year ?>&month=<?= (int)$month ?>" title="Enter this month's Beginning and Ending inventory in H COGS">⚠ no COGS entered for this month — open H COGS</a><?php endif; ?>
           <?php elseif ($key === 'depreciation' && $cur['depCarried']): ?><span class="fs-tag">same as <?= htmlspecialchars($cur['depCarried']) ?></span>
           <?php elseif (!empty($cur['cnt'][$key])): ?><span class="fs-tag"><?= (int)$cur['cnt'][$key] ?> entr<?= $cur['cnt'][$key] == 1 ? 'y' : 'ies' ?></span>
           <?php endif; ?>
@@ -382,6 +393,8 @@ include '../layout.php';
       <span class="bad">Not in the statement (no line for these Account Titles — add them to a line in <code>$FS_LINES</code> or check the title name):</span>
       <?php foreach ($cur['unmapped'] as $u): ?><br>&nbsp;&nbsp;• <b><?= htmlspecialchars($u[0]) ?></b> <?= $money($u[1]) ?> (<?= (int)$u[2] ?>)<?php endforeach; ?>
     <?php else: ?>Every other entry of this month is included in a line above. ✓<?php endif; ?>
+    <?php if (!$cur['cogsRows']): ?><br><span class="bad"><b>Cost of Sales is empty</b> — Gross Profit and Net Income are overstated until the month's COGS row (Beginning inventory, Ending inventory, Marketing cost) is saved in H COGS.</span><?php endif; ?>
+    <?php if (!array_key_exists('depreciation', $cur['man'])): ?><br><span class="bad"><b>Depreciation Expense is empty</b> — type it once (it carries forward to the next months).</span><?php endif; ?>
     <br>Net Profit With Depreciation = Net Profit (add back depreciation) − ROI (Sound and CCTV), as in the FS sheet; ROI WW&amp;Owner is shown for reference.
   </div>
 </div>
