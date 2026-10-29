@@ -776,6 +776,11 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     <a href="<?= BASE_URL . '/' . ($ip['file']) ?>" class="nav-item <?= ($activePage===$ip['key'])?'active':'' ?>">
       <span class="ni">📑</span> Income Statement
     </a>
+    <?php if ($branch === 'H'): ?>
+    <a href="<?= BASE_URL ?>/h/h_income_statement_acct.php" class="nav-item <?= ($activePage==='h_income_statement_acct')?'active':'' ?>">
+      <span class="ni">📑</span> Income Stmt (Acct Titles)
+    </a>
+    <?php endif; ?>
     <?php endif; ?>
     <?php endif; ?>
     <a href="<?= BASE_URL ?>/vendor_masterlist.php" class="nav-item <?= ($activePage==='vendor_masterlist')?'active':'' ?>">
@@ -1094,6 +1099,9 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
       <span class="ni">📑</span> <?= projectName($ip['label']) ?> Income Stmt
     </a>
     <?php endforeach; ?>
+    <a href="<?= BASE_URL ?>/h/h_income_statement_acct.php" class="nav-item <?= ($activePage==='h_income_statement_acct')?'active':'' ?>">
+      <span class="ni">📑</span> <?= projectName('H') ?> Income Stmt (Acct Titles)
+    </a>
     <a href="<?= BASE_URL ?>/vendor_masterlist.php" class="nav-item <?= ($activePage==='vendor_masterlist')?'active':'' ?>">
       <span class="ni">🏢</span> Vendor Masterlist
     </a>
