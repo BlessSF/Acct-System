@@ -182,6 +182,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['vendor_lookup'])) {
     exit;
 }
 
+// Input Tax / Net of VAT taken straight from the pasted/imported Excel row (so the system matches the sheet).
+// Returns [tax, net] only when the values are present and add up to Gross; otherwise null (→ computed from the title's VAT setting).
+function hFileTaxNet($tax, $net, float $gross): ?array {
+    $clean = function ($v) { $v = trim((string)$v); if ($v === '' || stripos($v, '#') === 0) return null;
+        if ($v === '-') return 0.0; return (float)preg_replace('/[^0-9.\-]/', '', $v); };
+    $t = $clean($tax); $n = $clean($net);
+    if ($t === null && $n === null) return null;
+    if ($t === null) $t = round($gross - $n, 2);
+    if ($n === null) $n = round($gross - $t, 2);
+    if (abs($gross - $t - $n) > 0.02 || $t < 0 || $n == 0.0) return null;
+    return [round($t, 2), round($n, 2)];
+}
+
 // ── AJAX: Add ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
     header('Content-Type: application/json');
@@ -189,7 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
     foreach ($TXT_COLS as $f) $data[$f] = trim($_POST[$f] ?? '');
     foreach ($NUM_COLS as $f) $data[$f] = (float)str_replace(',', '', $_POST[$f] ?? 0);
     // Input Tax / Net of VAT come from the account title's VAT setting + the supplier's VAT status
-    [$data['input_tax'], $data['net_of_vat']] = vatModeCompute(vatModeFor($pdo, 'h_acc_titles', $data['account_title']), $data['vat_status'], $data['gross']);
+    [$data['input_tax'], $data['net_of_vat']] = (isset($_POST['ov_tax']) ? hFileTaxNet($_POST['ov_tax'], $_POST['ov_net'] ?? '', $data['gross']) : null)
+        ?? vatModeCompute(vatModeFor($pdo, 'h_acc_titles', $data['account_title']), $data['vat_status'], $data['gross']);
     $data['saved_by'] = $user['name'];
     $fields = array_keys($data);
     try {
@@ -289,7 +303,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
         if (!isset($existing[$key])) { $cntSt->execute([$date, $tin, $name, $inv, $title, $part, $gross]); $existing[$key] = (int)$cntSt->fetchColumn(); }
         $seenInFile[$key] = ($seenInFile[$key] ?? 0) + 1;
         if ($seenInFile[$key] <= $existing[$key]) { $dups++; continue; }
-        [$tax, $net] = vatModeCompute(vatModeFor($pdo, 'h_acc_titles', $title), $type, $gross);
+        $fromFile = hFileTaxNet($r[8], $r[9], $gross);
+        [$tax, $net] = $fromFile ?? vatModeCompute(vatModeFor($pdo, 'h_acc_titles', $title), $type, $gross);
         try {
             $ins->execute([$date, $tin, $name, $type, $addr, $inv, $title, $gross, $tax, $net, $part, $user['name']]);
             $nid = (int)$pdo->lastInsertId();
@@ -312,8 +327,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_update'])) {
     foreach ($TXT_COLS as $f) { $sets[] = "`$f`=?"; $vals[] = trim($_POST[$f] ?? ''); }
     foreach ($NUM_COLS as $f) { $sets[] = "`$f`=?"; $vals[] = (float)str_replace(',', '', $_POST[$f] ?? 0); }
     // Input Tax / Net of VAT come from the account title's VAT setting + the supplier's VAT status
-    [$taxVal, $netVal] = vatModeCompute(vatModeFor($pdo, 'h_acc_titles', trim($_POST['account_title'] ?? '')),
-        trim($_POST['vat_status'] ?? ''), (float)str_replace(',', '', $_POST['gross'] ?? 0));
+    $grossU = (float)str_replace(',', '', $_POST['gross'] ?? 0);
+    [$taxVal, $netVal] = (isset($_POST['ov_tax']) ? hFileTaxNet($_POST['ov_tax'], $_POST['ov_net'] ?? '', $grossU) : null)
+        ?? vatModeCompute(vatModeFor($pdo, 'h_acc_titles', trim($_POST['account_title'] ?? '')), trim($_POST['vat_status'] ?? ''), $grossU);
     foreach ($sets as $k => $c) {
         if ($c === '`input_tax`=?')  $vals[$k] = $taxVal;
         if ($c === '`net_of_vat`=?') $vals[$k] = $netVal;
@@ -832,6 +848,7 @@ function setRowState(row, state) {
 // ── Auto-calculate: gross → input_tax (12%) → net_of_vat ──
 function calcRow(el) {
     const row   = el.closest('tr');
+    if (el.dataset && el.dataset.col && row) { delete row.dataset.ovTax; delete row.dataset.ovNet; }   // editing again → back to the automatic rule
     const gross = parseFloat(row.querySelector('[data-col="gross"]').value.replace(/,/g,'')) || 0;
     const vat   = row.querySelector('[data-col="vat_status"]').value;
     const taxEl = row.querySelector('[data-col="input_tax"]');
@@ -999,6 +1016,7 @@ async function saveRow(row) {
     row.querySelectorAll('[data-col]').forEach(el => {
         fd.append(el.dataset.col, el.value || '');
     });
+    if (row.dataset.ovTax !== undefined) { fd.append('ov_tax', row.dataset.ovTax); fd.append('ov_net', row.dataset.ovNet); }
     try {
         const res  = await fetch('h_disbursement.php', { method: 'POST', body: fd });
         const data = await res.json();
@@ -1130,6 +1148,17 @@ document.addEventListener('paste', async function (ev) {
             markDirty(f);
         });
         const g = row.querySelector('[data-col="gross"]'); if (g) calcRow(g);
+        // keep the Input Tax / Net of VAT exactly as copied from Excel
+        const pt = full[0][8], pn = full[0][9];
+        if (String(pt).trim() !== '' || String(pn).trim() !== '') {
+            const num = v => { v = String(v).trim(); return (v === '' || v === '-') ? 0 : (parseFloat(v.replace(/[^0-9.\-]/g, '')) || 0); };
+            const gr = num(full[0][7]), t = num(pt), n = String(pn).trim() === '' ? gr - t : num(pn);
+            if (Math.abs(gr - t - n) <= 0.02 && n !== 0) {
+                row.dataset.ovTax = t.toFixed(2); row.dataset.ovNet = n.toFixed(2);
+                row.querySelector('[data-col="input_tax"]').value = t.toFixed(2);
+                row.querySelector('[data-col="net_of_vat"]').value = n.toFixed(2);
+            }
+        }
         showToast('✓ Pasted into this row — press Enter to save', 'success');
         return;
     }
