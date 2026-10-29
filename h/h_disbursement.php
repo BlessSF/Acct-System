@@ -434,7 +434,7 @@ include '../layout.php';
 <style>
 /* ── Outer wrapper ── */
 .dsb-outer {
-  width: 100%; overflow-x: auto;
+  width: 100%; overflow: auto; max-height: calc(100vh - 150px);   /* scrolls inside, so header + TOTAL stay visible */
   border: 2px solid #217346;
   border-radius: var(--radius);
   background: var(--surface);
@@ -530,6 +530,7 @@ include '../layout.php';
   background: #C6EFCE; color: #1a1a1a;
   font-family: var(--font-m); font-size: .65rem; font-weight: 800;
   padding: 8px 8px; border: 1px solid #388E3C;
+  position: sticky; bottom: 0; z-index: 21; box-shadow: 0 -2px 4px rgba(0,0,0,.12);
 }
 .dsb-table tfoot td.num { text-align: right; }
 
@@ -1274,6 +1275,16 @@ function showToast(msg, type) {
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3500);
 }
+
+// Keep the table box inside the screen so its header and the TOTAL row are always visible.
+(function () {
+  function fit() {
+    var o = document.querySelector('.dsb-outer'); if (!o) return;
+    var top = o.getBoundingClientRect().top + window.pageYOffset;
+    o.style.maxHeight = Math.max(320, window.innerHeight - top - 16) + 'px';
+  }
+  fit(); window.addEventListener('resize', fit); window.addEventListener('load', fit);
+})();
 </script>
 </body>
 </html>
