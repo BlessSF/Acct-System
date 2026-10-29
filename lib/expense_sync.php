@@ -290,13 +290,23 @@ function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, str
         $rows = $rs->fetchAll(PDO::FETCH_ASSOC);
 
         if ($rows) {
-            $last = array_pop($rows);
-            $others = 0.0;
-            foreach ($rows as $r) $others += (float)$r['purc'];
-            $purc = round($total - $others, 2);
-            if ((float)$last['purc'] === $purc) continue;
-            $cos = round((float)$last['beg'] + $purc - (float)$last['end_inv'] - (float)$last['mktg_cost'], 2);
-            $pdo->prepare("UPDATE `$cogsTable` SET purc=?, cos=? WHERE id=?")->execute([$purc, $cos, $last['id']]);
+            // Each COGS row (e.g. the 15th and the last day of the month) gets the purchases dated AFTER the
+            // previous row up to its own date; the last row also takes anything dated after it, so the month
+            // total always equals the Disbursement purchases.
+            $monthStart = sprintf('%04d-%02d-01', $y, $m);
+            $monthEnd   = date('Y-m-t', strtotime($monthStart));
+            $n = count($rows);
+            for ($i = 0; $i < $n; $i++) {
+                $lower = $i === 0 ? date('Y-m-d', strtotime($monthStart . ' -1 day')) : $rows[$i - 1]['cogs_date'];
+                $upper = $i === $n - 1 ? $monthEnd : $rows[$i]['cogs_date'];
+                $w = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM `$expTable` WHERE expense_date > ? AND expense_date <= ?");
+                $w->execute([$lower, $upper]);
+                $purc = round((float)$w->fetchColumn(), 2);
+                $r = $rows[$i];
+                $cos = round((float)$r['beg'] + $purc - (float)$r['end_inv'] - (float)$r['mktg_cost'], 2);
+                if ((float)$r['purc'] === $purc && (float)$r['cos'] === $cos) continue;
+                $pdo->prepare("UPDATE `$cogsTable` SET purc=?, cos=? WHERE id=?")->execute([$purc, $cos, $r['id']]);
+            }
         }
     }
 }
