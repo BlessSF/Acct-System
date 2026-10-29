@@ -273,9 +273,10 @@ include '../layout.php';
 .fs-table thead th { background: #fbeaea; color: #7a1313; font-family: var(--font-m); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; height: 36px; text-align: right; border-bottom: 2px solid #e9c2c2; }
 .fs-table thead th:first-child { text-align: left; }
 .fs-table thead th.cur { background: #7a1313; color: #fff; }
-.fs-table td.lbl { color: var(--text); text-align: left; }
+.fs-table td.lbl { color: #0b0f19; font-weight: 600; text-align: left; }
+.fs-table td.num { color: #0b0f19; font-weight: 600; }
 .fs-table td.num { text-align: right; font-family: var(--font-m); font-size: .79rem; white-space: nowrap; min-width: 118px; }
-.fs-table td.pc  { text-align: right; font-family: var(--font-m); font-size: .68rem; color: var(--subtext); width: 46px; border-right: 1px solid #f1f3f6; }
+.fs-table td.pc  { text-align: right; font-family: var(--font-m); font-size: .68rem; color: #374151; width: 46px; border-right: 1px solid #f1f3f6; }
 .fs-table td.cur { background: #fffafa; }
 .fs-table tr.line td.lbl { padding-left: 26px; }
 .fs-table tr.sub td.lbl  { padding-left: 90px; font-weight: 700; color: var(--subtext2); font-size: .74rem; }
@@ -285,9 +286,9 @@ include '../layout.php';
 .fs-table tr.total td { font-weight: 800; background: #fafbfc; border-top: 1px solid var(--border2); }
 .fs-table tr.grand td { font-weight: 800; background: #f6f7f9; border-top: 2px solid var(--border2); }
 .fs-table tr.final td { font-weight: 800; background: #fff6e0; border-top: 2px solid var(--accent3); color: #8a5300; }
-.fs-table tr.zero.line td { color: var(--subtext); }
+.fs-table tr.zero.line td { color: #4b5563; }
 .fs-table .neg { color: var(--accent2) !important; }
-.fs-table input.fs-in { width: 118px; text-align: right; font-family: var(--font-m); font-size: .79rem; padding: 4px 8px; border: 2px solid #0284c7; border-radius: 6px; background: #fff;
+.fs-table input.fs-in { width: 118px; text-align: right; font-family: var(--font-m); font-size: .82rem; font-weight: 700; color: #0b0f19; padding: 4px 8px; border: 2px solid #0284c7; border-radius: 6px; background: #fff;
   box-shadow: 0 0 0 3px rgba(2,132,199,.35), 0 0 10px 1px rgba(2,132,199,.45); }
 .fs-table input.fs-in:focus { outline: none; border-color: #0369a1; box-shadow: 0 0 0 4px rgba(2,132,199,.6), 0 0 16px 3px rgba(2,132,199,.6); }
 .fs-tag { font-family: var(--font-m); font-size: .58rem; color: var(--accent); margin-left: 8px; background: rgba(15,123,92,.08); padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(15,123,92,.15); white-space: nowrap; }
@@ -375,9 +376,9 @@ include '../layout.php';
         <td class="num cur <?= $negCls($vCur) ?>" id="v_<?= htmlspecialchars($key) ?>">
           <?php if ($isTyped):
               $shown = ($key === 'net_sales') ? ($cur['netSalesTyped'] ? $vCur : '') : (array_key_exists($key, $cur['man']) ? $vCur : '');
-              $ph    = ($key === 'net_sales') ? number_format($cur['L']['net_sales_auto'], 2, '.', '') : '0.00'; ?>
+              $ph    = ($key === 'net_sales') ? number_format($cur['L']['net_sales_auto'], 2, '.', ',') : '0.00'; ?>
             <input class="fs-in" type="text" inputmode="decimal" data-field="<?= htmlspecialchars($key) ?>"
-                   value="<?= $shown === '' ? '' : number_format((float)$shown, 2, '.', '') ?>" placeholder="<?= $ph ?>" autocomplete="off">
+                   value="<?= $shown === '' ? '' : number_format((float)$shown, 2, '.', ',') ?>" placeholder="<?= $ph ?>" autocomplete="off">
           <?php else: ?><?= $money($vCur) ?><?php endif; ?>
         </td>
         <td class="pc cur" id="p_<?= htmlspecialchars($key) ?>"><?= $showPct ? $pctOf($vCur, $cur['L']['net_sales']) : '' ?></td>
@@ -431,10 +432,28 @@ function fsRecalc() {
   });
 }
 
+// live thousands separators while typing (1,000 / 1,000,000), caret stays in place
+function commaFmt(inp) {
+  const v = inp.value, pos = inp.selectionStart;
+  const left = v.slice(0, pos).replace(/[^0-9.]/g, '').length;
+  let t = v.replace(/[^0-9.\-]/g, '');
+  const neg = t.charAt(0) === '-'; t = t.replace(/-/g, '');
+  const i = t.indexOf('.');
+  let ip = i < 0 ? t : t.slice(0, i), dp = i < 0 ? '' : '.' + t.slice(i + 1).replace(/\./g, '').slice(0, 2);
+  ip = ip.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const out = (neg ? '-' : '') + ip + dp;
+  if (out === v) return;
+  inp.value = out;
+  let c = 0, np = out.length;
+  for (let k = 0; k < out.length; k++) { if (c === left) { np = k; break; } if (/[0-9.]/.test(out[k])) c++; }
+  if (c === left && np === out.length) np = out.length;
+  try { inp.setSelectionRange(np, np); } catch (e) {}
+}
 const fsTimers = {};
 document.querySelectorAll('input.fs-in').forEach(function (inp) {
   inp.addEventListener('input', function () {
-    const f = inp.dataset.field, raw = inp.value.trim();
+    commaFmt(inp);
+    const f = inp.dataset.field, raw = inp.value.trim().replace(/,/g, '');
     const n = parseFloat(raw.replace(/[^0-9.\-]/g, ''));
     if (f === 'net_sales') FS.L.net_sales = raw === '' ? FS.auto : (isNaN(n) ? 0 : n); else FS.L[f] = raw === '' ? 0 : (isNaN(n) ? 0 : n);
     fsRecalc();
@@ -444,7 +463,7 @@ document.querySelectorAll('input.fs-in').forEach(function (inp) {
   });
   inp.addEventListener('blur', function () {
     const n = parseFloat(inp.value.replace(/[^0-9.\-]/g, ''));
-    if (inp.value.trim() !== '' && !isNaN(n)) inp.value = n.toFixed(2);
+    if (inp.value.trim() !== '' && !isNaN(n)) inp.value = n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   });
 });
 async function fsSave(field, raw, st) {
