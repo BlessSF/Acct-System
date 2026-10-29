@@ -1108,7 +1108,13 @@ document.addEventListener('paste', async function (ev) {
     // drop a pasted header row (DATE … GROSS …)
     if (data.length && /^date$/i.test(data[0][0] || '') && data[0].some(c => /^gross$/i.test(c))) data.shift();
     if (!data.length) return;
-    const start = Math.max(0, PASTE_COLS.indexOf(el.dataset.col));
+    // Your Excel has an empty column B between DATE and TIN. If the copied cells include it (12 columns,
+    // column B empty in every row), drop it so TIN, NAME, TYPE… line up with the right boxes.
+    if (data.every(r => r.length >= 12 && String(r[1] || '').trim() === '')) data = data.map(r => [r[0]].concat(r.slice(2)));
+    // Copied rows that begin with a date are whole entries (DATE … PARTICULAR): always start at the DATE box,
+    // whichever box you clicked before pasting.
+    const fullEntry = data.every(r => r.length >= 10 && pasteDateIso(r[0]) !== '');
+    const start = fullEntry ? 0 : Math.max(0, PASTE_COLS.indexOf(el.dataset.col));
     const full = data.map(r => { const o = new Array(11).fill(''); r.forEach((v, j) => { if (start + j < 11) o[start + j] = v; }); return o; });
 
     if (full.length === 1) {                                                         // fill the current row
