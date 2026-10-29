@@ -113,6 +113,11 @@ if ($expSyncReady) {
         expSyncEnsure($pdo, 'h_acc_titles', 'h_expenses', EXP_SYNC_H_DEFAULTS);
     } catch (Throwable $e) { $expSyncReady = false; }
 }
+// Same as hPostToExpenses but without the per-row COGS sync (used by bulk import, which syncs once at the end)
+function hPostToExpensesOnly(PDO $pdo, int $id): string {
+    try { return expSyncOne($pdo, 'h_disbursement', 'h_expenses', 'h_acc_titles', $id); }
+    catch (Throwable $e) { return 'error'; }
+}
 function hPostToExpenses(PDO $pdo, int $id): string {
     try {
         $r = expSyncOne($pdo, 'h_disbursement', 'h_expenses', 'h_acc_titles', $id);
@@ -197,6 +202,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
     }
+    exit;
+}
+
+// ── AJAX: Import (Excel paste of many rows) ───────────────
+// Columns pasted from Excel/Sheets: DATE, TIN, NAME OF SUPPLIER, TYPE, ADDRESS,
+// INVOICE #, ACCOUNT TITLE, GROSS, INPUT TAX, NET OF VAT, PARTICULAR.
+// Input Tax / Net of VAT are always recomputed from the Account Title's VAT setting.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
+    header('Content-Type: application/json');
+    $rows = json_decode($_POST['rows'] ?? '[]', true);
+    if (!is_array($rows) || !$rows) { echo json_encode(['ok' => false, 'msg' => 'Nothing to import']); exit; }
+    if (count($rows) > 1000) { echo json_encode(['ok' => false, 'msg' => 'Too many rows at once (max 1000)']); exit; }
+
+    $normT = function ($s) { $s = preg_replace('/\s+/', ' ', trim((string)$s)); return function_exists('mb_strtolower') ? mb_strtolower($s) : strtolower($s); };
+    $titleMap = [];
+    foreach ($pdo->query("SELECT title FROM h_acc_titles")->fetchAll(PDO::FETCH_COLUMN) as $t) $titleMap[$normT($t)] = $t;
+
+    $parseDate = function ($v) {
+        $v = trim((string)$v);
+        if ($v === '') return null;
+        if (preg_match('/^\d{5}(\.\d+)?$/', $v)) return date('Y-m-d', (int)(((float)$v - 25569) * 86400));   // Excel serial
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $v, $m)) {
+            [$a, $b, $y] = [(int)$m[1], (int)$m[2], (int)$m[3]];
+            if ($y < 100) $y += 2000;
+            $mo = $a; $d = $b;
+            if ($a > 12 && $b <= 12) { $mo = $b; $d = $a; }
+            return checkdate($mo, $d, $y) ? sprintf('%04d-%02d-%02d', $y, $mo, $d) : null;
+        }
+        foreach (['Y-m-d', 'd-M-y', 'd-M-Y', 'j-M-y', 'j-M-Y', 'd M Y', 'M j, Y', 'F j, Y'] as $f) {
+            $dt = DateTime::createFromFormat('!' . $f, $v);
+            if ($dt && $dt->format($f) !== false) return $dt->format('Y-m-d');
+        }
+        $t = strtotime($v);
+        return $t ? date('Y-m-d', $t) : null;
+    };
+    $parseNum = function ($v) {
+        $v = trim((string)$v);
+        if ($v === '' || $v === '-' || stripos($v, '#') === 0) return 0.0;
+        $neg = (strpos($v, '(') !== false && strpos($v, ')') !== false);
+        $n = (float)preg_replace('/[^0-9.\-]/', '', $v);
+        return $neg ? -abs($n) : $n;
+    };
+
+    // Duplicate check: identical rows already in the system are skipped, but an identical row that
+    // legitimately appears several times in the file is kept (only the surplus over what exists is added).
+    $cntSt = $pdo->prepare("SELECT COUNT(*) FROM h_disbursement WHERE entry_date=? AND tin=? AND company_name=? AND invoice_no=? AND account_title=? AND particular=? AND ABS(gross-?)<0.005");
+    $ins = $pdo->prepare("INSERT INTO h_disbursement (`entry_date`,`tin`,`company_name`,`vat_status`,`address`,`invoice_no`,`account_title`,`gross`,`input_tax`,`net_of_vat`,`particular`,`saved_by`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+    $added = 0; $dups = 0; $skipped = 0; $undated = 0; $unposted = 0; $grossSum = 0.0; $unknownTitles = [];
+    $existing = []; $seenInFile = [];
+
+    // Rows with no date (e.g. month-end items typed without a date) get the last day of the month
+    // that most of the dated rows belong to — otherwise they would never show up under that month.
+    $parsed = [];
+    $monthVotes = [];
+    foreach ($rows as $i => $r) {
+        $r = array_pad(array_values((array)$r), 11, '');
+        $parsed[$i] = $r;
+        $d = $parseDate($r[0]);
+        if ($d && trim((string)$r[6]) !== '' && $parseNum($r[7]) != 0.0) { $ym = substr($d, 0, 7); $monthVotes[$ym] = ($monthVotes[$ym] ?? 0) + 1; }
+    }
+    $fallbackDate = null;
+    if ($monthVotes) { arsort($monthVotes); $ym = array_key_first($monthVotes); $fallbackDate = date('Y-m-t', strtotime($ym . '-01')); }
+    elseif (!empty($_POST['month']) && preg_match('/^\d{4}-\d{2}$/', $_POST['month'])) { $fallbackDate = date('Y-m-t', strtotime($_POST['month'] . '-01')); }
+
+    foreach ($parsed as $r) {
+        $date  = $parseDate($r[0]);
+        $tin   = trim((string)$r[1]);
+        $name  = trim((string)$r[2]);
+        $type  = strtoupper(trim((string)$r[3]));
+        $addr  = trim((string)$r[4]);
+        $inv   = trim((string)$r[5]);
+        $title = trim((string)$r[6]);
+        $gross = $parseNum($r[7]);
+        $part  = trim((string)$r[10]);
+        if ($title === '' || $gross == 0.0) { $skipped++; continue; }      // blank / unfinished template rows
+        if (!$date) {
+            if (!$fallbackDate) { $skipped++; continue; }
+            $date = $fallbackDate; $undated++;
+        }
+        $k = $normT($title);
+        if (isset($titleMap[$k])) $title = $titleMap[$k]; else $unknownTitles[$title] = true;
+        // TYPE column often shows #N/A for non-VAT suppliers: treat anything but VAT/NV by the TIN
+        if ($type !== 'VAT' && $type !== 'NV') $type = ($tin !== '') ? 'VAT' : 'NV';
+        $key = implode('|', [$date, $tin, $name, $inv, $title, $part, number_format($gross, 2, '.', '')]);
+        if (!isset($existing[$key])) { $cntSt->execute([$date, $tin, $name, $inv, $title, $part, $gross]); $existing[$key] = (int)$cntSt->fetchColumn(); }
+        $seenInFile[$key] = ($seenInFile[$key] ?? 0) + 1;
+        if ($seenInFile[$key] <= $existing[$key]) { $dups++; continue; }
+        [$tax, $net] = vatModeCompute(vatModeFor($pdo, 'h_acc_titles', $title), $type, $gross);
+        try {
+            $ins->execute([$date, $tin, $name, $type, $addr, $inv, $title, $gross, $tax, $net, $part, $user['name']]);
+            $nid = (int)$pdo->lastInsertId();
+            if (hPostToExpensesOnly($pdo, $nid) === 'unmapped') $unposted++;
+            $added++; $grossSum += $gross;
+        } catch (Throwable $e) { $skipped++; }
+    }
+    hSyncCogsPurchases($pdo, null);
+    echo json_encode(['ok' => true, 'added' => $added, 'duplicates' => $dups, 'skipped' => $skipped, 'undated' => $undated, 'fallback_date' => $fallbackDate,
+        'unposted' => $unposted, 'unknown_titles' => array_keys($unknownTitles), 'gross' => round($grossSum, 2)]);
     exit;
 }
 
@@ -544,6 +647,11 @@ include '../layout.php';
   <?php if ($fSearch): ?>
   <a href="h_disbursement.php?month=<?= urlencode($fMonth) ?>" class="btn btn-ghost btn-sm">Reset</a>
   <?php endif; ?>
+  <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('impFile').click()"
+     style="color:#6A1B9A;border-color:rgba(106,27,154,.3);background:rgba(106,27,154,.06);font-weight:600" title="Import an Excel file in the same layout (DATE, TIN, NAME OF SUPPLIER, TYPE, ADDRESS, INVOICE #, ACCOUNT TITLE, GROSS, INPUT TAX, NET OF VAT, PARTICULAR)">
+    ⬆ Import Excel
+  </button>
+  <input type="file" id="impFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelFile(this)">
   <a href="h_disbursement.php?export_csv=1&month=<?= urlencode($fMonth) ?>"
      class="btn btn-ghost btn-sm" style="color:#388E3C;border-color:rgba(76,175,80,.3);background:rgba(76,175,80,.06)">
     ⬇ Export XLSX
@@ -983,6 +1091,146 @@ document.addEventListener('DOMContentLoaded', function () {
     addRow(false);
     updateTotals();
 });
+
+// ── Excel paste: copy rows from Excel / Google Sheets (DATE … PARTICULAR) and paste ──
+//   • one line  → fills the row you are in (press Enter to save it)
+//   • many lines → imported as new entries (asks you to confirm first)
+const PASTE_COLS = ['entry_date','tin','company_name','vat_status','address','invoice_no','account_title','gross','input_tax','net_of_vat','particular'];
+document.addEventListener('paste', async function (ev) {
+    const el = ev.target;
+    if (!el || !el.matches || !el.matches('#dsb-tbody input, #dsb-tbody select')) return;
+    const text = (ev.clipboardData || window.clipboardData).getData('text');
+    if (!text || (text.indexOf('\t') < 0 && !/\r?\n./.test(text))) return;          // single value → normal paste
+    ev.preventDefault();
+    let lines = text.replace(/\r/g, '').split('\n');
+    while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+    let data = lines.map(l => l.split('\t').map(c => c.replace(/^"|"$/g, '').trim()));
+    // drop a pasted header row (DATE … GROSS …)
+    if (data.length && /^date$/i.test(data[0][0] || '') && data[0].some(c => /^gross$/i.test(c))) data.shift();
+    if (!data.length) return;
+    const start = Math.max(0, PASTE_COLS.indexOf(el.dataset.col));
+    const full = data.map(r => { const o = new Array(11).fill(''); r.forEach((v, j) => { if (start + j < 11) o[start + j] = v; }); return o; });
+
+    if (full.length === 1) {                                                         // fill the current row
+        const row = el.closest('tr');
+        full[0].forEach((v, i) => {
+            if (v === '' || ['input_tax','net_of_vat'].includes(PASTE_COLS[i])) return;
+            const f = row.querySelector('[data-col="' + PASTE_COLS[i] + '"]');
+            if (!f) return;
+            if (PASTE_COLS[i] === 'entry_date') { const d = pasteDateIso(v); if (d) f.value = d; }
+            else if (f.tagName === 'SELECT') {
+                const opt = [...f.options].find(o => o.value.toLowerCase() === v.toLowerCase()); if (opt) f.value = opt.value;
+            } else f.value = v;
+            markDirty(f);
+        });
+        const g = row.querySelector('[data-col="gross"]'); if (g) calcRow(g);
+        showToast('✓ Pasted into this row — press Enter to save', 'success');
+        return;
+    }
+
+    await confirmAndImport(full);
+});
+
+// Shared by Paste and Import Excel: validate, confirm, send, reload.
+async function confirmAndImport(full) {
+    const known = new Set(ACCT_OPTIONS.map(t => t.trim().toLowerCase()));
+    const rows = full.filter(r => r[6] !== '' && (parseFloat(String(r[7]).replace(/[^0-9.\-]/g, '')) || 0) !== 0);
+    if (!rows.length) { showToast('❌ No rows with an Account Title and a Gross amount found', 'error'); return; }
+    const gross = rows.reduce((a, r) => a + (parseFloat(String(r[7]).replace(/[^0-9.\-]/g, '')) || 0), 0);
+    const unknown = [...new Set(rows.map(r => r[6]).filter(t => !known.has(t.trim().toLowerCase())))];
+    let msg = 'Import ' + rows.length + ' entries?\nTotal Gross: ' + gross.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (unknown.length) msg += '\n\nThese Account Titles are not in your list (they will not post to Expenses until added):\n• ' + unknown.slice(0, 8).join('\n• ');
+    const noDate = rows.filter(r => String(r[0]).trim() === '').length;
+    if (noDate) msg += '\n\n' + noDate + ' rows have no date — they will be dated the last day of the month of the other rows.';
+    msg += '\n\nInput Tax and Net of VAT are recalculated automatically. Entries already in the system are skipped.';
+    if (!confirm(msg)) return;
+
+    showToast('Importing ' + rows.length + ' entries…', 'success');
+    const fd = new FormData(); fd.append('ajax_import', '1'); fd.append('rows', JSON.stringify(rows)); fd.append('month', document.querySelector('input[name="month"]')?.value || '');
+    try {
+        const res = await fetch('h_disbursement.php', { method: 'POST', body: fd });
+        const out = await res.json();
+        if (!out.ok) { showToast('❌ ' + out.msg, 'error'); return; }
+        let m = '✓ Imported ' + out.added + ' entries';
+        if (out.duplicates) m += ' · ' + out.duplicates + ' already existed (skipped)';
+        if (out.undated)    m += ' · ' + out.undated + ' had no date, so they were dated ' + out.fallback_date;
+        if (out.unposted)   m += ' · ' + out.unposted + ' not posted to Expenses (no Expenses column on their title)';
+        showToast(m, out.unposted ? 'error' : 'success');
+        setTimeout(() => location.reload(), 1600);
+    } catch (e) { showToast('❌ Network error', 'error'); }
+}
+function pasteDateIso(v) {
+    v = String(v).trim();
+    let m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (m) { let a = +m[1], b = +m[2], y = +m[3]; if (y < 100) y += 2000; let mo = a, d = b; if (a > 12 && b <= 12) { mo = b; d = a; }
+        return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+    m = v.match(/^(\d{1,2})-([A-Za-z]{3})[a-z]*-(\d{2,4})$/);
+    if (m) { const mo = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase()); let y = +m[3]; if (y < 100) y += 2000;
+        if (mo >= 0) return y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(+m[1]).padStart(2, '0'); }
+    return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
+}
+
+// ── Import Excel: choose the file (same layout as your disbursement sheet) ──
+function loadSheetJS() {
+    return new Promise((resolve, reject) => {
+        if (window.XLSX) return resolve();
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        sc.onload = () => resolve(); sc.onerror = () => reject(new Error('Could not load the Excel reader (check your internet connection)'));
+        document.head.appendChild(sc);
+    });
+}
+function sheetHeader(ws) {          // finds the header row (DATE … ACCOUNT TITLE … GROSS) → {row, cols}
+    const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: true });
+    for (let r = 0; r < Math.min(grid.length, 15); r++) {
+        const names = grid[r].map(c => String(c).trim().toUpperCase());
+        if (names.includes('DATE') && names.includes('ACCOUNT TITLE') && names.includes('GROSS')) {
+            const at = n => names.indexOf(n);
+            return { grid, row: r, cols: [at('DATE'), at('TIN'), at('NAME OF SUPPLIER'), at('TYPE'), at('ADDRESS'), at('INVOICE #'), at('ACCOUNT TITLE'), at('GROSS'), at('INPUT TAX'), at('NET OF VAT'), at('PARTICULAR')] };
+        }
+    }
+    return null;
+}
+function pickSheet(names, preferred) {
+    return new Promise(resolve => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center';
+        wrap.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px 22px;min-width:300px;box-shadow:0 10px 40px rgba(0,0,0,.3);font-family:inherit">' +
+            '<div style="font-weight:700;margin-bottom:6px">Which sheet should be imported?</div>' +
+            '<div style="font-size:.78rem;color:#667;margin-bottom:12px">This file has several disbursement sheets.</div>' +
+            '<select id="shSel" style="width:100%;padding:8px;font-size:.9rem;margin-bottom:14px">' + names.map(n => '<option' + (n === preferred ? ' selected' : '') + '>' + escHtml(n) + '</option>').join('') + '</select>' +
+            '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-ghost btn-sm" id="shNo">Cancel</button><button class="btn btn-primary btn-sm" id="shOk">Import this sheet</button></div></div>';
+        document.body.appendChild(wrap);
+        wrap.querySelector('#shOk').onclick = () => { const v = wrap.querySelector('#shSel').value; wrap.remove(); resolve(v); };
+        wrap.querySelector('#shNo').onclick = () => { wrap.remove(); resolve(null); };
+    });
+}
+async function importExcelFile(inp) {
+    const file = inp.files && inp.files[0];
+    inp.value = '';
+    if (!file) return;
+    try {
+        showToast('Reading ' + file.name + '…', 'success');
+        await loadSheetJS();
+        const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        const found = wb.SheetNames.map(n => ({ n, h: sheetHeader(wb.Sheets[n]) })).filter(x => x.h);
+        if (!found.length) { showToast('❌ No sheet with the columns DATE, ACCOUNT TITLE and GROSS was found', 'error'); return; }
+        let chosen = found[0];
+        if (found.length > 1) {
+            const mm = (document.querySelector('input[name="month"]')?.value || '').slice(5, 7);      // page month → sheet "10"
+            const pref = (found.find(x => x.n.trim() === String(parseInt(mm || '0', 10)) || x.n.trim() === mm) || found[0]).n;
+            const pick = await pickSheet(found.map(x => x.n), pref);
+            if (!pick) return;
+            chosen = found.find(x => x.n === pick);
+        }
+        const { grid, row, cols } = chosen.h;
+        const rows = [];
+        for (let r = row + 1; r < grid.length; r++) {
+            rows.push(cols.map(ci => ci >= 0 ? String(grid[r][ci] ?? '').trim() : ''));
+        }
+        await confirmAndImport(rows);
+    } catch (e) { showToast('❌ ' + e.message, 'error'); }
+}
 
 function showToast(msg, type) {
     const t = document.createElement('div');
