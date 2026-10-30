@@ -44,6 +44,12 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `h_disbursement` (
     KEY `idx_company_name` (`company_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
+// Input Tax / Net of VAT keep 6 decimals (Excel keeps the hidden fractions behind each cell, so the totals only match to the cent this way)
+try {
+    $sc = $pdo->query("SELECT NUMERIC_SCALE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='h_disbursement' AND COLUMN_NAME='input_tax'")->fetchColumn();
+    if ($sc !== false && (int)$sc < 6) $pdo->exec("ALTER TABLE h_disbursement MODIFY `input_tax` decimal(18,6) DEFAULT 0.000000, MODIFY `net_of_vat` decimal(18,6) DEFAULT 0.000000");
+} catch (Throwable $e) {}
+
 $TXT_COLS = ['entry_date','tin','company_name','vat_status','address','invoice_no','account_title','particular'];
 $NUM_COLS = ['gross','input_tax','net_of_vat'];
 
@@ -189,10 +195,10 @@ function hFileTaxNet($tax, $net, float $gross): ?array {
         if ($v === '-') return 0.0; return (float)preg_replace('/[^0-9.\-]/', '', $v); };
     $t = $clean($tax); $n = $clean($net);
     if ($t === null && $n === null) return null;
-    if ($t === null) $t = round($gross - $n, 2);
-    if ($n === null) $n = round($gross - $t, 2);
+    if ($t === null) $t = round($gross - $n, 6);
+    if ($n === null) $n = round($gross - $t, 6);
     if (abs($gross - $t - $n) > 0.02 || $t < 0 || $n == 0.0) return null;
-    return [round($t, 2), round($n, 2)];
+    return [round($t, 6), round($n, 6)];
 }
 
 // ── AJAX: Add ─────────────────────────────────────────────
@@ -212,7 +218,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_add'])) {
         $newId = (int)$pdo->lastInsertId();
         $posted = hPostToExpenses($pdo, $newId);
         echo json_encode(['ok' => true, 'id' => $newId, 'posted' => $posted,
-            'input_tax' => number_format($data['input_tax'], 2, '.', ''), 'net_of_vat' => number_format($data['net_of_vat'], 2, '.', '')]);
+            'input_tax' => number_format($data['input_tax'], 2, '.', ''), 'net_of_vat' => number_format($data['net_of_vat'], 2, '.', ''),
+            'input_tax_raw' => $data['input_tax'], 'net_of_vat_raw' => $data['net_of_vat']]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
     }
@@ -302,8 +309,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
         $key = implode('|', [$date, $tin, $name, $inv, $title, $part, number_format($gross, 2, '.', '')]);
         if (!isset($existing[$key])) { $cntSt->execute([$date, $tin, $name, $inv, $title, $part, $gross]); $existing[$key] = (int)$cntSt->fetchColumn(); }
         $seenInFile[$key] = ($seenInFile[$key] ?? 0) + 1;
-        if ($seenInFile[$key] <= $existing[$key]) { $dups++; continue; }
         $fromFile = hFileTaxNet($r[8], $r[9], $gross);
+        if ($seenInFile[$key] <= $existing[$key]) {
+            $dups++;
+            // re-importing the same sheet refreshes Input Tax / Net of VAT to the Excel's exact (unrounded) values
+            if ($fromFile) {
+                try { $pdo->prepare("UPDATE h_disbursement SET input_tax=?, net_of_vat=? WHERE entry_date=? AND tin=? AND company_name=? AND invoice_no=? AND account_title=? AND particular=? AND ABS(gross-?)<0.005 AND (ABS(input_tax-?)>0.0000005 OR ABS(net_of_vat-?)>0.0000005) AND ABS(input_tax-?)<0.011 LIMIT 1")
+                          ->execute([$fromFile[0], $fromFile[1], $date, $tin, $name, $inv, $title, $part, $gross, $fromFile[0], $fromFile[1], $fromFile[0]]); } catch (Throwable $e) {}
+            }
+            continue;
+        }
         [$tax, $net] = $fromFile ?? vatModeCompute(vatModeFor($pdo, 'h_acc_titles', $title), $type, $gross);
         try {
             $ins->execute([$date, $tin, $name, $type, $addr, $inv, $title, $gross, $tax, $net, $part, $user['name']]);
@@ -339,7 +354,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_update'])) {
     try {
         $pdo->prepare("UPDATE h_disbursement SET " . implode(',', $sets) . " WHERE id=?")->execute($vals);
         $posted = hPostToExpenses($pdo, $id);
-        echo json_encode(['ok' => true, 'posted' => $posted, 'input_tax' => number_format($taxVal, 2, '.', ''), 'net_of_vat' => number_format($netVal, 2, '.', '')]);
+        echo json_encode(['ok' => true, 'posted' => $posted, 'input_tax' => number_format($taxVal, 2, '.', ''), 'net_of_vat' => number_format($netVal, 2, '.', ''),
+            'input_tax_raw' => $taxVal, 'net_of_vat_raw' => $netVal]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
     }
@@ -808,8 +824,8 @@ function renderRow(array $r, array $acctOpts): string {
     $h .= '<td><input type="text" class="di mono" data-col="invoice_no"    value="' . $d('invoice_no')    . '" placeholder="—" oninput="markDirty(this)"></td>';
     $h .= '<td>' . $acctSel . '</td>';
     $h .= '<td><input type="text" class="di num" data-col="gross"      value="' . $fmt($r['gross'])      . '" oninput="markDirty(this);calcRow(this)"></td>';
-    $h .= '<td><input type="text" class="di num" data-col="input_tax"  value="' . $fmt($r['input_tax']) . '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
-    $h .= '<td><input type="text" class="di num" data-col="net_of_vat" value="' . $fmt($r['net_of_vat']). '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
+    $h .= '<td><input type="text" class="di num" data-col="input_tax" data-raw="' . (float)$r['input_tax'] . '" value="' . $fmt($r['input_tax']) . '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
+    $h .= '<td><input type="text" class="di num" data-col="net_of_vat" data-raw="' . (float)$r['net_of_vat'] . '" value="' . $fmt($r['net_of_vat']). '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
     $h .= '<td><input type="text" class="di" data-col="particular"     value="' . $d('particular')      . '" placeholder="—" oninput="markDirty(this)"></td>';
     $h .= '<td class="td-act-sticky" style="padding:4px 5px;text-align:center">
              <span class="rs rs-ok">✓ saved</span>
@@ -862,11 +878,11 @@ function calcRow(el) {
     if (carriesTax) {
         const tax = gross / 1.12 * 0.12;
         const net = gross - tax;
-        taxEl.value = tax.toFixed(2);
-        netEl.value = net.toFixed(2);
+        taxEl.value = tax.toFixed(2); taxEl.dataset.raw = tax;
+        netEl.value = net.toFixed(2); netEl.dataset.raw = net;
     } else {
-        taxEl.value = '0.00';
-        netEl.value = gross.toFixed(2);
+        taxEl.value = '0.00'; taxEl.dataset.raw = 0;
+        netEl.value = gross.toFixed(2); netEl.dataset.raw = gross;
     }
 }
 
@@ -1026,8 +1042,8 @@ async function saveRow(row) {
             if (data.input_tax !== undefined) {
                 const tEl = row.querySelector('[data-col="input_tax"]');
                 const nEl = row.querySelector('[data-col="net_of_vat"]');
-                if (tEl) tEl.value = data.input_tax;
-                if (nEl) nEl.value = data.net_of_vat;
+                if (tEl) { tEl.value = data.input_tax; if (data.input_tax_raw !== undefined) tEl.dataset.raw = data.input_tax_raw; }
+                if (nEl) { nEl.value = data.net_of_vat; if (data.net_of_vat_raw !== undefined) nEl.dataset.raw = data.net_of_vat_raw; }
             }
             if (!id && data.id) {
                 row.dataset.id = data.id; row.id = 'row' + data.id;
@@ -1095,8 +1111,9 @@ function updateTotals() {
     let g = 0, t = 0, n = 0;
     document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').forEach(row => {
         g += parseFloat(row.querySelector('[data-col="gross"]')?.value?.replace(/,/g,'') || 0);
-        t += parseFloat(row.querySelector('[data-col="input_tax"]')?.value?.replace(/,/g,'') || 0);
-        n += parseFloat(row.querySelector('[data-col="net_of_vat"]')?.value?.replace(/,/g,'') || 0);
+        const te = row.querySelector('[data-col="input_tax"]'), ne = row.querySelector('[data-col="net_of_vat"]');
+        t += parseFloat(te?.dataset.raw ?? te?.value?.replace(/,/g,'') ?? 0) || 0;
+        n += parseFloat(ne?.dataset.raw ?? ne?.value?.replace(/,/g,'') ?? 0) || 0;
     });
     document.getElementById('tfoot-gross').textContent = g.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     document.getElementById('tfoot-itax').textContent  = t.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
@@ -1218,11 +1235,12 @@ function loadSheetJS() {
 }
 function sheetHeader(ws) {          // finds the header row (DATE … ACCOUNT TITLE … GROSS) → {row, cols}
     const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: true });
+    const rawGrid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '', blankrows: true });
     for (let r = 0; r < Math.min(grid.length, 15); r++) {
         const names = grid[r].map(c => String(c).trim().toUpperCase());
         if (names.includes('DATE') && names.includes('ACCOUNT TITLE') && names.includes('GROSS')) {
             const at = n => names.indexOf(n);
-            return { grid, row: r, cols: [at('DATE'), at('TIN'), at('NAME OF SUPPLIER'), at('TYPE'), at('ADDRESS'), at('INVOICE #'), at('ACCOUNT TITLE'), at('GROSS'), at('INPUT TAX'), at('NET OF VAT'), at('PARTICULAR')] };
+            return { grid, rawGrid, row: r, cols: [at('DATE'), at('TIN'), at('NAME OF SUPPLIER'), at('TYPE'), at('ADDRESS'), at('INVOICE #'), at('ACCOUNT TITLE'), at('GROSS'), at('INPUT TAX'), at('NET OF VAT'), at('PARTICULAR')] };
         }
     }
     return null;
@@ -1259,10 +1277,16 @@ async function importExcelFile(inp) {
             if (!pick) return;
             chosen = found.find(x => x.n === pick);
         }
-        const { grid, row, cols } = chosen.h;
+        const { grid, rawGrid, row, cols } = chosen.h;
         const rows = [];
         for (let r = row + 1; r < grid.length; r++) {
-            rows.push(cols.map(ci => ci >= 0 ? String(grid[r][ci] ?? '').trim() : ''));
+            // Input Tax / Net of VAT: use the cell's exact value (Excel hides the extra decimals) so totals match to the cent
+            rows.push(cols.map((ci, k) => {
+                if (ci < 0) return '';
+                const rv = rawGrid[r] ? rawGrid[r][ci] : undefined;
+                if ((k === 8 || k === 9) && typeof rv === 'number') return String(rv);
+                return String(grid[r][ci] ?? '').trim();
+            }));
         }
         await confirmAndImport(rows);
     } catch (e) { showToast('❌ ' + e.message, 'error'); }

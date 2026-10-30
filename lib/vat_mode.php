@@ -99,7 +99,7 @@ function vatModeCompute(string $mode, string $vatStatus, float $gross): array {
     $carriesTax = $mode === 'vat' || ($mode === 'both' && $vatStatus === 'VAT');
     if (!$carriesTax) return [0.0, round($gross, 2)];
     $tax = $gross / 1.12 * 0.12;
-    return [round($tax, 2), round($gross - $tax, 2)];
+    return [round($tax, 6), round($gross - $tax, 6)];
 }
 
 /**
