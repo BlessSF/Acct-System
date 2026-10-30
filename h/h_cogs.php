@@ -721,6 +721,7 @@ function applyState(rows) {
 }
 
 async function saveRow(tr) {
+  if (tr._deleted) return;
   const data = getRowData(tr);
   if (!data.cogs_date) { setStatus(tr, 'set a date', 'var(--accent2)'); return; }
   if (tr._saving) { tr._again = true; return; }        // never insert the same new row twice
@@ -735,6 +736,7 @@ async function saveRow(tr) {
     const json = await (await fetch('h_cogs.php', {method:'POST', body:fd})).json();
     if (json.ok) {
       if (json.id) tr.dataset.id = json.id;
+      if (tr._deleted && json.id) { const f = new FormData(); f.append('ajax_delete','1'); f.append('row_id', json.id); fetch('h_cogs.php', {method:'POST', body:f}); return; }
       setStatus(tr, '✓ Saved', 'var(--accent)');
       applyState(json.rows);
     } else setStatus(tr, '❌ ' + json.msg, 'var(--accent2)');
@@ -747,21 +749,32 @@ async function deleteRow(btn) {
   const tr = btn.closest('tr');
   const id = parseInt(tr.dataset.id) || 0;
 
-  if (id > 0 && !confirm('Delete this COGS entry?')) return;
+  // two-click confirmation inside the page (browser pop-ups can be blocked, which made Delete look dead)
+  if (id > 0 && btn.dataset.sure !== '1') {
+    btn.dataset.sure = '1'; btn.dataset.old = btn.textContent; btn.textContent = 'Delete?';
+    btn.style.background = '#dc3545'; btn.style.color = '#fff';
+    setTimeout(() => { if (btn.dataset.sure === '1') { btn.dataset.sure = ''; btn.textContent = btn.dataset.old || '✕'; btn.style.background = ''; btn.style.color = ''; } }, 3500);
+    return;
+  }
+
+  // stop any pending / queued auto-save of this row so it cannot bring the row back
+  clearTimeout(tr._t); tr._t = null; tr._again = false; tr._deleted = true;
+  btn.disabled = true;
 
   if (id > 0) {
     const fd = new FormData();
     fd.append('ajax_delete','1');
     fd.append('row_id', id);
     try {
-      await fetch('h_cogs.php', {method:'POST', body:fd});
-    } catch(e) {}
+      const j = await (await fetch('h_cogs.php', {method:'POST', body:fd})).json();
+      if (!j.ok) { tr._deleted = false; btn.disabled = false; setStatus(tr, '❌ ' + (j.msg || 'not deleted'), 'var(--accent2)'); return; }
+    } catch(e) { tr._deleted = false; btn.disabled = false; setStatus(tr, '❌ not deleted (network)', 'var(--accent2)'); return; }
   }
 
   tr.remove();
   if (!document.querySelector('#cogsBody tr')) {
     const tbody = document.getElementById('cogsBody');
-    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entries — click <strong>+ Add Row</strong></td></tr>`;
+    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entries — click <strong>+ 15th</strong> or <strong>+ Last Day</strong></td></tr>`;
   }
   refreshFooter();
   updateKPIs();
