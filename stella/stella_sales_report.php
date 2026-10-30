@@ -911,6 +911,19 @@ function diCols(tr) {
 }
 function float(inp) { return parseFloat(inp?.value) || 0; }
 
+// true when the saved Cash on Hand was typed by hand (differs from the Dine In Cash total)
+let COH_MANUAL = (function () {
+  let c = 0; document.querySelectorAll('#di-body tr').forEach(tr => { c += float(tr.querySelectorAll('input')[0]); });
+  const sv = gv('coh'); return sv > 0.005 && Math.abs(sv - c) > 0.005;
+})();
+(function () {
+  const el = document.getElementById('coh'); if (!el) return;
+  el.addEventListener('input', function () {
+    let c = 0; document.querySelectorAll('#di-body tr').forEach(tr => { c += float(tr.querySelectorAll('input')[0]); });
+    const v = el.value.trim();
+    COH_MANUAL = v !== '' && Math.abs((parseFloat(v) || 0) - c) > 0.005;
+  });
+})();
 function diChanged() {
   let totCash=0,totPal=0,totCard=0,totUnpaid=0,totDisc=0,totGift=0,totBank=0,totCan=0;
   document.querySelectorAll('#di-body tr').forEach(tr => {
@@ -937,8 +950,10 @@ function diChanged() {
   setVal('bank_transfer_cheque', fmt(totBank));
   setVal('gcash',                fmt(totPal));
   setVal('maya_swipe',           fmt(totCard));
-  // NOTE: COH (Cash on Hand) is NOT auto-filled — it is the actual physical
-  // cash counted by the cashier and must be entered manually.
+  // COH (Cash on Hand) follows the DINE IN Cash total automatically (and auto-saves with the rest),
+  // until the cashier types a different counted amount — then their number is kept. Clear the box to go back to automatic.
+  const cohEl = document.getElementById('coh');
+  if (cohEl && !COH_MANUAL) cohEl.value = totCash ? totCash.toFixed(2) : '';
   recalc();
 }
 
