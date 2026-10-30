@@ -389,6 +389,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
     exit;
 }
 
+// ── AJAX: Clear all entries of one month (also removes what they posted to Expenses) ──
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_clear_month'])) {
+    header('Content-Type: application/json');
+    $m = $_POST['month'] ?? '';
+    if (!preg_match('/^\d{4}-\d{2}$/', $m) || strtoupper(trim($_POST['confirm'] ?? '')) !== 'CLEAR') { echo json_encode(['ok' => false, 'msg' => 'Not confirmed']); exit; }
+    try {
+        $a = $m . '-01'; $b = date('Y-m-d', strtotime($a . ' +1 month'));
+        $q = $pdo->prepare("SELECT id FROM h_disbursement WHERE entry_date >= ? AND entry_date < ?");
+        $q->execute([$a, $b]);
+        $ids = $q->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($ids as $i) { try { expSyncDelete($pdo, 'h_expenses', (int)$i); } catch (Throwable $ignored) {} }
+        $pdo->prepare("DELETE FROM h_disbursement WHERE entry_date >= ? AND entry_date < ?")->execute([$a, $b]);
+        try { hSyncCogsPurchases($pdo, null); } catch (Throwable $ignored) {}
+        echo json_encode(['ok' => true, 'deleted' => count($ids)]);
+    } catch (Throwable $e) {
+        echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ── XLSX Export ─────────────────────────────────────────────────
 if (isset($_GET['export_csv'])) {
     require_once __DIR__ . '/../lib/xlsx_writer.php';
@@ -697,6 +717,8 @@ include '../layout.php';
     ⬆ Import Excel
   </button>
   <input type="file" id="impFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelFile(this)">
+  <button type="button" class="btn btn-ghost btn-sm" onclick="clearMonth()"
+     style="color:#c62828;border-color:rgba(198,40,40,.35);background:rgba(198,40,40,.06);font-weight:600" title="Delete every disbursement entry of the month shown">🗑 Clear All</button>
   <a href="h_disbursement.php?export_csv=1&month=<?= urlencode($fMonth) ?>"
      class="btn btn-ghost btn-sm" style="color:#388E3C;border-color:rgba(76,175,80,.3);background:rgba(76,175,80,.06)">
     ⬇ Export XLSX
@@ -1116,6 +1138,23 @@ async function deleteRow(btn) {
             showToast('✓ Entry deleted', 'success');
         } else { showToast('❌ ' + data.msg, 'error'); }
     } catch(e) { showToast('❌ Network error', 'error'); }
+}
+
+// ── Clear all entries of the month shown (double confirmation) ──
+async function clearMonth() {
+    const m = <?= json_encode($fMonth) ?>, label = <?= json_encode(date('F Y', strtotime($fMonth . '-01'))) ?>;
+    const n = document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').length;
+    if (!n) { showToast('Nothing to clear for ' + label, 'error'); return; }
+    if (!confirm('Delete ALL ' + n + ' disbursement entries of ' + label + '?\n\nThe amounts they posted to H Expenses are removed too. This cannot be undone.')) return;
+    const t = prompt('Type CLEAR to permanently delete the ' + n + ' entries of ' + label + ':');
+    if (t === null) return;
+    if (t.trim().toUpperCase() !== 'CLEAR') { showToast('Not cleared — you did not type CLEAR', 'error'); return; }
+    const fd = new FormData(); fd.append('ajax_clear_month', '1'); fd.append('month', m); fd.append('confirm', 'CLEAR');
+    try {
+        const data = await (await fetch('h_disbursement.php', { method: 'POST', body: fd })).json();
+        if (data.ok) { showToast('✓ Cleared ' + data.deleted + ' entries', 'success'); setTimeout(() => location.reload(), 700); }
+        else showToast('❌ ' + data.msg, 'error');
+    } catch (e) { showToast('❌ Network error', 'error'); }
 }
 
 // ── Live totals ────────────────────────────────────────────
