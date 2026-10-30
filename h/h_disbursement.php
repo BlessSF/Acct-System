@@ -50,6 +50,11 @@ try {
     if ($sc !== false && (int)$sc < 6) $pdo->exec("ALTER TABLE h_disbursement MODIFY `input_tax` decimal(18,6) DEFAULT 0.000000, MODIFY `net_of_vat` decimal(18,6) DEFAULT 0.000000");
 } catch (Throwable $e) {}
 
+// sort_no = the row's position in the imported Excel sheet, so the page shows the same order as the sheet
+try {
+    if (!$pdo->query("SHOW COLUMNS FROM h_disbursement LIKE 'sort_no'")->fetch()) $pdo->exec("ALTER TABLE h_disbursement ADD COLUMN `sort_no` int(11) NULL DEFAULT NULL");
+} catch (Throwable $e) {}
+
 $TXT_COLS = ['entry_date','tin','company_name','vat_status','address','invoice_no','account_title','particular'];
 $NUM_COLS = ['gross','input_tax','net_of_vat'];
 
@@ -269,7 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
     // Duplicate check: identical rows already in the system are skipped, but an identical row that
     // legitimately appears several times in the file is kept (only the surplus over what exists is added).
     $cntSt = $pdo->prepare("SELECT COUNT(*) FROM h_disbursement WHERE entry_date=? AND tin=? AND company_name=? AND invoice_no=? AND account_title=? AND particular=? AND ABS(gross-?)<0.005");
-    $ins = $pdo->prepare("INSERT INTO h_disbursement (`entry_date`,`tin`,`company_name`,`vat_status`,`address`,`invoice_no`,`account_title`,`gross`,`input_tax`,`net_of_vat`,`particular`,`saved_by`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+    $ins = $pdo->prepare("INSERT INTO h_disbursement (`entry_date`,`tin`,`company_name`,`vat_status`,`address`,`invoice_no`,`account_title`,`gross`,`input_tax`,`net_of_vat`,`particular`,`saved_by`,`sort_no`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
     $added = 0; $dups = 0; $skipped = 0; $undated = 0; $unposted = 0; $grossSum = 0.0; $unknownTitles = [];
     $existing = []; $seenInFile = [];
 
@@ -287,7 +292,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
     if ($monthVotes) { arsort($monthVotes); $ym = array_key_first($monthVotes); $fallbackDate = date('Y-m-t', strtotime($ym . '-01')); }
     elseif (!empty($_POST['month']) && preg_match('/^\d{4}-\d{2}$/', $_POST['month'])) { $fallbackDate = date('Y-m-t', strtotime($_POST['month'] . '-01')); }
 
-    foreach ($parsed as $r) {
+    foreach ($parsed as $pi => $r) {
+        $seq = (int)$pi + 1;                      // row position in the Excel sheet
         $date  = $parseDate($r[0]);
         $tin   = trim((string)$r[1]);
         $name  = trim((string)$r[2]);
@@ -312,16 +318,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
         $fromFile = hFileTaxNet($r[8], $r[9], $gross);
         if ($seenInFile[$key] <= $existing[$key]) {
             $dups++;
-            // re-importing the same sheet refreshes Input Tax / Net of VAT to the Excel's exact (unrounded) values
-            if ($fromFile) {
-                try { $pdo->prepare("UPDATE h_disbursement SET input_tax=?, net_of_vat=? WHERE entry_date=? AND tin=? AND company_name=? AND invoice_no=? AND account_title=? AND particular=? AND ABS(gross-?)<0.005 AND (ABS(input_tax-?)>0.0000005 OR ABS(net_of_vat-?)>0.0000005) AND ABS(input_tax-?)<0.011 LIMIT 1")
-                          ->execute([$fromFile[0], $fromFile[1], $date, $tin, $name, $inv, $title, $part, $gross, $fromFile[0], $fromFile[1], $fromFile[0]]); } catch (Throwable $e) {}
-            }
+            // already in the system: keep it, but give it the Excel's position and exact (unrounded) tax / net
+            try {
+                $sel = $pdo->prepare("SELECT id, input_tax FROM h_disbursement WHERE entry_date=? AND tin=? AND company_name=? AND invoice_no=? AND account_title=? AND particular=? AND ABS(gross-?)<0.005 ORDER BY id ASC LIMIT 1 OFFSET " . ($seenInFile[$key] - 1));
+                $sel->execute([$date, $tin, $name, $inv, $title, $part, $gross]);
+                if ($ex = $sel->fetch(PDO::FETCH_ASSOC)) {
+                    if ($fromFile && abs((float)$ex['input_tax'] - $fromFile[0]) < 0.011)
+                        $pdo->prepare("UPDATE h_disbursement SET sort_no=?, input_tax=?, net_of_vat=? WHERE id=?")->execute([$seq, $fromFile[0], $fromFile[1], $ex['id']]);
+                    else
+                        $pdo->prepare("UPDATE h_disbursement SET sort_no=? WHERE id=?")->execute([$seq, $ex['id']]);
+                }
+            } catch (Throwable $e) {}
             continue;
         }
         [$tax, $net] = $fromFile ?? vatModeCompute(vatModeFor($pdo, 'h_acc_titles', $title), $type, $gross);
         try {
-            $ins->execute([$date, $tin, $name, $type, $addr, $inv, $title, $gross, $tax, $net, $part, $user['name']]);
+            $ins->execute([$date, $tin, $name, $type, $addr, $inv, $title, $gross, $tax, $net, $part, $user['name'], $seq]);
             $nid = (int)$pdo->lastInsertId();
             if (hPostToExpensesOnly($pdo, $nid) === 'unmapped') $unposted++;
             $added++; $grossSum += $gross;
@@ -388,7 +400,7 @@ if (isset($_GET['export_csv'])) {
     $mEnd   = date('Y-m-d', strtotime($mStart . ' +1 month'));
     $where = $fMonth ? "WHERE entry_date >= ? AND entry_date < ?" : "";
     $params = $fMonth ? [$mStart, $mEnd] : [];
-    $stmt = $pdo->prepare("SELECT * FROM h_disbursement $where ORDER BY entry_date ASC, id ASC");
+    $stmt = $pdo->prepare("SELECT * FROM h_disbursement $where ORDER BY (sort_no IS NULL) ASC, sort_no ASC, entry_date ASC, id ASC");
     $stmt->execute($params);
     $rows = $stmt->fetchAll();
     $stmt2 = $pdo->prepare("SELECT SUM(gross) g, SUM(input_tax) t, SUM(net_of_vat) n FROM h_disbursement $where");
@@ -430,7 +442,7 @@ if ($fSearch) {
     $params[] = "%$fSearch%"; $params[] = "%$fSearch%";
 }
 $whereSQL = "WHERE " . implode(' AND ', $where);
-$stmt = $pdo->prepare("SELECT * FROM h_disbursement $whereSQL ORDER BY entry_date ASC, id ASC");
+$stmt = $pdo->prepare("SELECT * FROM h_disbursement $whereSQL ORDER BY (sort_no IS NULL) ASC, sort_no ASC, entry_date ASC, id ASC");
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
