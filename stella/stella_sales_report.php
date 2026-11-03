@@ -585,24 +585,24 @@ body.page-stella_sales_report.sr-soft .sr-row[style*="f0fdf4"] .sr-label, body.p
 body.page-stella_sales_report.sr-soft .sr-section [style*="background"], body.page-stella_sales_report.sr-dark .sr-section [style*="background"] { filter:none; }
 
 /* ═══ Modern clean layer: calm cards, light table headers, accent bars ═══ */
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) { --sr-sec-fg:var(--sr-text); --sr-subt-fg:var(--sr-text); --sr-subt-bg:var(--sr-card2); --sr-sec-bg:var(--sr-card); --sr-acc:var(--sr-band); }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) { --sr-sec-fg:var(--sr-band-text); --sr-subt-fg:var(--sr-band-text); --sr-subt-bg:var(--sr-band); --sr-sec-bg:var(--sr-head1); --sr-acc:var(--sr-band); }
 body.page-stella_sales_report.sr-dark { --sr-acc:#3f8f69; }
 body.page-stella_sales_report.sr-soft { --sr-acc:#5a7a68; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-section { border-radius:16px !important; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.07) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-section-title { text-align:left !important; font-size:.74rem !important; letter-spacing:.12em !important; padding:12px 16px !important; border-left:5px solid var(--sr-acc); border-bottom:1px solid var(--sr-line); }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-section-title { text-align:left !important; font-size:.74rem !important; letter-spacing:.12em !important; padding:12px 16px !important; border-bottom:1px solid rgba(0,0,0,.12); }
 /* Dine-in table */
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table { border-collapse:separate; border-spacing:0; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th { background:var(--sr-card2) !important; color:var(--sr-sub) !important; font-size:.6rem !important; letter-spacing:.04em; font-weight:800; padding:9px 4px !important; border:0 !important; border-bottom:1px solid var(--sr-line) !important; border-right:1px solid var(--sr-line) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th.sub { background:var(--sr-card) !important; color:var(--sr-sub) !important; font-size:.6rem !important; padding:5px 8px !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th { background:var(--sr-band) !important; color:var(--sr-band-text) !important; font-size:.6rem !important; letter-spacing:.04em; font-weight:800; padding:9px 4px !important; border:0 !important; border-bottom:1px solid rgba(255,255,255,.14) !important; border-right:1px solid rgba(255,255,255,.14) !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th.sub { background:var(--sr-head2) !important; color:var(--sr-band-text) !important; font-size:.6rem !important; padding:5px 8px !important; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table td { border-right:1px solid var(--sr-line) !important; border-bottom:1px solid var(--sr-line) !important; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tbody tr:hover td { background:var(--sr-card2) !important; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td { font-weight:800; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.total-label, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.grand-total { background:var(--sr-card2) !important; color:var(--sr-text) !important; border-top:2px solid var(--sr-acc) !important; letter-spacing:.06em; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.total-label, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.grand-total { background:var(--sr-head1) !important; color:var(--sr-band-text) !important; border-top:0 !important; letter-spacing:.06em; }
 /* Sub-section cards */
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-grid { gap:8px !important; padding:8px; background:transparent; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col { border:1px solid var(--sr-line) !important; border-radius:12px; overflow:hidden; background:var(--sr-card); }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-title { text-align:left !important; font-size:.66rem !important; letter-spacing:.08em; padding:9px 10px !important; border-left:4px solid var(--sr-acc); border-bottom:1px solid var(--sr-line); }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr { background:transparent !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-title { text-align:left !important; font-size:.66rem !important; letter-spacing:.08em; padding:9px 10px !important; border-bottom:1px solid rgba(0,0,0,.12); }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr { background:var(--sr-mint) !important; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr span { color:var(--sr-sub) !important; font-size:.62rem !important; letter-spacing:.08em; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-footer { background:var(--sr-card2) !important; border-top:1px solid var(--sr-line) !important; font-weight:800; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-inp, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp { border-radius:8px !important; }
