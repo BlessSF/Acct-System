@@ -1563,5 +1563,171 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 </script>
+<style>
+.xl-sel { background-color:rgba(37,99,235,.16) !important; box-shadow:inset 0 0 0 1px rgba(37,99,235,.55) !important; }
+.xl-selhi { box-shadow:inset 0 0 0 2px #2563eb !important; }
+.xl-pv { background-color:rgba(37,99,235,.08) !important; box-shadow:inset 0 0 0 1px dashed #2563eb; outline:1px dashed #2563eb; outline-offset:-1px; }
+#xlFill { position:fixed; width:9px; height:9px; background:#2563eb; border:1px solid #fff; cursor:crosshair; z-index:9999; display:none; box-sizing:content-box; }
+body.xl-dragging, body.xl-dragging * { user-select:none !important; cursor:crosshair !important; }
+</style>
+<div id="xlFill" title="Drag to fill down / up / across"></div>
+<script>
+// ── Excel-style cell selection + fill handle ─────────────────────────────────────
+//  • drag across boxes to select a block (blue)      • Ctrl+C copies it, Ctrl+V pastes at the top-left
+//  • Delete clears the block                         • drag the little blue square to copy/fill cells
+(function () {
+  if (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED) return;
+  const handle = document.getElementById('xlFill');
+  const cellsOf = row => [...row.querySelectorAll('input')].filter(i => !['button','hidden','checkbox','radio','date'].includes(i.type) && !i.readOnly && !i.disabled);
+  function gridOf(el) {
+    if (!el || !el.closest) return null;
+    const sub = el.closest('.sub-row');
+    if (sub) { const col = sub.closest('.sub-col'), sec = col.dataset.section;
+      return { key:'sub:'+sec, rows:() => [...col.querySelectorAll('.sub-rows .sub-row')], add:() => addSubRow(sec), after:() => subChanged(sec), rowOf:e => e.closest('.sub-row') }; }
+    const table = el.closest('table.di-table'); if (!table || !el.closest('tbody')) return null;
+    const body = table.querySelector('tbody'), isDi = table.id === 'di-table', sec = table.dataset.section;
+    if (!isDi && !table.classList.contains('extra-table')) return null;
+    return { key: isDi ? 'di' : 'extra:'+sec, rows:() => [...body.querySelectorAll('tr')], add:() => isDi ? addDiRow() : addExtraRow(sec), after:() => isDi ? diChanged() : extraChanged(sec), rowOf:e => e.closest('tr') };
+  }
+  const pos = (g, el) => { const row = g.rowOf(el), rows = g.rows(), r = rows.indexOf(row); return r < 0 ? null : { r, c: cellsOf(row).indexOf(el) }; };
+  const cellAt = (g, r, c) => { const rows = g.rows(); if (r < 0 || r >= rows.length) return null; return cellsOf(rows[r])[c] || null; };
+  function setVal(inp, v) {
+    v = v == null ? '' : String(v).trim();
+    if (inp.type === 'number') { if (v === '') inp.value = ''; else { const neg = /^\(.*\)$/.test(v) || /^-/.test(v); const n = parseFloat(v.replace(/[^0-9.]/g,'')); if (!isFinite(n)) return; inp.value = neg ? -n : n; } }
+    else inp.value = v;
+    inp.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+  let sel = null, multi = false, down = null, fill = null, pv = [];
+  const clearMarks = () => document.querySelectorAll('.xl-sel,.xl-selhi,.xl-pv').forEach(e => e.classList.remove('xl-sel','xl-selhi','xl-pv'));
+  function range(a, b) { return { r1:Math.min(a.r,b.r), r2:Math.max(a.r,b.r), c1:Math.min(a.c,b.c), c2:Math.max(a.c,b.c) }; }
+  function paint() {
+    clearMarks(); if (!sel) { handle.style.display = 'none'; return; }
+    const {g, r1, r2, c1, c2} = sel; let last = null;
+    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) { const e = cellAt(g, r, c); if (e) { e.classList.add('xl-sel'); last = e; } }
+    if (!multi) { const f = cellAt(g, r1, c1); if (f) f.classList.add('xl-selhi'); }
+    placeHandle(last);
+  }
+  function placeHandle(last) {
+    if (!last || !last.offsetParent) { handle.style.display = 'none'; return; }
+    const b = last.getBoundingClientRect();
+    handle.style.left = (b.right - 5) + 'px'; handle.style.top = (b.bottom - 5) + 'px'; handle.style.display = 'block';
+  }
+  const refresh = () => { if (sel) { const l = cellAt(sel.g, sel.r2, sel.c2); placeHandle(l); } };
+  window.addEventListener('scroll', refresh, true); window.addEventListener('resize', refresh);
+
+  function hit(x, y, g) {
+    let t = document.elementFromPoint(x, y); if (!t) return null;
+    if (t === handle) return null;
+    let inp = t.matches && t.matches('input') ? t : null;
+    if (!inp) { const host = t.closest('td,.sub-row'); if (host) { const arr = cellsOf(host.matches('td') ? host.parentElement : host); inp = host.matches('td') ? (host.querySelector('input') && cellsOf(host)[0]) : arr[0]; } }
+    if (!inp) return null;
+    const g2 = gridOf(inp); if (!g2 || g2.key !== g.key) return null;
+    return { el: inp, p: pos(g2, inp) };
+  }
+
+  document.addEventListener('mousedown', function (ev) {
+    if (ev.button !== 0) return;
+    if (ev.target === handle) {
+      if (!sel) return; ev.preventDefault();
+      fill = { g: sel.g, src: {...sel}, to: null }; document.body.classList.add('xl-dragging'); return;
+    }
+    const inp = ev.target.closest && ev.target.closest('input'); const g = inp && gridOf(inp);
+    if (!g || !cellsOf(g.rowOf(inp)).includes(inp)) { sel = null; multi = false; paint(); return; }
+    const p = pos(g, inp); if (!p) return;
+    down = { g, p, el: inp, moved: false };
+    sel = { g, r1:p.r, r2:p.r, c1:p.c, c2:p.c }; multi = false; paint();
+  }, true);
+
+  document.addEventListener('mousemove', function (ev) {
+    if (fill) {
+      const g = fill.g, rows = g.rows(), src = fill.src;
+      // find target row / col under pointer; below the last row → extra rows
+      let tr = src.r2, tc = src.c2;
+      const lastCell = cellAt(g, rows.length - 1, 0), lb = lastCell ? lastCell.getBoundingClientRect() : null;
+      let h = hit(ev.clientX, ev.clientY, g);
+      if (h) { tr = h.p.r; tc = h.p.c; }
+      else if (lb && ev.clientY > lb.bottom) { const rh = Math.max(20, lb.height); tr = rows.length - 1 + Math.ceil((ev.clientY - lb.bottom) / rh); tc = src.c2; }
+      // choose the axis with the bigger move
+      const dr = tr > src.r2 ? tr - src.r2 : (tr < src.r1 ? src.r1 - tr : 0), dc = tc > src.c2 ? tc - src.c2 : (tc < src.c1 ? src.c1 - tc : 0);
+      fill.to = (dr >= dc) ? { r: tr, c: null } : { r: null, c: tc };
+      document.querySelectorAll('.xl-pv').forEach(e => e.classList.remove('xl-pv'));
+      const R = fill.to.r != null ? [Math.min(src.r1, tr), Math.max(src.r2, tr)] : [src.r1, src.r2];
+      const C = fill.to.c != null ? [Math.min(src.c1, tc), Math.max(src.c2, tc)] : [src.c1, src.c2];
+      for (let r = R[0]; r <= Math.min(R[1], rows.length - 1); r++) for (let c = C[0]; c <= C[1]; c++) { const e = cellAt(g, r, c); if (e && !e.classList.contains('xl-sel')) e.classList.add('xl-pv'); }
+      fill.R = R; fill.C = C; return;
+    }
+    if (!down || !(ev.buttons & 1)) return;
+    const h = hit(ev.clientX, ev.clientY, down.g);
+    if (!h || (h.p.r === down.p.r && h.p.c === down.p.c && !down.moved)) return;
+    if (!down.moved) { down.moved = true; multi = true; document.body.classList.add('xl-dragging'); try { document.activeElement.blur(); } catch (e) {} }
+    const rg = range(down.p, h.p); sel = { g: down.g, ...rg }; paint(); window.getSelection().removeAllRanges();
+  }, true);
+
+  document.addEventListener('mouseup', function () {
+    if (fill) {
+      const f = fill; fill = null; document.body.classList.remove('xl-dragging'); document.querySelectorAll('.xl-pv').forEach(e => e.classList.remove('xl-pv'));
+      if (f.R && f.C) doFill(f);
+      return;
+    }
+    if (down) { document.body.classList.remove('xl-dragging'); down = null; }
+  }, true);
+
+  function valuesOf(g, r1, r2, c1, c2) { const out = []; for (let r = r1; r <= r2; r++) { const row = []; for (let c = c1; c <= c2; c++) { const e = cellAt(g, r, c); row.push(e ? e.value : ''); } out.push(row); } return out; }
+  function doFill(f) {
+    const g = f.g, s = f.src, [R1, R2] = f.R, [C1, C2] = f.C;
+    const srcVals = valuesOf(g, s.r1, s.r2, s.c1, s.c2), nr = srcVals.length, nc = srcVals[0].length;
+    // make sure the rows exist
+    for (let guard = 0; g.rows().length <= R2 && guard < 200; guard++) { const before = g.rows().length; g.add(); if (g.rows().length === before) break; }
+    // numeric series: 2+ numeric cells in a column continue the step (like Excel)
+    const colSeries = c => { if (nr < 2) return null; const v = srcVals.map(r => parseFloat(String(r[c]).replace(/,/g,''))); if (v.some(x => !isFinite(x))) return null; const st = v[1] - v[0]; for (let i = 2; i < v.length; i++) if (Math.abs(v[i] - v[i-1] - st) > 1e-9) return null; return { v, st }; };
+    for (let r = R1; r <= R2; r++) for (let c = C1; c <= C2; c++) {
+      if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2) continue;
+      const e = cellAt(g, r, c); if (!e) continue;
+      const dr = r - s.r1, dc = c - s.c1; const ri = ((dr % nr) + nr) % nr, ci = ((dc % nc) + nc) % nc;
+      let val = srcVals[ri][ci];
+      if (f.to && f.to.r != null && c >= s.c1 && c <= s.c2) { const ser = colSeries(ci); if (ser) val = ser.v[0] + ser.st * dr; }
+      setVal(e, val);
+    }
+    sel = { g, r1: Math.min(s.r1, R1), r2: Math.max(s.r2, R2), c1: Math.min(s.c1, C1), c2: Math.max(s.c2, C2) }; multi = true; paint(); g.after();
+    if (typeof showToast === 'function') showToast('✓ Filled', 'success');
+  }
+
+  document.addEventListener('focusin', function (ev) {
+    if (down || fill) return;
+    const g = gridOf(ev.target); if (!g) return; const p = pos(g, ev.target); if (!p || p.c < 0) return;
+    if (multi && sel && sel.g.key === g.key && p.r >= sel.r1 && p.r <= sel.r2 && p.c >= sel.c1 && p.c <= sel.c2) return;
+    sel = { g, r1:p.r, r2:p.r, c1:p.c, c2:p.c }; multi = false; paint();
+  });
+
+  const tsv = () => valuesOf(sel.g, sel.r1, sel.r2, sel.c1, sel.c2).map(r => r.join('\t')).join('\n');
+  document.addEventListener('keydown', function (ev) {
+    if (!sel || !multi) return;
+    const k = ev.key.toLowerCase();
+    if ((ev.ctrlKey || ev.metaKey) && (k === 'c' || k === 'x')) {
+      ev.preventDefault(); const t = tsv();
+      const done = () => { if (typeof showToast === 'function') showToast('✓ Copied — paste into Excel', 'success'); if (k === 'x') clearSel(); };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => legacy(t, done)); else legacy(t, done);
+    } else if (k === 'delete' || k === 'backspace') { ev.preventDefault(); clearSel(); }
+    else if (k === 'escape') { sel = null; multi = false; paint(); }
+  }, true);
+  function legacy(t, done) { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+  function clearSel() { for (let r = sel.r1; r <= sel.r2; r++) for (let c = sel.c1; c <= sel.c2; c++) { const e = cellAt(sel.g, r, c); if (e) setVal(e, ''); } sel.g.after(); }
+
+  // paste while a block is selected (focus is not inside a box)
+  document.addEventListener('paste', function (ev) {
+    if (!sel || !multi) return;
+    const a = document.activeElement; if (a && a.matches && a.matches('input,textarea') && !a.closest('.xl-sel')) return;
+    const text = (ev.clipboardData || window.clipboardData).getData('text'); if (!text) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    const g = sel.g, data = text.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l => l.split('\t'));
+    if (data.length === 1 && data[0].length === 1) { for (let r = sel.r1; r <= sel.r2; r++) for (let c = sel.c1; c <= sel.c2; c++) { const e = cellAt(g, r, c); if (e) setVal(e, data[0][0]); } }
+    else data.forEach((line, i) => {
+      for (let guard = 0; g.rows().length <= sel.r1 + i && guard < 5; guard++) { const b = g.rows().length; g.add(); if (g.rows().length === b) break; }
+      line.forEach((v, j) => { const e = cellAt(g, sel.r1 + i, sel.c1 + j); if (e) setVal(e, v); });
+    });
+    g.after(); if (typeof showToast === 'function') showToast('✓ Pasted', 'success'); paint();
+  }, true);
+})();
+</script>
 </body>
 </html>
