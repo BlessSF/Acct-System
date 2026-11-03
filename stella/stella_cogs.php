@@ -32,6 +32,13 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `stella_cogs` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
+// ── PURC. comes from Disbursement ("Purchases - Non-Vat" / "Purchases - Vatable" → Stella Expenses Purchases) ──
+$__es = __DIR__ . '/../lib/expense_sync.php';
+if (is_file($__es)) {
+    require_once $__es;
+    try { expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
+}
+
 // ── Filters ───────────────────────────────────────────────
 $fYear  = (int)($_GET['year']  ?? date('Y'));
 $fMonth = (int)($_GET['month'] ?? date('n'));
@@ -39,6 +46,53 @@ $fMonth = (int)($_GET['month'] ?? date('n'));
 // Clamp month
 if ($fMonth < 1)  $fMonth = 1;
 if ($fMonth > 12) $fMonth = 12;
+
+// ── helpers for the 15th / last-day rows ─────────────────────
+function cogsSuggest(PDO $pdo, string $date): array {
+    $y = (int)date('Y', strtotime($date)); $m = (int)date('n', strtotime($date));
+    $ms = sprintf('%04d-%02d-01', $y, $m);
+    $prev = $pdo->prepare("SELECT cogs_date, end_inv FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? AND cogs_date < ? ORDER BY cogs_date DESC, id DESC LIMIT 1");
+    $prev->execute([$y, $m, $date]);
+    $pr = $prev->fetch(PDO::FETCH_ASSOC);
+    if ($pr) { $beg = (float)$pr['end_inv']; $lower = $pr['cogs_date']; }
+    else {
+        $py = $y; $pm = $m - 1; if ($pm < 1) { $pm = 12; $py--; }
+        $q = $pdo->prepare("SELECT end_inv FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date DESC, id DESC LIMIT 1");
+        $q->execute([$py, $pm]); $v = $q->fetchColumn();
+        if ($v === false) {
+            $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
+            $q->execute([$py, $pm]); $v = $q->fetchColumn();
+        }
+        $beg = (float)$v; $lower = date('Y-m-d', strtotime($ms . ' -1 day'));
+    }
+    $w = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM stella_expenses WHERE expense_date > ? AND expense_date <= ?");
+    $w->execute([$lower, $date]); $purc = round((float)$w->fetchColumn(), 2);
+    $end = 0.0;
+    if ($date === date('Y-m-t', strtotime($ms))) {      // month-end row → suggest the Month End Inventory total
+        $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
+        $q->execute([$y, $m]); $end = (float)$q->fetchColumn();
+    }
+    return ['beg' => round($beg, 2), 'purc' => $purc, 'end_inv' => round($end, 2)];
+}
+function cogsMonthState(PDO $pdo, int $y, int $m): array {
+    $q = $pdo->prepare("SELECT id, cogs_date, purc, cos FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date, id");
+    $q->execute([$y, $m]);
+    return $q->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ── AJAX: suggestion for a new row ───────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_suggest'])) {
+    header('Content-Type: application/json');
+    $d = $_GET['date'] ?? '';
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) { echo json_encode(['ok'=>false]); exit; }
+    echo json_encode(['ok'=>true] + cogsSuggest($pdo, $d)); exit;
+}
+// ── AJAX: live state (PURC./COS follow the Disbursement) ─────
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_state'])) {
+    header('Content-Type: application/json');
+    try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
+    echo json_encode(['ok'=>true, 'rows'=>cogsMonthState($pdo, $fYear, $fMonth)]); exit;
+}
 
 // ── AJAX: Save row ────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
@@ -53,23 +107,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $purc  = (float)($_POST['purc']      ?? 0);
         $end   = (float)($_POST['end_inv']   ?? 0);
         $mktg  = (float)($_POST['mktg_cost'] ?? 0);
-        $cos   = $beg + $purc - $end - $mktg;
+        $cos   = $beg + $purc - $mktg - $end;   // COS = BEG + PURC - MKTG COST - END
 
         $yr  = (int)date('Y', strtotime($date));
         $mo  = (int)date('n', strtotime($date));
 
               $rowId = (int)($_POST['row_id'] ?? 0);
+        // one row per date
+        $dup = $pdo->prepare("SELECT id FROM stella_cogs WHERE store_name='Stella' AND cogs_date=? AND id<>? LIMIT 1");
+        $dup->execute([$date, $rowId]);
+        if ($dup->fetchColumn()) { echo json_encode(['ok'=>false,'msg'=>'A COGS row for this date already exists']); exit; }
         if ($rowId > 0) {
             $pdo->prepare("UPDATE stella_cogs SET cogs_date=?, cogs_year=?, cogs_month=?, beg=?, purc=?, end_inv=?, cos=?, mktg_cost=?, saved_by=? WHERE id=? AND store_name='Stella'")
                 ->execute([$date,$yr,$mo,$beg,$purc,$end,$cos,$mktg,$user['name'],$rowId]);
-            echo json_encode(['ok'=>true, 'id'=>$rowId, 'cos'=>number_format($cos,2)]);
+            $outId = $rowId;
         } else {
             $sql = "INSERT INTO stella_cogs (cogs_date, cogs_year, cogs_month, store_name, beg, purc, end_inv, cos, mktg_cost, saved_by) VALUES (?,?,?,'Stella',?,?,?,?,?,?)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$date,$yr,$mo,$beg,$purc,$end,$cos,$mktg,$user['name']]);
-            $newId = (int)$pdo->lastInsertId();
-            echo json_encode(['ok'=>true, 'id'=>$newId, 'cos'=>number_format($cos,2)]);
+            $outId = (int)$pdo->lastInsertId();
         }
+        // re-split PURC. between the rows of the month (15th / last day) and refresh COS
+        try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
+        echo json_encode(['ok'=>true, 'id'=>$outId, 'rows'=>cogsMonthState($pdo, $yr, $mo)]);
     } catch (Throwable $e) {
         echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
     }
@@ -103,6 +163,7 @@ if (isset($_GET['export_csv'])) {
     $tot = $pdo->prepare("SELECT COALESCE(SUM(beg),0) beg, COALESCE(SUM(purc),0) purc, COALESCE(SUM(end_inv),0) end_inv, COALESCE(SUM(cos),0) cos, COALESCE(SUM(mktg_cost),0) mktg_cost FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=?");
     $tot->execute([$fYear,$fMonth]);
     $t = $tot->fetch();
+    if ($data) { $t['beg'] = (float)$data[0]['beg']; $t['end_inv'] = (float)end($data)['end_inv']; }
 
     $xlsx = new SimpleXlsxWriter(branchAccentColor('Stella'));
     $xlsx->title('Stella Branch — COGS');
@@ -138,6 +199,32 @@ $meiTotal = (float)$meiStmt->fetchColumn();
 $purcAutoStmt = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM stella_expenses WHERE YEAR(expense_date)=? AND MONTH(expense_date)=?");
 $purcAutoStmt->execute([$fYear,$fMonth]);
 $purcAuto = (float)$purcAutoStmt->fetchColumn();
+$purcUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(purc),0) FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=?");
+$purcUsedStmt->execute([$fYear,$fMonth]);
+$purcNew = max(0, round($purcAuto - (float)$purcUsedStmt->fetchColumn(), 2));
+
+// ── Previous month's Ending Inventory — auto-suggests this month's BEG. ─
+// (mirrors the spreadsheet chain: each month's BEG = prior month's END)
+$prevMonth = $fMonth - 1;
+$prevYear  = $fYear;
+if ($prevMonth < 1) { $prevMonth = 12; $prevYear--; }
+
+// Prefer the actual saved END. from last month's COGS (the true chain source,
+// since END is now editable and may differ from Month End Inventory).
+$prevCogsStmt = $pdo->prepare("SELECT end_inv FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date DESC, id DESC LIMIT 1");
+$prevCogsStmt->execute([$prevYear,$prevMonth]);
+$prevCogsEnd = $prevCogsStmt->fetchColumn();
+
+if ($prevCogsEnd !== false) {
+    $prevEndInv = (float)$prevCogsEnd;
+    $prevEndSource = 'COGS';
+} else {
+    // Fallback: no COGS entry saved for last month yet — use Month End Inventory
+    $prevMeiStmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) AS grand_total FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
+    $prevMeiStmt->execute([$prevYear,$prevMonth]);
+    $prevEndInv = (float)$prevMeiStmt->fetchColumn();
+    $prevEndSource = 'MEI';
+}
 
 // ── Load rows for selected month ──────────────────────────
 $stmt = $pdo->prepare("SELECT * FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date ASC");
@@ -148,6 +235,8 @@ $rows = $stmt->fetchAll();
 $totStmt = $pdo->prepare("SELECT COALESCE(SUM(beg),0) beg, COALESCE(SUM(purc),0) purc, COALESCE(SUM(end_inv),0) end_inv, COALESCE(SUM(cos),0) cos, COALESCE(SUM(mktg_cost),0) mktg_cost FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=?");
 $totStmt->execute([$fYear,$fMonth]);
 $totals = $totStmt->fetch();
+// rows chain (BEG of the next row = END of the previous), so BEG = first row's BEG and END = last row's END
+if ($rows) { $totals['beg'] = (float)$rows[0]['beg']; $totals['end_inv'] = (float)end($rows)['end_inv']; }
 
 $months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -308,7 +397,7 @@ include '../layout.php';
   <div class="cogs-header-left">
     <div class="eyebrow">Stella Branch · COGS</div>
     <div class="title">Cost of Goods Sold</div>
-    <div class="subtitle">END auto-suggests from Month End Inventory (editable) · COS = BEG + PURC − END − MKTG COST</div>
+    <div class="subtitle">BEG auto-suggests from prior month's END · END auto-suggests from Month End Inventory (editable) · COS = BEG + PURC − MKTG COST − END · rows on the 15th and the last day · auto-saves</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 12px;border-radius:20px;
@@ -326,11 +415,7 @@ include '../layout.php';
   </div>
   <div class="kpi-card" style="border-top:2px solid #8b5cf6">
     <div class="kpi-label">Purchases</div>
-    <div class="kpi-val purple" id="kpi_purc"><?= number_format($totals['purc'],2) ?></div>
-  </div>
-  <div class="kpi-card" style="border-top:2px solid #8b5cf6">
-    <div class="kpi-label">Materials Purchases (Ledger)</div>
-    <div class="kpi-val purple" id="kpi_purc_ledger"><?= number_format($purcAuto,2) ?></div>
+    <div class="kpi-val purple" id="kpi_purc"><?= number_format($rows ? $totals['purc'] : $purcAuto,2) ?></div>
   </div>
   <div class="kpi-card" style="border-top:2px solid var(--accent2)">
     <div class="kpi-label">End. Inventory</div>
@@ -360,7 +445,8 @@ include '../layout.php';
       <?php endfor; ?>
     </select>
   </form>
-  <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
+  <button class="btn btn-primary" onclick="addRow('15')" title="Row for the 15th of this month">+ 15th</button>
+  <button class="btn btn-primary" onclick="addRow('last')" title="Row for the last day of this month">+ Last Day</button>
   <a href="stella_cogs.php?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>" class="btn btn-ghost">⬇ Download Excel</a>
 </div>
 
@@ -407,7 +493,24 @@ include '../layout.php';
     <?php if ($meiTotal == 0): ?>
       <span style="color:#dc3545"> — No inventory entries found for this month yet.</span>
     <?php endif; ?>
-    — you can still edit it before saving.
+    — you can still edit it.
+  </span>
+</div>
+
+<!-- BEG Auto-suggest Notice -->
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 16px;
+            margin-bottom:12px;display:flex;align-items:center;gap:10px;
+            font-family:var(--font-m);font-size:.72rem;color:#1e40af">
+  <span style="font-size:1rem">🔗</span>
+  <span>
+    <strong>BEG. Inventory</strong> for a new row is auto-suggested from
+    <strong><?= $months[$prevMonth-1] . ' ' . $prevYear ?></strong>'s Ending Inventory
+    <?= $prevEndSource === 'COGS' ? '(as saved in COGS)' : '(from Month End Inventory)' ?>:
+    <strong style="color:#1d4ed8"><?= number_format($prevEndInv,2) ?></strong>
+    <?php if ($prevEndInv == 0): ?>
+      <span style="color:#dc3545"> — No prior month inventory found.</span>
+    <?php endif; ?>
+    — you can still edit it.
   </span>
 </div>
 
@@ -417,14 +520,14 @@ include '../layout.php';
             font-family:var(--font-m);font-size:.72rem;color:#5b21b6">
   <span style="font-size:1rem">🧾</span>
   <span>
-    <strong>PURC.</strong> for a new row is auto-suggested from the
+    <strong>PURC.</strong> for a new row is auto-filled from the
     <strong>Stella Expenses ledger's Purchases total</strong> for
     <?= $months[$fMonth-1] . ' ' . $fYear ?>:
     <strong style="color:#6d28d9"><?= number_format($purcAuto,2) ?></strong>
     <?php if ($purcAuto == 0): ?>
       <span style="color:#dc3545"> — No Purchases entries found for this month yet.</span>
     <?php endif; ?>
-    — you can still edit it before saving.
+    — you can still edit it.
   </span>
 </div>
 
@@ -448,29 +551,26 @@ include '../layout.php';
         <tr data-id="<?= $r['id'] ?>">
           <td class="td-date">
             <input type="date" class="date-input" value="<?= htmlspecialchars($r['cogs_date']) ?>"
-                   onchange="markDirty(this)">
+                   onchange="changed(this)">
           </td>
           <td><input type="number" step="0.01" class="cogs-input" value="<?= $r['beg'] ?>"
-                     placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
-          <td><input type="number" step="0.01" class="cogs-input" value="<?= $r['purc'] ?>"
-                     placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
+                     placeholder="0.00" oninput="changed(this)"></td>
+          <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="number" step="0.01" class="cogs-input purc-auto-field" value="<?= $r['purc'] ?>"
+                     placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700"></td>
           <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
             <input type="number" step="0.01" class="cogs-input end-auto-field"
                    value="<?= $r['end_inv'] ?>"
-                   oninput="calcCos(this);markDirty(this)"
+                   oninput="changed(this)"
                    style="background:#fff8e1;color:#b45309;font-weight:700">
           </td>
           <td><input type="number" step="0.01" class="cogs-input cos-field" value="<?= $r['cos'] ?>"
                      readonly tabindex="-1"></td>
           <td><input type="number" step="0.01" class="cogs-input mktg-field" value="<?= $r['mktg_cost'] ?>"
-                     placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
+                     placeholder="0.00" oninput="changed(this)"></td>
           <td style="padding:6px 8px;text-align:center">
             <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
-              <div style="display:flex;gap:4px">
-                <button class="btn-save-row" onclick="saveRow(this)">Save</button>
-                <button class="btn-del-row"  onclick="deleteRow(this)">✕</button>
-              </div>
-              <div class="row-status"></div>
+              <button class="btn-del-row"  onclick="deleteRow(this)">✕</button>
+              <div class="row-status" style="display:block">✓ Saved</div>
             </div>
           </td>
         </tr>
@@ -479,7 +579,7 @@ include '../layout.php';
       <tr id="emptyRow">
         <td colspan="7" style="text-align:center;padding:48px;color:var(--muted);
                                 font-family:var(--font-m);font-size:.78rem">
-          No COGS entries for <?= $months[$fMonth-1] ?> <?= $fYear ?> — click <strong>+ Add Row</strong>
+          No COGS entries for <?= $months[$fMonth-1] ?> <?= $fYear ?> — click <strong>+ 15th</strong> or <strong>+ Last Day</strong>
         </td>
       </tr>
       <?php endif; ?>
@@ -498,8 +598,10 @@ include '../layout.php';
   </table>
 </div>
 
-<div style="margin-top:14px">
-  <button class="btn btn-primary" onclick="addRow()">+ Add Row</button>
+<div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <button class="btn btn-primary" onclick="addRow('15')">+ 15th</button>
+  <button class="btn btn-primary" onclick="addRow('last')">+ Last Day</button>
+  <span style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)">Changes save automatically · PURC. follows the Disbursement (15th row = purchases up to the 15th, last-day row = the rest)</span>
 </div>
 
   </div></div>
@@ -509,155 +611,195 @@ const CURR_MONTH = <?= $fMonth ?>;
 const CURR_YEAR  = <?= $fYear ?>;
 // Grand total from Month End Inventory for this month — auto-fills END. column
 const MEI_TOTAL  = <?= $meiTotal ?>;
+// Previous month's Ending Inventory — auto-suggests BEG. on a new row
+const PREV_END_INV = <?= $prevEndInv ?>;
 // This month's Purchases total (from Stella Expenses ledger's Purchases total) — auto-suggests PURC. on a new row
-const PURC_AUTO = <?= $purcAuto ?>;
+const PURC_AUTO = <?= $purcNew ?>;
+const PURC_LEDGER = <?= $purcAuto ?>;
 
-// Default date: first day of selected month/year
-function defaultDate() {
-  const m = String(CURR_MONTH).padStart(2,'0');
-  return `${CURR_YEAR}-${m}-01`;
+const pad2 = n => String(n).padStart(2,'0');
+function dateFor(kind) {
+  if (kind === '15') return `${CURR_YEAR}-${pad2(CURR_MONTH)}-15`;
+  const last = new Date(CURR_YEAR, CURR_MONTH, 0).getDate();
+  return `${CURR_YEAR}-${pad2(CURR_MONTH)}-${pad2(last)}`;
 }
 
-function addRow() {
-  const empty = document.getElementById('emptyRow');
-  if (empty) empty.remove();
-
-  const tbody = document.getElementById('cogsBody');
-  const tr = document.createElement('tr');
-  tr.dataset.id = '0'; // 0 = new
-  tr.innerHTML = `
+const ROW_HTML = (d) => `
     <td class="td-date">
-      <input type="date" class="date-input" value="${defaultDate()}" onchange="markDirty(this)">
+      <input type="date" class="date-input" value="${d}" onchange="dateChanged(this)">
     </td>
-    <td><input type="number" step="0.01" class="cogs-input" value="" placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
-    <td><input type="number" step="0.01" class="cogs-input purc-auto-field" value="${PURC_AUTO.toFixed(2)}" placeholder="0.00" oninput="calcCos(this);markDirty(this)" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto-suggested from this month's Purchases total — editable"></td>
-    <td title="Auto-suggested from Month End Inventory grand total — editable"><input type="number" step="0.01" class="cogs-input end-auto-field" value="${MEI_TOTAL.toFixed(2)}" oninput="calcCos(this);markDirty(this)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
+    <td><input type="number" step="0.01" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
+    <td><input type="number" step="0.01" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
+    <td><input type="number" step="0.01" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
     <td><input type="number" step="0.01" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
-    <td><input type="number" step="0.01" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="calcCos(this);markDirty(this)"></td>
+    <td><input type="number" step="0.01" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)"></td>
     <td style="padding:6px 8px;text-align:center">
       <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
-        <div style="display:flex;gap:4px">
-          <button class="btn-save-row" onclick="saveRow(this)">Save</button>
-          <button class="btn-del-row"  onclick="deleteRow(this)">✕</button>
-        </div>
-        <div class="row-status"></div>
+        <button class="btn-del-row" onclick="deleteRow(this)">✕</button>
+        <div class="row-status" style="display:block;color:var(--subtext)">not saved yet</div>
       </div>
     </td>`;
-  tbody.appendChild(tr);
-  tr.querySelector('.date-input').focus();
+
+async function fillSuggestion(tr) {
+  const d = tr.querySelector('.date-input').value;
+  if (!d) return;
+  try {
+    const j = await (await fetch('stella_cogs.php?ajax_suggest=1&date=' + encodeURIComponent(d))).json();
+    if (!j.ok) return;
+    const ins = tr.querySelectorAll('.cogs-input');
+    ins[0].value = j.beg.toFixed(2); ins[1].value = j.purc.toFixed(2);
+    ins[2].value = j.end_inv ? j.end_inv.toFixed(2) : '';
+    calcCos(ins[0]);
+    if (j.end_inv > 0) changed(ins[2]);          // month-end row with an inventory total → save straight away
+  } catch (e) {}
+}
+
+function addRow(kind) {
+  const empty = document.getElementById('emptyRow');
+  if (empty) empty.remove();
+  let d = kind ? dateFor(kind) : null;
+  if (!d) {
+    const has15 = [...document.querySelectorAll('#cogsBody .date-input')].some(i => i.value === dateFor('15'));
+    d = dateFor(has15 ? 'last' : '15');
+  }
+  if ([...document.querySelectorAll('#cogsBody .date-input')].some(i => i.value === d)) {
+    alert('There is already a COGS row for ' + d + '.'); return;
+  }
+  const tr = document.createElement('tr');
+  tr.dataset.id = '0';
+  tr.innerHTML = ROW_HTML(d);
+  document.getElementById('cogsBody').appendChild(tr);
+  fillSuggestion(tr);
+  tr.querySelector('.end-auto-field').focus();
 }
 
 function gv(input) { return parseFloat(input.value) || 0; }
 
+// COS = BEG + PURC - MKTG COST - END
 function calcCos(el) {
-  const tr   = el.closest('tr');
-  const inputs = tr.querySelectorAll('.cogs-input');
-  const beg  = gv(inputs[0]);
-  const purc = gv(inputs[1]);
-  const end  = gv(inputs[2]); // auto-suggested from MEI, editable
-  const mktg = gv(inputs[4]);
-  const cos  = beg + purc - end - mktg;
-  inputs[3].value = cos.toFixed(2);
+  const tr = el.closest('tr'), i = tr.querySelectorAll('.cogs-input');
+  i[3].value = (gv(i[0]) + gv(i[1]) - gv(i[4]) - gv(i[2])).toFixed(2);
   refreshFooter();
 }
 
-function markDirty(el) {
-  // just triggers footer refresh
-  refreshFooter();
+// every edit → recalc + auto-save (debounced)
+function changed(el) {
+  const tr = el.closest('tr');
+  calcCos(el);
+  setStatus(tr, 'typing…', 'var(--subtext)');
+  clearTimeout(tr._t);
+  tr._t = setTimeout(() => { tr._t = null; saveRow(tr); }, 600);
+}
+async function dateChanged(el) {
+  const tr = el.closest('tr');
+  if ((parseInt(tr.dataset.id) || 0) === 0) { await fillSuggestion(tr); }
+  changed(el);
+}
+function setStatus(tr, txt, color) {
+  const s = tr.querySelector('.row-status'); if (!s) return;
+  s.textContent = txt; s.style.color = color; s.style.display = 'block';
 }
 
 function getRowData(tr) {
-  const date  = tr.querySelector('.date-input').value;
-  const ins   = tr.querySelectorAll('.cogs-input');
+  const ins = tr.querySelectorAll('.cogs-input');
   return {
-    cogs_date: date,
-    beg:       parseFloat(ins[0].value) || 0,
-    purc:      parseFloat(ins[1].value) || 0,
-    end_inv:   parseFloat(ins[2].value) || 0,
-    cos:       parseFloat(ins[3].value) || 0,
-    mktg_cost: parseFloat(ins[4].value) || 0,
+    cogs_date: tr.querySelector('.date-input').value,
+    beg: gv(ins[0]), purc: gv(ins[1]), end_inv: gv(ins[2]), cos: gv(ins[3]), mktg_cost: gv(ins[4]),
   };
 }
 
-async function saveRow(btn) {
-  const tr     = btn.closest('tr');
-  const status = tr.querySelector('.row-status');
-  const data   = getRowData(tr);
+// apply the server's PURC./COS split to every row of the month
+function applyState(rows) {
+  (rows || []).forEach(r => {
+    const tr = document.querySelector(`#cogsBody tr[data-id="${r.id}"]`);
+    if (!tr) return;
+    const ins = tr.querySelectorAll('.cogs-input');
+    ins[1].value = (+r.purc).toFixed(2);
+    ins[3].value = (+r.cos).toFixed(2);
+  });
+  refreshFooter(); updateKPIs();
+}
 
-  if (!data.cogs_date) { alert('Please set a date.'); return; }
-
-  btn.textContent = '…'; btn.disabled = true;
-
+async function saveRow(tr) {
+  if (tr._deleted) return;
+  const data = getRowData(tr);
+  if (!data.cogs_date) { setStatus(tr, 'set a date', 'var(--accent2)'); return; }
+  if (tr._saving) { tr._again = true; return; }        // never insert the same new row twice
+  tr._saving = true;
+  setStatus(tr, 'saving…', 'var(--subtext)');
   const fd = new FormData();
   fd.append('ajax_save','1');
   Object.entries(data).forEach(([k,v]) => fd.append(k, v));
   const existingId = parseInt(tr.dataset.id) || 0;
   if (existingId > 0) fd.append('row_id', existingId);
-
   try {
-    const res  = await fetch('stella_cogs.php', {method:'POST', body:fd});
-    const json = await res.json();
+    const json = await (await fetch('stella_cogs.php', {method:'POST', body:fd})).json();
     if (json.ok) {
-      if (json.id) tr.dataset.id = json.id; // set real DB id
-      status.textContent = '✓ Saved';
-      status.style.color = 'var(--accent)';
-      status.style.display = 'block';
-      setTimeout(() => { status.style.display='none'; }, 3000);
-      refreshFooter();
-      updateKPIs();
-    } else {
-      status.textContent = '❌ ' + json.msg;
-      status.style.color = 'var(--accent2)';
-      status.style.display = 'block';
-    }
-  } catch(e) {
-    status.textContent = '❌ Network error';
-    status.style.color = 'var(--accent2)';
-    status.style.display = 'block';
-  }
-  btn.textContent = 'Save'; btn.disabled = false;
+      if (json.id) tr.dataset.id = json.id;
+      if (tr._deleted && json.id) { const f = new FormData(); f.append('ajax_delete','1'); f.append('row_id', json.id); fetch('stella_cogs.php', {method:'POST', body:f}); return; }
+      setStatus(tr, '✓ Saved', 'var(--accent)');
+      applyState(json.rows);
+    } else setStatus(tr, '❌ ' + json.msg, 'var(--accent2)');
+  } catch(e) { setStatus(tr, '❌ Network error', 'var(--accent2)'); }
+  tr._saving = false;
+  if (tr._again) { tr._again = false; saveRow(tr); }
 }
 
 async function deleteRow(btn) {
   const tr = btn.closest('tr');
   const id = parseInt(tr.dataset.id) || 0;
 
-  if (id > 0 && !confirm('Delete this COGS entry?')) return;
+  // two-click confirmation inside the page (browser pop-ups can be blocked, which made Delete look dead)
+  if (id > 0 && btn.dataset.sure !== '1') {
+    btn.dataset.sure = '1'; btn.dataset.old = btn.textContent; btn.textContent = 'Delete?';
+    btn.style.background = '#dc3545'; btn.style.color = '#fff';
+    setTimeout(() => { if (btn.dataset.sure === '1') { btn.dataset.sure = ''; btn.textContent = btn.dataset.old || '✕'; btn.style.background = ''; btn.style.color = ''; } }, 3500);
+    return;
+  }
+
+  // stop any pending / queued auto-save of this row so it cannot bring the row back
+  clearTimeout(tr._t); tr._t = null; tr._again = false; tr._deleted = true;
+  btn.disabled = true;
 
   if (id > 0) {
     const fd = new FormData();
     fd.append('ajax_delete','1');
     fd.append('row_id', id);
     try {
-      await fetch('stella_cogs.php', {method:'POST', body:fd});
-    } catch(e) {}
+      const j = await (await fetch('stella_cogs.php', {method:'POST', body:fd})).json();
+      if (!j.ok) { tr._deleted = false; btn.disabled = false; setStatus(tr, '❌ ' + (j.msg || 'not deleted'), 'var(--accent2)'); return; }
+    } catch(e) { tr._deleted = false; btn.disabled = false; setStatus(tr, '❌ not deleted (network)', 'var(--accent2)'); return; }
   }
 
   tr.remove();
   if (!document.querySelector('#cogsBody tr')) {
     const tbody = document.getElementById('cogsBody');
-    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entries — click <strong>+ Add Row</strong></td></tr>`;
+    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entries — click <strong>+ 15th</strong> or <strong>+ Last Day</strong></td></tr>`;
   }
   refreshFooter();
   updateKPIs();
 }
 
-function refreshFooter() {
-  let beg=0, purc=0, end=0, cos=0, mktg=0;
+function totalsNow() {
+  let purc=0, cos=0, mktg=0, first=null, last=null;
   document.querySelectorAll('#cogsBody tr[data-id]').forEach(tr => {
     const ins = tr.querySelectorAll('.cogs-input');
-    beg  += parseFloat(ins[0]?.value)||0;
-    purc += parseFloat(ins[1]?.value)||0;
-    end  += parseFloat(ins[2]?.value)||0;
-    cos  += parseFloat(ins[3]?.value)||0;
-    mktg += parseFloat(ins[4]?.value)||0;
+    const d = tr.querySelector('.date-input').value || '';
+    purc += parseFloat(ins[1]?.value)||0; cos += parseFloat(ins[3]?.value)||0; mktg += parseFloat(ins[4]?.value)||0;
+    if (!first || d < first.d) first = {d, v: parseFloat(ins[0]?.value)||0};
+    if (!last  || d >= last.d) last  = {d, v: parseFloat(ins[2]?.value)||0};
   });
-  const fmt = n => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('foot_beg').textContent  = fmt(beg);
-  document.getElementById('foot_purc').textContent = fmt(purc);
-  document.getElementById('foot_end').textContent  = fmt(end);
-  document.getElementById('foot_cos').textContent  = fmt(cos);
-  document.getElementById('foot_mktg').textContent = fmt(mktg);
+  // rows chain, so BEG = first row's BEG and END = last row's END
+  return {beg: first ? first.v : 0, purc, end: last ? last.v : 0, cos, mktg};
+}
+const fmtC = n => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+function refreshFooter() {
+  const t = totalsNow();
+  document.getElementById('foot_beg').textContent  = fmtC(t.beg);
+  document.getElementById('foot_purc').textContent = fmtC(t.purc);
+  document.getElementById('foot_end').textContent  = fmtC(t.end);
+  document.getElementById('foot_cos').textContent  = fmtC(t.cos);
+  document.getElementById('foot_mktg').textContent = fmtC(t.mktg);
 }
 
 // Recalculate COS for all existing rows using the correct formula
@@ -675,22 +817,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function updateKPIs() {
-  let beg=0, purc=0, end=0, cos=0, mktg=0;
-  document.querySelectorAll('#cogsBody tr[data-id]').forEach(tr => {
-    const ins = tr.querySelectorAll('.cogs-input');
-    beg  += parseFloat(ins[0]?.value)||0;
-    purc += parseFloat(ins[1]?.value)||0;
-    end  += parseFloat(ins[2]?.value)||0;
-    cos  += parseFloat(ins[3]?.value)||0;
-    mktg += parseFloat(ins[4]?.value)||0;
-  });
-  const fmt = n => n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('kpi_beg').textContent  = fmt(beg);
-  document.getElementById('kpi_purc').textContent = fmt(purc);
-  document.getElementById('kpi_end').textContent  = fmt(end);
-  document.getElementById('kpi_cos').textContent  = fmt(cos);
-  document.getElementById('kpi_mktg').textContent = fmt(mktg);
+  const t = totalsNow(), has = !!document.querySelector('#cogsBody tr[data-id]');
+  document.getElementById('kpi_beg').textContent  = fmtC(t.beg);
+  document.getElementById('kpi_purc').textContent = fmtC(has ? t.purc : PURC_LEDGER);
+  document.getElementById('kpi_end').textContent  = fmtC(t.end);
+  document.getElementById('kpi_cos').textContent  = fmtC(t.cos);
+  document.getElementById('kpi_mktg').textContent = fmtC(t.mktg);
 }
+
+// PURC. / COS follow the Disbursement live
+setInterval(async function () {
+  if (document.hidden || [...document.querySelectorAll('#cogsBody tr')].some(tr => tr._saving || tr._t)) return;
+  try {
+    const j = await (await fetch(`stella_cogs.php?ajax_state=1&year=${CURR_YEAR}&month=${CURR_MONTH}`)).json();
+    if (j.ok) applyState(j.rows);
+  } catch (e) {}
+}, 5000);
 </script>
 </body>
 </html>
