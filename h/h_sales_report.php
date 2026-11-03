@@ -545,6 +545,118 @@ include '../layout.php';
 
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 
+<style id="sr-eye-comfort">
+/* ═══ Eye-comfort theme for the H Sales Report (Soft = default · Dark · Original) ═══ */
+body.page-h_sales_report.sr-soft {
+  --h-main:#8a4a47; --h-dark:#723c3a; --h-mid:#9a5a56; --h-tint:#dccbc2; --h-tint2:#d2bdb1; --h-pale:#e3d8cf; --h-line:#bfab9f; --h-ink:#4a2724;
+  --sr-bg:#cdc8bf; --sr-card:#dcd7cd; --sr-card2:#d3cdc2; --sr-input:#e8e4d9; --sr-input-bd:#a9a396; --sr-text:#2b2522; --sr-sub:#5c524c; --sr-band-text:#f1e6e0; --sr-glow:58,112,170; --sr-glow-bd:#4a7fb5;
+}
+body.page-h_sales_report.sr-dark {
+  --h-main:#6a3535; --h-dark:#4f2626; --h-mid:#7c4040; --h-tint:#33252a; --h-tint2:#3d2b2b; --h-pale:#271c1c; --h-line:#4d3737; --h-ink:#ead6d2;
+  --sr-bg:#161111; --sr-card:#201818; --sr-card2:#1b1414; --sr-input:#2c2020; --sr-input-bd:#4d3737; --sr-text:#e9dedb; --sr-sub:#b49e99; --sr-band-text:#f0e2de; --sr-glow:96,165,235; --sr-glow-bd:#6aa8e8;
+}
+body.page-h_sales_report:is(.sr-soft,.sr-dark), body.page-h_sales_report:is(.sr-soft,.sr-dark) .main-wrapper { background:var(--sr-bg) !important; color:var(--sr-text); }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .topbar { background:var(--sr-card) !important; border-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .topbar * { color:var(--sr-text); }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-header-card { background:linear-gradient(135deg,var(--h-main),var(--h-dark)) !important; border-radius:14px !important; box-shadow:0 6px 18px rgba(0,0,0,.18); }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-header-card, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-header-card * { color:var(--sr-band-text) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-card, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-oc-bar { background:var(--sr-card) !important; border:1px solid var(--h-line) !important; border-radius:16px !important; box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.07) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section { overflow:hidden; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-oc-bar label { color:var(--sr-text) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-oc-bar input, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-controls input { background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; border-radius:10px !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-controls .btn, body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-lock { background:var(--sr-card) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-save-status { color:var(--sr-sub) !important; }
+/* titles / table headers: muted brick, light text */
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-title-row, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section-title, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section-title.dark-red, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col:nth-child(n) .sub-col-title, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-grid .sub-col:nth-child(n) .sub-col-title,
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table th, body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-add-row { background:var(--h-main) !important; color:var(--sr-band-text) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-main-title { color:var(--sr-band-text) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section-title, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col-title { text-align:left !important; letter-spacing:.1em !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table th { border-color:rgba(255,255,255,.14) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table th.sub { background:var(--h-dark) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table td { background:var(--sr-card); color:var(--sr-text); border-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tbody tr:hover td { background:var(--sr-card2) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td { background:var(--h-tint2) !important; color:var(--h-ink) !important; border-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.total-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.grand-total { background:var(--h-dark) !important; color:var(--sr-band-text) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-inp { color:var(--sr-text) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-inp:focus, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-inp:focus { background:var(--sr-input) !important; box-shadow:inset 0 0 0 2px var(--sr-glow-bd) !important; }
+/* sub-section cards */
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-grid { gap:8px !important; padding:8px; border-top:0 !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col { border:1px solid var(--h-line) !important; border-radius:12px; overflow:hidden; background:var(--sr-card); }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr { background:var(--h-tint) !important; border-bottom-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr span { color:var(--h-ink) !important; border-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-row { border-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-row:hover { background:var(--sr-card2) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-inp { background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; border-radius:8px !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-footer { background:var(--h-tint2) !important; border-top-color:var(--h-line) !important; color:var(--h-ink) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-footer span { color:var(--h-ink) !important; border-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-add-row { border-radius:999px !important; padding:6px 14px !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-del-row { background:var(--h-tint) !important; color:var(--h-ink) !important; }
+/* summary column */
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row { border-bottom:1px solid var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.for-row, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.pink-val { background:var(--sr-card) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green { background:var(--h-tint) !important; box-shadow:inset 4px 0 0 var(--h-mid); }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-label { color:var(--h-ink) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-note { color:var(--sr-sub) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.gray-hdr { background:var(--sr-card2) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.net { background:#c7b27c !important; box-shadow:inset 4px 0 0 #a98f4c; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh { background:#35404e !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short { background:#8f4a52 !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.remarks { background:var(--sr-card) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.pink-val .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.for-row .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.gray-hdr .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.remarks .sr-label { color:var(--sr-text) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.net .sr-label { color:#3a2f10 !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short .sr-label { color:#f1ece9 !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-note { color:var(--sr-sub) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh .sr-note, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short .sr-note { color:rgba(255,255,255,.75) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-inputnote { background:var(--sr-card) !important; color:var(--sr-text) !important; border-bottom-color:var(--h-line) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-inputnote-box { background:var(--sr-input) !important; }
+/* inputs: typable = dim cream + soft blue glow, auto = flat value */
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap input.sr-input:not([readonly]), body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap textarea.sr-remarks {
+  background:var(--sr-input) !important; color:var(--sr-text) !important; -webkit-text-fill-color:var(--sr-text);
+  border:1px solid var(--sr-glow-bd) !important; border-radius:9px !important;
+  box-shadow:0 0 0 2px rgba(var(--sr-glow),.25), 0 0 12px rgba(var(--sr-glow),.4) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap input.sr-input:not([readonly]):hover, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap textarea.sr-remarks:hover { box-shadow:0 0 0 2px rgba(var(--sr-glow),.4), 0 0 14px rgba(var(--sr-glow),.5) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap input.sr-input:not([readonly]):focus, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap textarea.sr-remarks:focus { border-color:var(--sr-glow-bd) !important; box-shadow:0 0 0 3px rgba(var(--sr-glow),.5), 0 0 20px rgba(var(--sr-glow),.65) !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap .sr-input[readonly], body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap .sr-input.readout { background:transparent !important; color:var(--sr-text) !important; -webkit-text-fill-color:var(--sr-text); border:1px solid transparent !important; box-shadow:none !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-input.readout, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-input[readonly] { color:var(--h-ink) !important; -webkit-text-fill-color:var(--h-ink); }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.net .sr-input.readout { background:rgba(255,255,255,.3) !important; color:#3a2f10 !important; -webkit-text-fill-color:#3a2f10; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short .sr-input.readout { background:rgba(236,228,214,.8) !important; color:#5c1119 !important; -webkit-text-fill-color:#5c1119; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.for-row .sr-input { background:transparent !important; }
+body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-input::placeholder, body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-inp::placeholder, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-inp::placeholder, body.page-h_sales_report:is(.sr-soft,.sr-dark) textarea::placeholder { color:var(--sr-sub); opacity:.55; }
+body.page-h_sales_report.sr-dark .sr-row.short .sr-input.readout { background:rgba(20,10,12,.45) !important; color:#ffd9dd !important; -webkit-text-fill-color:#ffd9dd; }
+body.page-h_sales_report.sr-dark .sr-row.net .sr-input.readout { background:rgba(0,0,0,.2) !important; color:#fff4d4 !important; -webkit-text-fill-color:#fff4d4; }
+body.page-h_sales_report.sr-dark .sr-row.net { background:#8a7437 !important; }
+body.page-h_sales_report.sr-dark .sr-row.net .sr-label { color:#fff4d4 !important; }
+/* theme switch */
+#srThemeBtn { font-family:var(--font-m); font-size:.72rem; font-weight:700; padding:7px 12px; border-radius:9px; cursor:pointer; background:#fff; color:#1d2a22; border:1px solid #cbd5e1; }
+body.page-h_sales_report.sr-soft #srThemeBtn { background:#e8e4d9; color:#2b2522; border-color:#a9a396; }
+body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb; border-color:#4d3737; }
+</style>
+<script>
+// Eye-comfort theme: Soft (default) → Dark → Original. Remembered per browser.
+(function () {
+  var order = ['sr-soft', 'sr-dark', 'sr-orig'], names = {'sr-soft': '🌿 Soft', 'sr-dark': '🌙 Dark', 'sr-orig': '☀ Original'};
+  var cur = 'sr-soft';
+  try { var sv = localStorage.getItem('hSrTheme'); if (order.indexOf(sv) >= 0) cur = sv; } catch (e) {}
+  function apply() {
+    order.forEach(function (c) { document.body.classList.remove(c); });
+    document.body.classList.add(cur);
+    var b = document.getElementById('srThemeBtn'); if (b) b.textContent = names[cur];
+  }
+  window.srCycleTheme = function () {
+    cur = order[(order.indexOf(cur) + 1) % order.length];
+    try { localStorage.setItem('hSrTheme', cur); } catch (e) {}
+    apply();
+  };
+  document.addEventListener('DOMContentLoaded', function () {
+    var ctl = document.querySelector('.sr-controls');
+    var btn = document.createElement('button'); btn.type = 'button'; btn.id = 'srThemeBtn'; btn.title = 'Change screen brightness / colours';
+    btn.onclick = window.srCycleTheme;
+    if (ctl) ctl.appendChild(btn); else document.body.appendChild(btn);
+    apply();
+  });
+  document.body && document.body.classList.add(cur);
+})();
+</script>
 <div class="sr-split">
 <div class="sr-main">
 <!-- Header -->
