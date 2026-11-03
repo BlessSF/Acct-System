@@ -781,6 +781,11 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
       <span class="ni">📑</span> Income Stmt (Acct Titles)
     </a>
     <?php endif; ?>
+    <?php if ($branch === 'Stella'): ?>
+    <a href="<?= BASE_URL ?>/stella/stella_income_statement_acct.php" class="nav-item <?= ($activePage==='stella_income_statement_acct')?'active':'' ?>">
+      <span class="ni">📑</span> Income Stmt (Acct Titles)
+    </a>
+    <?php endif; ?>
     <?php endif; ?>
     <?php endif; ?>
     <a href="<?= BASE_URL ?>/vendor_masterlist.php" class="nav-item <?= ($activePage==='vendor_masterlist')?'active':'' ?>">
