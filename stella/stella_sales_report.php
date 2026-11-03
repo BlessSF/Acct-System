@@ -484,9 +484,9 @@ body.page-stella_sales_report.sr-soft .sr-remarks textarea, body.page-stella_sal
 /* ═══ Eye-comfort theme for the Stella Sales Report (Soft = default · Dark · Original) ═══ */
 body.page-stella_sales_report.sr-soft, body.page-stella_sales_report.sr-dark { --sr-radius: 14px; }
 body.page-stella_sales_report.sr-soft {
-  --sr-bg:#dde3de; --sr-card:#e9eeea; --sr-card2:#e1e8e3; --sr-input:#eef2ee; --sr-input-bd:#bcc8bf; --sr-text:#1d2a22; --sr-sub:#4b5b51;
-  --sr-head1:#27503d; --sr-head2:#1d3d2e; --sr-band:#2f6049; --sr-band-text:#eaf3ed; --sr-mint:#d3e2d8; --sr-line:#c5d0c8;
-  --sr-net:#d6bd7a; --sr-net-text:#3b2e08; --sr-coh:#26354a; --sr-short:#a8424c; --sr-focus:#2f6049;
+  --sr-bg:#c8c7ba; --sr-card:#d6d4c7; --sr-card2:#cecdbf; --sr-input:#e2e0d3; --sr-input-bd:#a8a798; --sr-text:#2b2a22; --sr-sub:#5b5a4c;
+  --sr-head1:#3f5247; --sr-head2:#34463c; --sr-band:#4d6356; --sr-band-text:#e4e1d3; --sr-mint:#cbd1c2; --sr-line:#b6b5a5;
+  --sr-net:#c7b27c; --sr-net-text:#3a2f10; --sr-coh:#35404e; --sr-short:#93515a; --sr-focus:#4d6356;
 }
 body.page-stella_sales_report.sr-dark {
   --sr-bg:#121a16; --sr-card:#1b2620; --sr-card2:#16201b; --sr-input:#222f28; --sr-input-bd:#33453a; --sr-text:#dbe6de; --sr-sub:#97a89d;
@@ -534,7 +534,7 @@ body.page-stella_sales_report.sr-soft .sr-input:focus, body.page-stella_sales_re
 body.page-stella_sales_report.sr-soft .sr-input::placeholder, body.page-stella_sales_report.sr-dark .sr-input::placeholder, body.page-stella_sales_report.sr-soft .di-inp::placeholder, body.page-stella_sales_report.sr-dark .di-inp::placeholder { color:var(--sr-sub); opacity:.55; }
 
 /* tables / sub-sections */
-body.page-stella_sales_report.sr-soft .sr-section-title, body.page-stella_sales_report.sr-dark .sr-section-title { background:var(--sr-head1) !important; letter-spacing:.1em; }
+body.page-stella_sales_report.sr-soft .sr-section-title, body.page-stella_sales_report.sr-dark .sr-section-title { background:var(--sr-sec-bg,var(--sr-head1)) !important; letter-spacing:.1em; }
 body.page-stella_sales_report.sr-soft .di-table th, body.page-stella_sales_report.sr-dark .di-table th { background:var(--sr-band) !important; color:var(--sr-band-text) !important; border-color:rgba(255,255,255,.12) !important; }
 body.page-stella_sales_report.sr-soft .di-table th.sub, body.page-stella_sales_report.sr-dark .di-table th.sub { background:var(--sr-head2) !important; }
 body.page-stella_sales_report.sr-soft .di-table td, body.page-stella_sales_report.sr-dark .di-table td { background:var(--sr-card); border-color:var(--sr-line) !important; color:var(--sr-text); }
@@ -544,7 +544,7 @@ body.page-stella_sales_report.sr-soft .di-table tfoot td.total-label, body.page-
 body.page-stella_sales_report.sr-soft .di-inp, body.page-stella_sales_report.sr-dark .di-inp { color:var(--sr-text) !important; }
 body.page-stella_sales_report.sr-soft .di-inp:focus, body.page-stella_sales_report.sr-dark .di-inp:focus { background:var(--sr-input) !important; box-shadow:inset 0 0 0 2px var(--sr-focus); }
 body.page-stella_sales_report.sr-soft .sub-col, body.page-stella_sales_report.sr-dark .sub-col { border-color:var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col-title { background:var(--sr-band) !important; color:var(--sr-band-text) !important; }
+body.page-stella_sales_report.sr-soft .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col-title { background:var(--sr-subt-bg,var(--sr-band)) !important; color:var(--sr-subt-fg,var(--sr-band-text)) !important; }
 body.page-stella_sales_report.sr-soft .sub-col-hdr, body.page-stella_sales_report.sr-dark .sub-col-hdr { background:var(--sr-mint) !important; }
 body.page-stella_sales_report.sr-soft .sub-col-hdr span, body.page-stella_sales_report.sr-dark .sub-col-hdr span { color:var(--sr-text) !important; border-color:var(--sr-line) !important; }
 body.page-stella_sales_report.sr-soft .sub-row, body.page-stella_sales_report.sr-dark .sub-row { border-color:var(--sr-line) !important; }
@@ -561,6 +561,19 @@ body.page-stella_sales_report.sr-soft .sr-save-status, body.page-stella_sales_re
 /* theme switch */
 #srThemeBtn { font-family:var(--font-m); font-size:.72rem; font-weight:700; padding:7px 12px; border-radius:9px; cursor:pointer;
   background:#eef1ee; color:#1d2a22; border:1px solid #bcc8bf; }
+body.page-stella_sales_report.sr-soft .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(n) .sub-col-title,
+body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+2) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+2) .sub-col-title,
+body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+3) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+3) .sub-col-title,
+body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+4) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+4) .sub-col-title,
+body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+1) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+1) .sub-col-title { background:var(--sr-subt-bg,var(--sr-band)) !important; color:var(--sr-subt-fg,var(--sr-band-text)) !important; }
+body.page-stella_sales_report.sr-soft .sr-row.green .sr-input:not(.readout), body.page-stella_sales_report.sr-soft .sr-row .sr-input.readout { background:var(--sr-input) !important; }
+body.page-stella_sales_report.sr-soft .sub-grid.three-col .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-grid.three-col .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr-soft .sub-grid.three-col .sub-col:nth-child(2n) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-grid.three-col .sub-col:nth-child(2n) .sub-col-title { background:var(--sr-subt-bg,var(--sr-band)) !important; color:var(--sr-subt-fg,var(--sr-band-text)) !important; }
+body.page-stella_sales_report.sr-soft #srThemeBtn { background:#e2e0d3; color:#2b2a22; border-color:#a8a798; }
+body.page-stella_sales_report.sr-soft .sr-row.short .sr-input.readout { background:rgba(226,224,211,.78) !important; }
+body.page-stella_sales_report.sr-soft .sr-header-card, body.page-stella_sales_report.sr-soft .sr-header-card * { color:var(--sr-band-text); }
+body.page-stella_sales_report.sr-soft .sr-title-row, body.page-stella_sales_report.sr-soft .sr-section-title, body.page-stella_sales_report.sr-soft .di-table tfoot td.total-label, body.page-stella_sales_report.sr-soft .di-table tfoot td.grand-total { color:var(--sr-sec-fg,var(--sr-band-text)) !important; }
+body.page-stella_sales_report.sr-soft .sr-input, body.page-stella_sales_report.sr-soft .sub-inp, body.page-stella_sales_report.sr-soft .di-inp { font-weight:600; }
+body.page-stella_sales_report.sr-soft .sr-row.green .sr-label, body.page-stella_sales_report.sr-soft .sr-row.coh .sr-label, body.page-stella_sales_report.sr-soft .sr-row.short .sr-label { color:var(--sr-band-text) !important; }
 body.page-stella_sales_report.sr-dark #srThemeBtn { background:#222f28; color:#dbe6de; border-color:#33453a; }
 
 /* plain summary rows + the "For" row (inline pale-mint) */
@@ -570,6 +583,40 @@ body.page-stella_sales_report.sr-soft .sr-row.pink-val, body.page-stella_sales_r
 body.page-stella_sales_report.sr-soft .sr-row[style*="f0fdf4"], body.page-stella_sales_report.sr-dark .sr-row[style*="f0fdf4"] { background:var(--sr-card2) !important; }
 body.page-stella_sales_report.sr-soft .sr-row[style*="f0fdf4"] .sr-label, body.page-stella_sales_report.sr-dark .sr-row[style*="f0fdf4"] .sr-label { color:var(--sr-text) !important; }
 body.page-stella_sales_report.sr-soft .sr-section [style*="background"], body.page-stella_sales_report.sr-dark .sr-section [style*="background"] { filter:none; }
+
+/* ═══ Modern clean layer: calm cards, light table headers, accent bars ═══ */
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) { --sr-sec-fg:var(--sr-text); --sr-subt-fg:var(--sr-text); --sr-subt-bg:var(--sr-card2); --sr-sec-bg:var(--sr-card); --sr-acc:var(--sr-band); }
+body.page-stella_sales_report.sr-dark { --sr-acc:#3f8f69; }
+body.page-stella_sales_report.sr-soft { --sr-acc:#5a7a68; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-section { border-radius:16px !important; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.07) !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-section-title { text-align:left !important; font-size:.74rem !important; letter-spacing:.12em !important; padding:12px 16px !important; border-left:5px solid var(--sr-acc); border-bottom:1px solid var(--sr-line); }
+/* Dine-in table */
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table { border-collapse:separate; border-spacing:0; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th { background:var(--sr-card2) !important; color:var(--sr-sub) !important; font-size:.6rem !important; letter-spacing:.04em; font-weight:800; padding:9px 4px !important; border:0 !important; border-bottom:1px solid var(--sr-line) !important; border-right:1px solid var(--sr-line) !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th.sub { background:var(--sr-card) !important; color:var(--sr-sub) !important; font-size:.6rem !important; padding:5px 8px !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table td { border-right:1px solid var(--sr-line) !important; border-bottom:1px solid var(--sr-line) !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tbody tr:hover td { background:var(--sr-card2) !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td { font-weight:800; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.total-label, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.grand-total { background:var(--sr-card2) !important; color:var(--sr-text) !important; border-top:2px solid var(--sr-acc) !important; letter-spacing:.06em; }
+/* Sub-section cards */
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-grid { gap:8px !important; padding:8px; background:transparent; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col { border:1px solid var(--sr-line) !important; border-radius:12px; overflow:hidden; background:var(--sr-card); }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-title { text-align:left !important; font-size:.66rem !important; letter-spacing:.08em; padding:9px 10px !important; border-left:4px solid var(--sr-acc); border-bottom:1px solid var(--sr-line); }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr { background:transparent !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr span { color:var(--sr-sub) !important; font-size:.62rem !important; letter-spacing:.08em; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-footer { background:var(--sr-card2) !important; border-top:1px solid var(--sr-line) !important; font-weight:800; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-inp, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp { border-radius:8px !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .btn-add-row { border-radius:999px !important; padding:6px 14px !important; font-weight:700; letter-spacing:.02em; }
+/* Summary column: light rows with an accent bar instead of heavy dark bands */
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-wrap, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-card { border-radius:16px !important; overflow:hidden; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green { background:var(--sr-mint) !important; box-shadow:inset 4px 0 0 var(--sr-acc); }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-label { color:var(--sr-text) !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-note { color:var(--sr-sub) !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row:not(.green):not(.net):not(.coh):not(.short):not(.gray-hdr) .sr-label { font-weight:600; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.net { box-shadow:inset 4px 0 0 #a98f4c; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-title-row { letter-spacing:.14em; }
+body.page-stella_sales_report.sr-dark .sr-row.green .sr-input.readout { background:#2b3b32 !important; border:1px solid #3a4e42 !important; }
+body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b3b32 !important; }
 </style>
 <script>
 // Eye-comfort theme: Soft (default) → Dark → Original. Remembered per browser.
