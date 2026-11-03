@@ -546,7 +546,7 @@ include '../layout.php';
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 
 <style id="sr-eye-comfort">
-/* ═══ Eye-comfort theme for the H Sales Report (Soft = default · Dark · Original) ═══ */
+/* ═══ Eye-comfort theme for the H Sales Report (Original = default · Soft · Dark) ═══ */
 body.page-h_sales_report.sr-soft {
   --h-main:#8a4a47; --h-dark:#723c3a; --h-mid:#9a5a56; --h-tint:#dccbc2; --h-tint2:#d2bdb1; --h-pale:#e3d8cf; --h-line:#bfab9f; --h-ink:#4a2724;
   --sr-bg:#cdc8bf; --sr-card:#dcd7cd; --sr-card2:#d3cdc2; --sr-input:#e8e4d9; --sr-input-bd:#a9a396; --sr-text:#2b2522; --sr-sub:#5c524c; --sr-band-text:#f1e6e0; --sr-glow:58,112,170; --sr-glow-bd:#4a7fb5;
@@ -632,10 +632,10 @@ body.page-h_sales_report.sr-soft #srThemeBtn { background:#e8e4d9; color:#2b2522
 body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb; border-color:#4d3737; }
 </style>
 <script>
-// Eye-comfort theme: Soft (default) → Dark → Original. Remembered per browser.
+// Eye-comfort theme: Original (default) → Soft → Dark. Remembered per browser.
 (function () {
-  var order = ['sr-soft', 'sr-dark', 'sr-orig'], names = {'sr-soft': '🌿 Soft', 'sr-dark': '🌙 Dark', 'sr-orig': '☀ Original'};
-  var cur = 'sr-soft';
+  var order = ['sr-orig', 'sr-soft', 'sr-dark'], names = {'sr-soft': '🌿 Soft', 'sr-dark': '🌙 Dark', 'sr-orig': '☀ Original'};
+  var cur = 'sr-orig';
   try { var sv = localStorage.getItem('hSrTheme'); if (order.indexOf(sv) >= 0) cur = sv; } catch (e) {}
   function apply() {
     order.forEach(function (c) { document.body.classList.remove(c); });
