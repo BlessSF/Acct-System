@@ -1454,5 +1454,114 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 </script>
+<style>
+.xl-tools { display:inline-flex; gap:6px; margin-left:6px; vertical-align:middle; }
+.xl-btn { font:700 .66rem/1 var(--font-m, monospace); padding:6px 10px; border-radius:999px; cursor:pointer; background:#fff; color:#1f2937; border:1px solid #cbd5e1; white-space:nowrap; }
+.xl-btn:hover { background:#f1f5f9; border-color:#94a3b8; }
+#xlModal { position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; z-index:99999; }
+#xlModal.open { display:flex; }
+#xlBox { background:#fff; color:#111827; width:min(560px,92vw); border-radius:14px; padding:18px 20px; box-shadow:0 20px 50px rgba(0,0,0,.3); }
+#xlBox h3 { margin:0 0 4px; font-size:1rem; }
+#xlBox p { margin:0 0 10px; font-size:.78rem; color:#4b5563; }
+#xlText { width:100%; box-sizing:border-box; min-height:170px; font:600 .8rem/1.4 monospace; padding:10px; border:1px solid #cbd5e1; border-radius:10px; resize:vertical; }
+#xlBox label { font-size:.78rem; margin-right:14px; }
+#xlBox .xl-row { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap; }
+#xlPrev { font-size:.74rem; color:#065f46; font-weight:700; }
+</style>
+<div id="xlModal"><div id="xlBox">
+  <h3 id="xlTitle">Paste from Excel</h3>
+  <p>In Excel / Google Sheets select the cells (e.g. <b>name</b> and <b>amount</b> columns), press <b>Ctrl+C</b>, then click the box below and press <b>Ctrl+V</b>.</p>
+  <textarea id="xlText" placeholder="NAME&#9;AMOUNT&#10;Juan Dela Cruz&#9;1,500.00"></textarea>
+  <div class="xl-row">
+    <div><label><input type="radio" name="xlMode" value="append" checked> Add to existing rows</label><label><input type="radio" name="xlMode" value="replace"> Replace all rows</label></div>
+    <span id="xlPrev"></span>
+  </div>
+  <div class="xl-row"><span></span><div><button type="button" class="xl-btn" onclick="xlClose()">Cancel</button> <button type="button" class="xl-btn" id="xlApply" style="background:#16a34a;color:#fff;border-color:#16a34a">Apply</button></div></div>
+</div></div>
+<script>
+// ── Copy / Paste buttons for every list (like Excel): copy rows out, or paste name+amount rows in ──
+(function () {
+  const locked = (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED);
+  const num = v => { const s = String(v).trim(); if (!s) return ''; let neg = /^\(.*\)$/.test(s) || /^-/.test(s);
+    const n = parseFloat(s.replace(/[^0-9.]/g, '')); return isFinite(n) ? (neg ? -n : n) : null; };
+  function target(btn) {
+    const sub = btn.closest('.sub-col');
+    if (sub) { const sec = sub.dataset.section;
+      return { title: sub.querySelector('.sub-col-title')?.textContent.trim() || 'list',
+        body: sub.querySelector('.sub-rows'), rows: () => [...sub.querySelectorAll('.sub-rows .sub-row')],
+        add: () => addSubRow(sec), clear: r => { r.querySelectorAll('input').forEach(i => i.value=''); r.querySelectorAll('input')[0].dispatchEvent(new Event('input',{bubbles:true})); } , del: r => r.remove(), after: () => subChanged(sec) }; }
+    const table = btn.closest('.sr-section, .extra-section-col, div')?.querySelector('table.di-table');
+    const sect = btn.closest('.extra-section-col, .sr-section');
+    const tb = sect ? sect.querySelector('table.di-table') : null;
+    if (!tb) return null;
+    const body = tb.querySelector('tbody');
+    const isDi = tb.id === 'di-table', sec = tb.dataset.section;
+    return { title: sect.querySelector('.sr-section-title')?.textContent.trim() || 'table', body,
+      rows: () => [...body.querySelectorAll('tr')],
+      add: () => isDi ? addDiRow() : addExtraRow(sec),
+      del: r => r.remove(), after: () => isDi ? diChanged() : extraChanged(sec) };
+  }
+  const cellsOf = row => [...row.querySelectorAll('input')].filter(i => !['button','hidden'].includes(i.type) && !i.readOnly && !i.disabled);
+  function setCell(inp, v) {
+    if (inp.type === 'number') { const n = num(v); if (n === null) return; inp.value = n === '' ? '' : n; }
+    else inp.value = String(v).trim();
+    inp.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+  function parse(text) {
+    let rows = text.replace(/\r/g,'').split('\n').map(l => l.split('\t')).filter(r => r.some(c => c.trim() !== ''));
+    // drop a header row like "name  amount"
+    if (rows.length && rows[0].every(c => num(c) === null || c.trim()==='') && /name|amount|cash|card|total/i.test(rows[0].join(' '))) rows.shift();
+    return rows;
+  }
+  function doCopy(btn) {
+    const t = target(btn); if (!t) return;
+    const lines = t.rows().map(r => cellsOf(r).map(i => i.value).join('\t')).filter(l => l.replace(/\t/g,'').trim() !== '');
+    const txt = lines.join('\n');
+    const ok = () => showToast('✓ Copied ' + lines.length + ' row' + (lines.length===1?'':'s') + ' — paste into Excel', 'success');
+    if (!txt) { showToast('Nothing to copy yet', 'error'); return; }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(ok, () => fallback(txt, ok)); else fallback(txt, ok);
+  }
+  function fallback(txt, ok) { const ta = document.createElement('textarea'); ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { showToast('Copy blocked by the browser', 'error'); } ta.remove(); }
+  let cur = null;
+  window.xlClose = () => document.getElementById('xlModal').classList.remove('open');
+  function openPaste(btn) {
+    cur = target(btn); if (!cur) return;
+    document.getElementById('xlTitle').textContent = 'Paste from Excel → ' + cur.title;
+    const ta = document.getElementById('xlText'); ta.value = ''; document.getElementById('xlPrev').textContent = '';
+    document.getElementById('xlModal').classList.add('open'); ta.focus();
+    if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext) navigator.clipboard.readText().then(t => { if (t && !ta.value) { ta.value = t; ta.dispatchEvent(new Event('input')); } }, () => {});
+  }
+  document.addEventListener('input', e => { if (e.target.id !== 'xlText') return; const r = parse(e.target.value); document.getElementById('xlPrev').textContent = r.length ? r.length + ' row(s) ready' : ''; });
+  document.getElementById('xlApply').addEventListener('click', function () {
+    if (!cur) return;
+    const data = parse(document.getElementById('xlText').value);
+    if (!data.length) { showToast('Paste some cells first', 'error'); return; }
+    const replace = document.querySelector('input[name=xlMode]:checked').value === 'replace';
+    if (replace) { const rs = cur.rows(); rs.slice(1).forEach(r => cur.del(r)); if (rs[0]) cellsOf(rs[0]).forEach(i => i.value = ''); }
+    // first empty row to start from (when adding)
+    let start = 0; const rs0 = cur.rows();
+    if (!replace) { start = rs0.length; for (let k = 0; k < rs0.length; k++) { if (cellsOf(rs0[k]).every(i => i.value === '')) { start = k; break; } } }
+    data.forEach((line, i) => {
+      let rows = cur.rows();
+      while (rows.length <= start + i) { cur.add(); const n = cur.rows(); if (n.length === rows.length) return; rows = n; }
+      const cells = cellsOf(rows[start + i]);
+      line.forEach((v, j) => { if (cells[j]) setCell(cells[j], v); });
+    });
+    cur.after(); xlClose();
+    showToast('✓ Pasted ' + data.length + ' row' + (data.length===1?'':'s'), 'success');
+  });
+  document.getElementById('xlModal').addEventListener('click', e => { if (e.target.id === 'xlModal') xlClose(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') xlClose(); });
+  // add the buttons next to every "+ Add" button
+  document.querySelectorAll('button.btn-add-row').forEach(b => {
+    const oc = b.getAttribute('onclick') || ''; if (!/addSubRow|addExtraRow|addDiRow/.test(oc)) return;
+    const w = document.createElement('span'); w.className = 'xl-tools';
+    w.innerHTML = (locked ? '' : '<button type="button" class="xl-btn xl-paste" title="Paste rows copied from Excel">📋 Paste</button>') + '<button type="button" class="xl-btn xl-copy" title="Copy these rows so you can paste them into Excel">⧉ Copy</button>';
+    b.after(w);
+    w.querySelector('.xl-copy').onclick = () => doCopy(b);
+    const pb = w.querySelector('.xl-paste'); if (pb) pb.onclick = () => openPaste(b);
+  });
+})();
+</script>
 </body>
 </html>
