@@ -615,6 +615,35 @@ body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-note { col
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row:not(.green):not(.net):not(.coh):not(.short):not(.gray-hdr) .sr-label { font-weight:600; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.net { box-shadow:inset 4px 0 0 #a98f4c; }
 body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-title-row { letter-spacing:.14em; }
+/* ── "Type here" glow: only fields you can type in light up; auto-filled ones stay flat ── */
+body.page-stella_sales_report.sr-soft { --sr-glow:63,157,114; --sr-glow-bd:#3f9d72; }
+body.page-stella_sales_report.sr-dark { --sr-glow:88,199,149; --sr-glow-bd:#58c795; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input:not([readonly]):not(.readout),
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row .sr-input:not([readonly]):not(.readout),
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh .sr-input:not([readonly]),
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-cashier-bar input,
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]),
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-inp:not([readonly]),
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-remarks textarea:not([readonly]) {
+  border:1px solid var(--sr-glow-bd) !important;
+  box-shadow:0 0 0 2px rgba(var(--sr-glow),.22), 0 0 12px rgba(var(--sr-glow),.35) !important;
+  transition:box-shadow .15s, border-color .15s;
+}
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]), body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table td:has(.di-inp:not([readonly])) { background:rgba(var(--sr-glow),.07); }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]) { border:1px solid rgba(var(--sr-glow),.55) !important; box-shadow:inset 0 0 8px rgba(var(--sr-glow),.22) !important; border-radius:6px !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input:not([readonly]):focus,
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-cashier-bar input:focus,
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:focus,
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-inp:focus,
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-remarks textarea:focus {
+  border-color:var(--sr-glow-bd) !important; box-shadow:0 0 0 3px rgba(var(--sr-glow),.45), 0 0 20px rgba(var(--sr-glow),.6) !important; outline:none; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]) { width:100% !important; box-sizing:border-box; min-height:28px; padding:4px 8px !important; }
+/* auto-calculated fields: flat, no border, clearly "just a value" */
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input[readonly], body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input.readout {
+  border:1px dashed transparent !important; box-shadow:none !important; cursor:default; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-input[readonly], body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row:not(.net):not(.short) .sr-input.readout { background:transparent !important; }
+body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input[readonly]:not(#net_sales):not(#short_over) { background:transparent !important; border:1px solid transparent !important; }
+
 body.page-stella_sales_report.sr-dark .sr-row.green .sr-input.readout { background:#2b3b32 !important; border:1px solid #3a4e42 !important; }
 body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b3b32 !important; }
 </style>
