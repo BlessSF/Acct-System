@@ -63,6 +63,19 @@ if ($fMonth < 1)  $fMonth = 1;
 if ($fMonth > 12) $fMonth = 12;
 
 // ── helpers for the 15th / last-day rows ─────────────────────
+// Month End Inventory total for a month = the LAST inventory day saved in that month (month-end count).
+// Earlier days (e.g. the 15th / mid-month count) are separate snapshots and must not be added on top.
+function cogsMeiTotal(PDO $pdo, int $y, int $m): float {
+    $a = sprintf('%04d-%02d-01', $y, $m); $b = date('Y-m-t', strtotime($a));
+    $q = $pdo->prepare("SELECT MAX(inv_date) FROM h_month_end_inv WHERE store_name='H' AND inv_date BETWEEN ? AND ?");
+    $q->execute([$a, $b]); $d = $q->fetchColumn();
+    if ($d) {
+        $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM h_month_end_inv WHERE store_name='H' AND inv_date=?");
+        $q->execute([$d]); return (float)$q->fetchColumn();
+    }
+    $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM h_month_end_inv WHERE store_name='H' AND inv_year=? AND inv_month=?");
+    $q->execute([$y, $m]); return (float)$q->fetchColumn();
+}
 function cogsSuggest(PDO $pdo, string $date): array {
     $y = (int)date('Y', strtotime($date)); $m = (int)date('n', strtotime($date));
     $ms = sprintf('%04d-%02d-01', $y, $m);
@@ -75,8 +88,7 @@ function cogsSuggest(PDO $pdo, string $date): array {
         $q = $pdo->prepare("SELECT end_inv FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date DESC, id DESC LIMIT 1");
         $q->execute([$py, $pm]); $v = $q->fetchColumn();
         if ($v === false) {
-            $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM h_month_end_inv WHERE store_name='H' AND inv_year=? AND inv_month=?");
-            $q->execute([$py, $pm]); $v = $q->fetchColumn();
+            $v = cogsMeiTotal($pdo, $py, $pm);
         }
         $beg = (float)$v; $lower = date('Y-m-d', strtotime($ms . ' -1 day'));
     }
@@ -84,8 +96,7 @@ function cogsSuggest(PDO $pdo, string $date): array {
     $w->execute([$lower, $date]); $purc = round((float)$w->fetchColumn(), 2);
     $end = 0.0;
     if ($date === date('Y-m-t', strtotime($ms))) {      // month-end row → suggest the Month End Inventory total
-        $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM h_month_end_inv WHERE store_name='H' AND inv_year=? AND inv_month=?");
-        $q->execute([$y, $m]); $end = (float)$q->fetchColumn();
+        $end = cogsMeiTotal($pdo, $y, $m);
     }
     return ['beg' => round($beg, 2), 'purc' => $purc, 'end_inv' => round($end, 2)];
 }
@@ -229,10 +240,8 @@ if (isset($_GET['export_csv'])) {
 }
 
 // ── Fetch Month End Inv grand total for selected month ─────
-// Sum all total_amount entries from h_month_end_inv for any day in selected month/year
-$meiStmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) AS grand_total FROM h_month_end_inv WHERE store_name='H' AND inv_year=? AND inv_month=?");
-$meiStmt->execute([$fYear,$fMonth]);
-$meiTotal = (float)$meiStmt->fetchColumn();
+// Month End Inventory total = the last inventory day saved in the selected month
+$meiTotal = cogsMeiTotal($pdo, (int)$fYear, (int)$fMonth);
 
 // ── Materials Purchases (Consumables/CGS) grand total for selected month ─
 // Pulled live from the H Expenses ledger's Purchases total — auto-suggests
@@ -261,9 +270,7 @@ if ($prevCogsEnd !== false) {
     $prevEndSource = 'COGS';
 } else {
     // Fallback: no COGS entry saved for last month yet — use Month End Inventory
-    $prevMeiStmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) AS grand_total FROM h_month_end_inv WHERE store_name='H' AND inv_year=? AND inv_month=?");
-    $prevMeiStmt->execute([$prevYear,$prevMonth]);
-    $prevEndInv = (float)$prevMeiStmt->fetchColumn();
+    $prevEndInv = cogsMeiTotal($pdo, (int)$prevYear, (int)$prevMonth);
     $prevEndSource = 'MEI';
 }
 
