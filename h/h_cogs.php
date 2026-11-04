@@ -32,6 +32,21 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `h_cogs` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
+// ── Self-repair: a table copied from a database export can lose its PRIMARY KEY / AUTO_INCREMENT on `id`.
+//    Then every new row gets id 0, "Delete" removes nothing and edits hit every row at once.
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM `h_cogs` LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
+    if ($col && stripos((string)$col['Extra'], 'auto_increment') === false) {
+        $bad = (int)$pdo->query("SELECT COUNT(*) FROM `h_cogs` WHERE id = 0 OR id IN (SELECT id FROM (SELECT id FROM `h_cogs` GROUP BY id HAVING COUNT(*) > 1) d)")->fetchColumn();
+        if ($bad > 0 || $col['Key'] !== 'PRI') {
+            $pdo->exec("SET @cogs_i := 0");
+            $pdo->exec("UPDATE `h_cogs` SET id = (@cogs_i := @cogs_i + 1) ORDER BY cogs_date, updated_at");
+        }
+        if ($col['Key'] === 'PRI') $pdo->exec("ALTER TABLE `h_cogs` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT");
+        else                       $pdo->exec("ALTER TABLE `h_cogs` ADD PRIMARY KEY (`id`), MODIFY `id` int(11) NOT NULL AUTO_INCREMENT");
+    }
+} catch (Throwable $e) {}
+
 // ── PURC. comes from Disbursement ("Purchases - Non-Vat" / "Purchases - Vatable" → H Expenses Purchases) ──
 $__es = __DIR__ . '/../lib/expense_sync.php';
 if (is_file($__es)) {
@@ -74,11 +89,35 @@ function cogsSuggest(PDO $pdo, string $date): array {
     }
     return ['beg' => round($beg, 2), 'purc' => $purc, 'end_inv' => round($end, 2)];
 }
+// One BEG. and one END. per month: older rows (15th / last day / accidental duplicates) are folded into one month row.
+function cogsMergeMonth(PDO $pdo, int $y, int $m): void {
+    $q = $pdo->prepare("SELECT * FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date, id");
+    $q->execute([$y, $m]);
+    $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+    if (count($rows) < 2) return;
+    $byDate = [];                                   // last saved row of each date wins
+    foreach ($rows as $r) $byDate[$r['cogs_date']] = $r;
+    $list = array_values($byDate);
+    $first = $list[0]; $last = $list[count($list) - 1];
+    $mktg = 0.0; foreach ($list as $r) $mktg += (float)$r['mktg_cost'];
+    $monthEnd = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $y, $m)));
+    $pdo->beginTransaction();
+    try {
+        $keep = (int)$last['id'];
+        $pdo->prepare("UPDATE h_cogs SET cogs_date=?, beg=?, end_inv=?, mktg_cost=? WHERE id=?")
+            ->execute([$monthEnd, (float)$first['beg'], (float)$last['end_inv'], round($mktg, 2), $keep]);
+        $pdo->prepare("DELETE FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? AND id<>?")->execute([$y, $m, $keep]);
+        $pdo->commit();
+    } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); }
+}
 function cogsMonthState(PDO $pdo, int $y, int $m): array {
     $q = $pdo->prepare("SELECT id, cogs_date, purc, cos FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date, id");
     $q->execute([$y, $m]);
     return $q->fetchAll(PDO::FETCH_ASSOC);
 }
+
+try { cogsMergeMonth($pdo, $fYear, $fMonth); } catch (Throwable $e) {}
+try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false); } catch (Throwable $e) {}
 
 // ── AJAX: suggestion for a new row ───────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_suggest'])) {
@@ -109,14 +148,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $mktg  = (float)($_POST['mktg_cost'] ?? 0);
         $cos   = $beg + $purc - $mktg - $end;   // COS = BEG + PURC - MKTG COST - END
 
+        $date = date('Y-m-t', strtotime($date));            // one row per month, dated the last day
         $yr  = (int)date('Y', strtotime($date));
         $mo  = (int)date('n', strtotime($date));
 
-              $rowId = (int)($_POST['row_id'] ?? 0);
-        // one row per date
-        $dup = $pdo->prepare("SELECT id FROM h_cogs WHERE store_name='H' AND cogs_date=? AND id<>? LIMIT 1");
-        $dup->execute([$date, $rowId]);
-        if ($dup->fetchColumn()) { echo json_encode(['ok'=>false,'msg'=>'A COGS row for this date already exists']); exit; }
+        $rowId = (int)($_POST['row_id'] ?? 0);
+        // only ONE row per month: a "new" row for a month that already has one updates that row instead
+        $ex = $pdo->prepare("SELECT id FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY id DESC LIMIT 1");
+        $ex->execute([$yr, $mo]);
+        $existing = (int)$ex->fetchColumn();
+        if ($existing > 0) $rowId = $existing;
         if ($rowId > 0) {
             $pdo->prepare("UPDATE h_cogs SET cogs_date=?, cogs_year=?, cogs_month=?, beg=?, purc=?, end_inv=?, cos=?, mktg_cost=?, saved_by=? WHERE id=? AND store_name='H'")
                 ->execute([$date,$yr,$mo,$beg,$purc,$end,$cos,$mktg,$user['name'],$rowId]);
@@ -397,7 +438,7 @@ include '../layout.php';
   <div class="cogs-header-left">
     <div class="eyebrow">H Branch · COGS</div>
     <div class="title">Cost of Goods Sold</div>
-    <div class="subtitle">BEG auto-suggests from prior month's END · END auto-suggests from Month End Inventory (editable) · COS = BEG + PURC − MKTG COST − END · rows on the 15th and the last day · auto-saves</div>
+    <div class="subtitle">BEG auto-suggests from prior month's END · END auto-suggests from Month End Inventory (editable) · COS = BEG + PURC − MKTG COST − END · one BEG. and one END. per month · auto-saves</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 12px;border-radius:20px;
@@ -445,8 +486,7 @@ include '../layout.php';
       <?php endfor; ?>
     </select>
   </form>
-  <button class="btn btn-primary" onclick="addRow('15')" title="Row for the 15th of this month">+ 15th</button>
-  <button class="btn btn-primary" onclick="addRow('last')" title="Row for the last day of this month">+ Last Day</button>
+  <button class="btn btn-primary addMonthBtn" onclick="addRow()" style="<?= $rows ? 'display:none' : '' ?>">+ Add <?= $months[$fMonth-1] ?> COGS</button>
   <a href="h_cogs.php?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>" class="btn btn-ghost">⬇ Download Excel</a>
 </div>
 
@@ -551,22 +591,22 @@ include '../layout.php';
         <tr data-id="<?= $r['id'] ?>">
           <td class="td-date">
             <input type="date" class="date-input" value="<?= htmlspecialchars($r['cogs_date']) ?>"
-                   onchange="changed(this)">
+                   readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
           </td>
           <td><input type="number" step="0.01" class="cogs-input" value="<?= $r['beg'] ?>"
-                     placeholder="0.00" oninput="changed(this)"></td>
+                     placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
           <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="number" step="0.01" class="cogs-input purc-auto-field" value="<?= $r['purc'] ?>"
                      placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700"></td>
           <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
             <input type="number" step="0.01" class="cogs-input end-auto-field"
                    value="<?= $r['end_inv'] ?>"
-                   oninput="changed(this)"
+                   oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"
                    style="background:#fff8e1;color:#b45309;font-weight:700">
           </td>
           <td><input type="number" step="0.01" class="cogs-input cos-field" value="<?= $r['cos'] ?>"
                      readonly tabindex="-1"></td>
           <td><input type="number" step="0.01" class="cogs-input mktg-field" value="<?= $r['mktg_cost'] ?>"
-                     placeholder="0.00" oninput="changed(this)"></td>
+                     placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
           <td style="padding:6px 8px;text-align:center">
             <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
               <button class="btn-del-row"  onclick="deleteRow(this)">✕</button>
@@ -579,7 +619,7 @@ include '../layout.php';
       <tr id="emptyRow">
         <td colspan="7" style="text-align:center;padding:48px;color:var(--muted);
                                 font-family:var(--font-m);font-size:.78rem">
-          No COGS entries for <?= $months[$fMonth-1] ?> <?= $fYear ?> — click <strong>+ 15th</strong> or <strong>+ Last Day</strong>
+          No COGS entries for <?= $months[$fMonth-1] ?> <?= $fYear ?> — click <strong>+ Add <?= $months[$fMonth-1] ?> COGS</strong>
         </td>
       </tr>
       <?php endif; ?>
@@ -599,9 +639,8 @@ include '../layout.php';
 </div>
 
 <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-  <button class="btn btn-primary" onclick="addRow('15')">+ 15th</button>
-  <button class="btn btn-primary" onclick="addRow('last')">+ Last Day</button>
-  <span style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)">Changes save automatically · PURC. follows the Disbursement (15th row = purchases up to the 15th, last-day row = the rest)</span>
+  <button class="btn btn-primary addMonthBtn" onclick="addRow()" style="<?= $rows ? 'display:none' : '' ?>">+ Add <?= $months[$fMonth-1] ?> COGS</button>
+  <span style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)">One BEG. and one END. per month · changes save automatically · PURC. = this month's purchases from the Disbursement</span>
 </div>
 
   </div></div>
@@ -626,13 +665,13 @@ function dateFor(kind) {
 
 const ROW_HTML = (d) => `
     <td class="td-date">
-      <input type="date" class="date-input" value="${d}" onchange="dateChanged(this)">
+      <input type="date" class="date-input" value="${d}" readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
     </td>
-    <td><input type="number" step="0.01" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
+    <td><input type="number" step="0.01" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
     <td><input type="number" step="0.01" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
-    <td><input type="number" step="0.01" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
+    <td><input type="number" step="0.01" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
     <td><input type="number" step="0.01" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
-    <td><input type="number" step="0.01" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)"></td>
+    <td><input type="number" step="0.01" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
     <td style="padding:6px 8px;text-align:center">
       <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
         <button class="btn-del-row" onclick="deleteRow(this)">✕</button>
@@ -647,30 +686,39 @@ async function fillSuggestion(tr) {
     const j = await (await fetch('h_cogs.php?ajax_suggest=1&date=' + encodeURIComponent(d))).json();
     if (!j.ok) return;
     const ins = tr.querySelectorAll('.cogs-input');
-    ins[0].value = j.beg.toFixed(2); ins[1].value = j.purc.toFixed(2);
+    ins[0].value = j.beg ? j.beg.toFixed(2) : ''; ins[1].value = j.purc.toFixed(2);
+    ins[0].dataset.auto = ins[0].value ? '1' : '';
     ins[2].value = j.end_inv ? j.end_inv.toFixed(2) : '';
+    ins[2].dataset.auto = ins[2].value ? '1' : '';
     calcCos(ins[0]);
     if (j.end_inv > 0) changed(ins[2]);          // month-end row with an inventory total → save straight away
   } catch (e) {}
 }
 
-function addRow(kind) {
+// a value the page filled in by itself (BEG. from last month's END, END. from Month End Inventory) is replaced,
+// not appended to, when you start typing
+function autoKey(el, ev) {
+  if (el.dataset.auto === '1' && (ev.key.length === 1 || ev.key === 'Backspace' || ev.key === 'Delete') && !ev.ctrlKey && !ev.metaKey) {
+    el.select(); el.dataset.auto = '';
+  }
+}
+function syncAddBtn() {
+  const has = !!document.querySelector('#cogsBody tr[data-id]');
+  document.querySelectorAll('.addMonthBtn').forEach(b => b.style.display = has ? 'none' : '');
+}
+// one BEG. and one END. per month → a single row dated the last day of the month
+function addRow() {
+  if (document.querySelector('#cogsBody tr[data-id]')) { syncAddBtn(); return; }
   const empty = document.getElementById('emptyRow');
   if (empty) empty.remove();
-  let d = kind ? dateFor(kind) : null;
-  if (!d) {
-    const has15 = [...document.querySelectorAll('#cogsBody .date-input')].some(i => i.value === dateFor('15'));
-    d = dateFor(has15 ? 'last' : '15');
-  }
-  if ([...document.querySelectorAll('#cogsBody .date-input')].some(i => i.value === d)) {
-    alert('There is already a COGS row for ' + d + '.'); return;
-  }
+  const d = dateFor('last');
   const tr = document.createElement('tr');
   tr.dataset.id = '0';
   tr.innerHTML = ROW_HTML(d);
   document.getElementById('cogsBody').appendChild(tr);
   fillSuggestion(tr);
-  tr.querySelector('.end-auto-field').focus();
+  syncAddBtn();
+  tr.querySelector('.beg-auto-field').focus();
 }
 
 function gv(input) { return parseFloat(input.value) || 0; }
@@ -690,11 +738,7 @@ function changed(el) {
   clearTimeout(tr._t);
   tr._t = setTimeout(() => { tr._t = null; saveRow(tr); }, 600);
 }
-async function dateChanged(el) {
-  const tr = el.closest('tr');
-  if ((parseInt(tr.dataset.id) || 0) === 0) { await fillSuggestion(tr); }
-  changed(el);
-}
+function dateChanged(el) { /* the month row's date is fixed */ }
 function setStatus(tr, txt, color) {
   const s = tr.querySelector('.row-status'); if (!s) return;
   s.textContent = txt; s.style.color = color; s.style.display = 'block';
@@ -774,10 +818,11 @@ async function deleteRow(btn) {
   tr.remove();
   if (!document.querySelector('#cogsBody tr')) {
     const tbody = document.getElementById('cogsBody');
-    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entries — click <strong>+ 15th</strong> or <strong>+ Last Day</strong></td></tr>`;
+    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entry — click <strong>+ Add COGS</strong></td></tr>`;
   }
   refreshFooter();
   updateKPIs();
+  syncAddBtn();
 }
 
 function totalsNow() {
