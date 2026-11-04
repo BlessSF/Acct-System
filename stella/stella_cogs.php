@@ -32,6 +32,21 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `stella_cogs` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
+// ── Self-repair: a table copied from a database export can lose its PRIMARY KEY / AUTO_INCREMENT on `id`.
+//    Then every new row gets id 0, "Delete" removes nothing and edits hit every row at once.
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM `stella_cogs` LIKE 'id'")->fetch(PDO::FETCH_ASSOC);
+    if ($col && stripos((string)$col['Extra'], 'auto_increment') === false) {
+        $bad = (int)$pdo->query("SELECT COUNT(*) FROM `stella_cogs` WHERE id = 0 OR id IN (SELECT id FROM (SELECT id FROM `stella_cogs` GROUP BY id HAVING COUNT(*) > 1) d)")->fetchColumn();
+        if ($bad > 0 || $col['Key'] !== 'PRI') {
+            $pdo->exec("SET @cogs_i := 0");
+            $pdo->exec("UPDATE `stella_cogs` SET id = (@cogs_i := @cogs_i + 1) ORDER BY cogs_date, updated_at");
+        }
+        if ($col['Key'] === 'PRI') $pdo->exec("ALTER TABLE `stella_cogs` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT");
+        else                       $pdo->exec("ALTER TABLE `stella_cogs` ADD PRIMARY KEY (`id`), MODIFY `id` int(11) NOT NULL AUTO_INCREMENT");
+    }
+} catch (Throwable $e) {}
+
 // ── PURC. comes from Disbursement ("Purchases - Non-Vat" / "Purchases - Vatable" → Stella Expenses Purchases) ──
 $__es = __DIR__ . '/../lib/expense_sync.php';
 if (is_file($__es)) {
@@ -578,20 +593,20 @@ include '../layout.php';
             <input type="date" class="date-input" value="<?= htmlspecialchars($r['cogs_date']) ?>"
                    readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
           </td>
-          <td><input type="number" step="0.01" class="cogs-input" value="<?= $r['beg'] ?>"
-                     placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
-          <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="number" step="0.01" class="cogs-input purc-auto-field" value="<?= $r['purc'] ?>"
+          <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input" value="<?= number_format((float)$r['beg'],2) ?>"
+                     placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
+          <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="<?= number_format((float)$r['purc'],2) ?>"
                      placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700"></td>
           <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
-            <input type="number" step="0.01" class="cogs-input end-auto-field"
-                   value="<?= $r['end_inv'] ?>"
-                   oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"
+            <input type="text" inputmode="decimal" autocomplete="off" class="cogs-input end-auto-field"
+                   value="<?= number_format((float)$r['end_inv'],2) ?>"
+                   oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"
                    style="background:#fff8e1;color:#b45309;font-weight:700">
           </td>
-          <td><input type="number" step="0.01" class="cogs-input cos-field" value="<?= $r['cos'] ?>"
+          <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input cos-field" value="<?= number_format((float)$r['cos'],2) ?>"
                      readonly tabindex="-1"></td>
-          <td><input type="number" step="0.01" class="cogs-input mktg-field" value="<?= $r['mktg_cost'] ?>"
-                     placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
+          <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="<?= number_format((float)$r['mktg_cost'],2) ?>"
+                     placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
           <td style="padding:6px 8px;text-align:center">
             <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
               <button class="btn-del-row"  onclick="deleteRow(this)">✕</button>
@@ -652,11 +667,11 @@ const ROW_HTML = (d) => `
     <td class="td-date">
       <input type="date" class="date-input" value="${d}" readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
     </td>
-    <td><input type="number" step="0.01" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
-    <td><input type="number" step="0.01" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
-    <td><input type="number" step="0.01" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
-    <td><input type="number" step="0.01" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
-    <td><input type="number" step="0.01" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
     <td style="padding:6px 8px;text-align:center">
       <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
         <button class="btn-del-row" onclick="deleteRow(this)">✕</button>
@@ -671,9 +686,9 @@ async function fillSuggestion(tr) {
     const j = await (await fetch('stella_cogs.php?ajax_suggest=1&date=' + encodeURIComponent(d))).json();
     if (!j.ok) return;
     const ins = tr.querySelectorAll('.cogs-input');
-    ins[0].value = j.beg ? j.beg.toFixed(2) : ''; ins[1].value = j.purc.toFixed(2);
+    ins[0].value = j.beg ? fmtN(j.beg) : ''; ins[1].value = fmtN(j.purc);
     ins[0].dataset.auto = ins[0].value ? '1' : '';
-    ins[2].value = j.end_inv ? j.end_inv.toFixed(2) : '';
+    ins[2].value = j.end_inv ? fmtN(j.end_inv) : '';
     ins[2].dataset.auto = ins[2].value ? '1' : '';
     calcCos(ins[0]);
     if (j.end_inv > 0) changed(ins[2]);          // month-end row with an inventory total → save straight away
@@ -706,18 +721,34 @@ function addRow() {
   tr.querySelector('.beg-auto-field').focus();
 }
 
-function gv(input) { return parseFloat(input.value) || 0; }
+// numbers are shown with thousands separators (1,000.00) — parse them back before any maths
+const numOf = v => { const x = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(x) ? x : 0; };
+const fmtN  = n => (+n || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+function gv(input) { return numOf(input.value); }
+// live commas while typing (keeps the cursor where it was)
+function commaLive(el) {
+  const v = el.value, pos = el.selectionStart == null ? v.length : el.selectionStart;
+  const before = v.slice(0, pos).replace(/[^0-9.\-]/g, '').length;
+  let c = v.replace(/[^0-9.\-]/g, ''); const neg = c.charAt(0) === '-'; c = c.replace(/-/g, '');
+  const parts = c.split('.'); let ip = parts[0].replace(/^0+(?=\d)/, '');
+  const dec = parts.length > 1 ? '.' + parts.slice(1).join('').slice(0, 2) : '';
+  ip = ip.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const out = (neg ? '-' : '') + ip + dec;
+  if (out !== v) { el.value = out; let n = 0, i = 0; for (; i < out.length && n < before; i++) if (/[0-9.\-]/.test(out[i])) n++; try { el.setSelectionRange(i, i); } catch (e) {} }
+}
+function fmtBlur(el) { el.value = el.value.trim() === '' ? '' : fmtN(numOf(el.value)); }
 
 // COS = BEG + PURC - MKTG COST - END
 function calcCos(el) {
   const tr = el.closest('tr'), i = tr.querySelectorAll('.cogs-input');
-  i[3].value = (gv(i[0]) + gv(i[1]) - gv(i[4]) - gv(i[2])).toFixed(2);
+  i[3].value = fmtN(gv(i[0]) + gv(i[1]) - gv(i[4]) - gv(i[2]));
   refreshFooter();
 }
 
 // every edit → recalc + auto-save (debounced)
 function changed(el) {
   const tr = el.closest('tr');
+  commaLive(el);
   calcCos(el);
   setStatus(tr, 'typing…', 'var(--subtext)');
   clearTimeout(tr._t);
@@ -743,8 +774,8 @@ function applyState(rows) {
     const tr = document.querySelector(`#cogsBody tr[data-id="${r.id}"]`);
     if (!tr) return;
     const ins = tr.querySelectorAll('.cogs-input');
-    ins[1].value = (+r.purc).toFixed(2);
-    ins[3].value = (+r.cos).toFixed(2);
+    ins[1].value = fmtN(r.purc);
+    ins[3].value = fmtN(r.cos);
   });
   refreshFooter(); updateKPIs();
 }
@@ -815,9 +846,9 @@ function totalsNow() {
   document.querySelectorAll('#cogsBody tr[data-id]').forEach(tr => {
     const ins = tr.querySelectorAll('.cogs-input');
     const d = tr.querySelector('.date-input').value || '';
-    purc += parseFloat(ins[1]?.value)||0; cos += parseFloat(ins[3]?.value)||0; mktg += parseFloat(ins[4]?.value)||0;
-    if (!first || d < first.d) first = {d, v: parseFloat(ins[0]?.value)||0};
-    if (!last  || d >= last.d) last  = {d, v: parseFloat(ins[2]?.value)||0};
+    purc += numOf(ins[1]?.value); cos += numOf(ins[3]?.value); mktg += numOf(ins[4]?.value);
+    if (!first || d < first.d) first = {d, v: numOf(ins[0]?.value)};
+    if (!last  || d >= last.d) last  = {d, v: numOf(ins[2]?.value)};
   });
   // rows chain, so BEG = first row's BEG and END = last row's END
   return {beg: first ? first.v : 0, purc, end: last ? last.v : 0, cos, mktg};
@@ -836,11 +867,11 @@ function refreshFooter() {
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('#cogsBody tr[data-id]').forEach(tr => {
     const inputs = tr.querySelectorAll('.cogs-input');
-    const beg  = parseFloat(inputs[0]?.value) || 0;
-    const purc = parseFloat(inputs[1]?.value) || 0;
-    const end  = parseFloat(inputs[2]?.value) || 0; // saved/edited END value
-    const mktg = parseFloat(inputs[4]?.value) || 0;
-    if (inputs[3]) inputs[3].value = (beg + purc - end - mktg).toFixed(2);
+    const beg  = numOf(inputs[0]?.value);
+    const purc = numOf(inputs[1]?.value);
+    const end  = numOf(inputs[2]?.value); // saved/edited END value
+    const mktg = numOf(inputs[4]?.value);
+    if (inputs[3]) inputs[3].value = fmtN(beg + purc - end - mktg);
   });
   refreshFooter();
   updateKPIs();
