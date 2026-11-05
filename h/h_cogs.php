@@ -51,7 +51,7 @@ try {
 $__es = __DIR__ . '/../lib/expense_sync.php';
 if (is_file($__es)) {
     require_once $__es;
-    try { expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false); } catch (Throwable $e) {}
+    try { expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false, '', 'h_disbursement'); } catch (Throwable $e) {}
 }
 
 // ── Filters ───────────────────────────────────────────────
@@ -101,7 +101,7 @@ function cogsSuggest(PDO $pdo, string $date): array {
         }
         $beg = (float)$v; $lower = date('Y-m-d', strtotime($ms . ' -1 day'));
     }
-    $w = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM h_expenses WHERE expense_date > ? AND expense_date <= ?");
+    $w = $pdo->prepare("SELECT COALESCE(SUM(net_of_vat),0) FROM h_disbursement WHERE entry_date > ? AND entry_date <= ? AND account_title IN ('Purchases - Non-Vat','Purchases - Vatable','Carwash Purchases')");
     $w->execute([$lower, $date]); $purc = round((float)$w->fetchColumn(), 2);
     $end = 0.0;
     if ($date === date('Y-m-t', strtotime($ms))) {      // end-of-month row → Month End Inventory counted on the last day
@@ -132,7 +132,7 @@ function cogsMonthState(PDO $pdo, int $y, int $m): array {
 }
 
 try { cogsMergeMonth($pdo, $fYear, $fMonth); } catch (Throwable $e) {}
-try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false); } catch (Throwable $e) {}
+try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false, '', 'h_disbursement'); } catch (Throwable $e) {}
 
 // ── AJAX: suggestion for a new row ───────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_suggest'])) {
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_suggest'])) {
 // ── AJAX: live state (PURC./COS follow the Disbursement) ─────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['ajax_state'])) {
     header('Content-Type: application/json');
-    try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false); } catch (Throwable $e) {}
+    try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false, '', 'h_disbursement'); } catch (Throwable $e) {}
     echo json_encode(['ok'=>true, 'rows'=>cogsMonthState($pdo, $fYear, $fMonth)]); exit;
 }
 
@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
             $outId = (int)$pdo->lastInsertId();
         }
         // re-split PURC. between the rows of the month (15th / last day) and refresh COS
-        try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false); } catch (Throwable $e) {}
+        try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', null, false, '', 'h_disbursement'); } catch (Throwable $e) {}
         echo json_encode(['ok'=>true, 'id'=>$outId, 'rows'=>cogsMonthState($pdo, $yr, $mo)]);
     } catch (Throwable $e) {
         echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
@@ -249,10 +249,10 @@ if (isset($_GET['export_csv'])) {
 $meiTotal = cogsMeiTotal($pdo, (int)$fYear, (int)$fMonth);
 
 // ── Materials Purchases (Consumables/CGS) grand total for selected month ─
-// Pulled live from the H Expenses ledger's Purchases total — auto-suggests
+// Pulled live from the Disbursement Sum (Purchases - Non-Vat + Purchases - Vatable + Carwash Purchases) — auto-suggests
 // this month's PURC. on a new row, same as END. is auto-suggested from MEI.
-$purcAutoStmt = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM h_expenses WHERE YEAR(expense_date)=? AND MONTH(expense_date)=?");
-$purcAutoStmt->execute([$fYear,$fMonth]);
+$purcAutoStmt = $pdo->prepare("SELECT COALESCE(SUM(net_of_vat),0) FROM h_disbursement WHERE entry_date BETWEEN ? AND ? AND account_title IN ('Purchases - Non-Vat','Purchases - Vatable','Carwash Purchases')");
+$purcAutoStmt->execute([sprintf('%04d-%02d-01',$fYear,$fMonth), date('Y-m-t', strtotime(sprintf('%04d-%02d-01',$fYear,$fMonth)))]);
 $purcAuto = (float)$purcAutoStmt->fetchColumn();
 $purcUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(purc),0) FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=?");
 $purcUsedStmt->execute([$fYear,$fMonth]);
@@ -574,7 +574,7 @@ include '../layout.php';
   <span style="font-size:1rem">🧾</span>
   <span>
     <strong>PURC.</strong> for a new row is auto-filled from the
-    <strong>H Expenses ledger's Purchases total</strong> for
+    <strong>Disbursement Sum (Purchases - Non-Vat + Purchases - Vatable + Carwash Purchases)</strong> for
     <?= $months[$fMonth-1] . ' ' . $fYear ?>:
     <strong style="color:#6d28d9"><?= number_format($purcAuto,2) ?></strong>
     <?php if ($purcAuto == 0): ?>
@@ -591,7 +591,7 @@ include '../layout.php';
       <tr>
         <th class="col-date">Date</th>
         <th class="col-num">BEG.</th>
-        <th class="col-num" title="Auto-suggested from the H Expenses ledger's Purchases total total — editable">PURC. <span style="font-size:.5rem;background:rgba(139,92,246,.25);padding:1px 5px;border-radius:8px;color:#c4b5fd">SUGGESTED</span></th>
+        <th class="col-num" title="Auto-suggested from the Disbursement Sum: Purchases - Non-Vat + Purchases - Vatable + Carwash Purchases — editable">PURC. <span style="font-size:.5rem;background:rgba(139,92,246,.25);padding:1px 5px;border-radius:8px;color:#c4b5fd">SUGGESTED</span></th>
         <th class="col-num" title="Auto-suggested from Month End Inventory — editable">END. <span style="font-size:.5rem;background:rgba(255,200,0,.2);padding:1px 5px;border-radius:8px;color:#fbbf24">SUGGESTED</span></th>
         <th class="col-num col-cos">COS</th>
         <th class="col-num" style="background:#78350f">MKTG COST</th>
@@ -608,7 +608,7 @@ include '../layout.php';
           </td>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input" value="<?= number_format((float)$r['beg'],2) ?>"
                      placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
-          <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="<?= number_format((float)$r['purc'],2) ?>"
+          <td title="Auto from Disbursement: Purchases - Non-Vat + Purchases - Vatable + Carwash Purchases (net of VAT, same as the Sum)"><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="<?= number_format((float)$r['purc'],2) ?>"
                      placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700"></td>
           <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
             <input type="text" inputmode="decimal" autocomplete="off" class="cogs-input end-auto-field"
@@ -664,7 +664,7 @@ const CURR_YEAR  = <?= $fYear ?>;
 const MEI_TOTAL  = <?= $meiTotal ?>;
 // Previous month's Ending Inventory — auto-suggests BEG. on a new row
 const PREV_END_INV = <?= $prevEndInv ?>;
-// This month's Purchases total (from H Expenses ledger's Purchases total) — auto-suggests PURC. on a new row
+// This month's Purchases total (from Disbursement Sum (Purchases - Non-Vat + Purchases - Vatable + Carwash Purchases)) — auto-suggests PURC. on a new row
 const PURC_AUTO = <?= $purcNew ?>;
 const PURC_LEDGER = <?= $purcAuto ?>;
 
@@ -680,7 +680,7 @@ const ROW_HTML = (d) => `
       <input type="date" class="date-input" value="${d}" readonly tabindex="-1" title="15th = Mid COGS · last day = End of Month COGS" style="pointer-events:none;opacity:.85">
     </td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
-    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement: Purchases - Non-Vat + Purchases - Vatable + Carwash Purchases (net of VAT, same as the Sum)"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>

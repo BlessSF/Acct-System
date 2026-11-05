@@ -143,7 +143,7 @@ function hSyncCogsPurchases(PDO $pdo, ?int $id = null): void {
         $date = null;
         if ($id) { $q = $pdo->prepare("SELECT entry_date FROM h_disbursement WHERE id=?"); $q->execute([$id]); $date = $q->fetchColumn() ?: null; }
         hCogsEnsureTable($pdo);
-        expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', $date, true, 'h_month_end_inv');
+        expSyncCogsPurchases($pdo, 'h_cogs', 'h_expenses', 'H', $date, true, 'h_month_end_inv', 'h_disbursement');
     } catch (Throwable $e) {}
 }
 function hCogsEnsureTable(PDO $pdo): void {

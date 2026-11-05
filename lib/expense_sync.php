@@ -268,9 +268,21 @@ const EXP_SYNC_DEFAULTS = EXP_SYNC_H_DEFAULTS;
  * whose date was moved to another month or that was deleted.
  */
 function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, string $store,
-                              ?string $date = null, bool $create = true, string $meiTable = ''): void {
+                              ?string $date = null, bool $create = true, string $meiTable = '', string $disTable = ''): void {
     $cogsTable = preg_replace('/[^a-z0-9_]/i', '', $cogsTable);
     $expTable  = preg_replace('/[^a-z0-9_]/i', '', $expTable);
+    $disTable  = preg_replace('/[^a-z0-9_]/i', '', $disTable);
+    // PURC. source. With a disbursement table: Net of VAT of Purchases - Non-Vat + Purchases - Vatable + Carwash Purchases
+    // (the same numbers the Sum page shows). Without one: the Expenses "purchases" column (old behaviour).
+    $purcSum = function (string $from, string $to) use ($pdo, $expTable, $disTable): float {
+        if ($disTable !== '') {
+            $q = $pdo->prepare("SELECT COALESCE(SUM(net_of_vat),0) FROM `$disTable` WHERE entry_date >= ? AND entry_date <= ? AND account_title IN ('Purchases - Non-Vat','Purchases - Vatable','Carwash Purchases')");
+        } else {
+            $q = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM `$expTable` WHERE expense_date >= ? AND expense_date <= ?");
+        }
+        $q->execute([$from, $to]);
+        return round((float)$q->fetchColumn(), 2);
+    };
     // remove the rows an earlier version auto-created (untouched ones only)
     try { $pdo->prepare("DELETE FROM `$cogsTable` WHERE store_name=? AND saved_by='Auto (Disbursement)'")->execute([$store]); } catch (Throwable $e) {}
     $months = [];
@@ -281,9 +293,7 @@ function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, str
         $months[(int)$mm[1] . '-' . (int)$mm[2]] = [(int)$mm[1], (int)$mm[2], $create];
     }
     foreach ($months as [$y, $m, $mayCreate]) {
-        $t = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM `$expTable` WHERE YEAR(expense_date)=? AND MONTH(expense_date)=?");
-        $t->execute([$y, $m]);
-        $total = round((float)$t->fetchColumn(), 2);
+        $total = $purcSum(sprintf('%04d-%02d-01', $y, $m), date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $y, $m))));
 
         $rs = $pdo->prepare("SELECT * FROM `$cogsTable` WHERE store_name=? AND cogs_year=? AND cogs_month=? ORDER BY cogs_date ASC, id ASC");
         $rs->execute([$store, $y, $m]);
@@ -300,9 +310,7 @@ function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, str
                 $lower = $i === 0 ? date('Y-m-d', strtotime($monthStart . ' -1 day')) : $rows[$i - 1]['cogs_date'];
                 // the last row takes the rest of the month — unless it is only a mid-month (15th or earlier) row
                 $upper = ($i === $n - 1 && (int)date('j', strtotime($rows[$i]['cogs_date'])) > 15) ? $monthEnd : $rows[$i]['cogs_date'];
-                $w = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM `$expTable` WHERE expense_date > ? AND expense_date <= ?");
-                $w->execute([$lower, $upper]);
-                $purc = round((float)$w->fetchColumn(), 2);
+                $purc = $purcSum(date('Y-m-d', strtotime($lower . ' +1 day')), $upper);
                 $r = $rows[$i];
                 $cos = round((float)$r['beg'] + $purc - (float)$r['end_inv'] - (float)$r['mktg_cost'], 2);
                 if ((float)$r['purc'] === $purc && (float)$r['cos'] === $cos) continue;
