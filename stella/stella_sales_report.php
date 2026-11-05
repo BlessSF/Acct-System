@@ -105,6 +105,24 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `stella_sales_detail_rows` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
+// ── One-time move: Unpaid Med/Corp. (CREDIT) used to live inside the Dine In table.
+//    It is now its own box (section 'unpaid_med'), so copy any old Dine In unpaid entries
+//    across (only for dates that have no 'unpaid_med' rows yet) and clear the old columns. ──
+try {
+    $old = $pdo->query("SELECT d.report_date, d.unpaid_credit_name, d.unpaid_credit_amount, d.sort_order
+        FROM stella_dinein_rows d
+        WHERE d.store_name='Stella' AND (d.unpaid_credit_amount<>0 OR (d.unpaid_credit_name IS NOT NULL AND d.unpaid_credit_name<>''))
+          AND NOT EXISTS (SELECT 1 FROM stella_sales_detail_rows x WHERE x.store_name='Stella' AND x.report_date=d.report_date AND x.section='unpaid_med')
+        ORDER BY d.report_date, d.sort_order")->fetchAll(PDO::FETCH_ASSOC);
+    if ($old) {
+        $insU = $pdo->prepare("INSERT INTO stella_sales_detail_rows (store_name,report_date,section,item_name,amount,sort_order) VALUES ('Stella',?,'unpaid_med',?,?,?)");
+        $n = [];
+        foreach ($old as $o) { $k = $o['report_date']; $n[$k] = ($n[$k] ?? -1) + 1; $insU->execute([$o['report_date'], $o['unpaid_credit_name'], (float)$o['unpaid_credit_amount'], $n[$k]]); }
+        $pdo->exec("UPDATE stella_dinein_rows SET unpaid_credit_name=NULL, unpaid_credit_amount=0 WHERE store_name='Stella'");
+    }
+} catch (Throwable $ignored) {}
+
+
 // ── Auto-create shared report_locks table (safe to run repeatedly) ─
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS `report_locks` (
@@ -198,6 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $secSumStmt->execute([$reportDate]);
         $secSums = [];
         foreach ($secSumStmt->fetchAll(PDO::FETCH_ASSOC) as $r) $secSums[$r['section']] = (float)$r['total'];
+        $vals['unpaid_med_credit']   = $secSums['unpaid_med'] ?? 0;
         $vals['grab_sales']          = $secSums['grab'] ?? 0;
         $vals['marketing_pull_out']  = $secSums['marketing_pullout'] ?? 0;
         $vals['paid_med_card']       = $secSums['paid_med'] ?? 0;
@@ -335,14 +354,13 @@ if (isset($_GET['export_csv'])) {
 
     // — DINE IN —
     $xlsx->sectionRow('DINE IN');
-    $xlsx->header(['Cash','Palawan Pay','Card/Swipe/QR','Unpaid/Credit Name','Unpaid/Credit Amount','Discount','Gift Cert.','Bank Transfer/Cheque','Cancelled Transactions']);
+    $xlsx->header(['Cash','Palawan Pay','Card/Swipe/QR','Discount','Gift Cert.','Bank Transfer/Cheque','Cancelled Transactions']);
     $diExpStmt = $pdo->prepare("SELECT * FROM stella_dinein_rows WHERE store_name='Stella' AND report_date=? ORDER BY sort_order ASC");
     $diExpStmt->execute([$reportDate]);
     foreach ($diExpStmt->fetchAll(PDO::FETCH_ASSOC) as $dr) {
         $xlsx->row([
             number_format((float)$dr['cash'],2,'.',''), number_format((float)$dr['palawan_pay'],2,'.',''),
-            number_format((float)$dr['card_swipe_qr'],2,'.',''), $dr['unpaid_credit_name'],
-            number_format((float)$dr['unpaid_credit_amount'],2,'.',''), number_format((float)$dr['discount'],2,'.',''),
+            number_format((float)$dr['card_swipe_qr'],2,'.',''), number_format((float)$dr['discount'],2,'.',''),
             number_format((float)($dr['gift_card'] ?? 0),2,'.',''), number_format((float)$dr['bank_transfer_cheque'],2,'.',''),
             number_format((float)$dr['cancelled_transactions'],2,'.',''),
         ]);
@@ -353,6 +371,7 @@ if (isset($_GET['export_csv'])) {
     //   Advance Payment, GC Sponsorship, GC Sold, Paid Med/Corp., Deposit
     //   (Card), Gift Cert Sold (TIPS), Cash out Interest) —
     $stellaSubSections = [
+        'unpaid_med'        => 'UNPAID MED/CORP. (CREDIT)',
         'marketing_pullout' => 'MARKETING PULLOUT',
         'grab'              => 'GRAB',
         'expenses'          => 'EXPENSES',
@@ -436,7 +455,7 @@ foreach ($allDetails as $d) $details[$d['section']][] = $d;
 $secSum = fn($sec) => array_sum(array_column($details[$sec] ?? [], 'amount'));
 
 // Auto-calculated pink-section values (Gift Card and Other Expenses stay manual)
-$unpaidMedCalc     = $diSum('unpaid_credit_amount');
+$unpaidMedCalc     = $secSum('unpaid_med');
 $discountCalc      = $diSum('discount');
 $giftCardCalc      = $diSum('gift_card');
 $bankTransferCalc  = $diSum('bank_transfer_cheque');
@@ -735,8 +754,120 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
   <?php endif; ?>
 </div>
 
+<style>.sub-stack{display:flex;flex-direction:column;gap:14px;min-width:0}.sub-stack .sub-col{width:100%}</style>
+<!-- ROW 1 (same order as the Excel): Grab (+ Marketing Pull out under it) | Deposit (Card) | Late Payment (Card) | Cash out Interest (Booky) -->
+<div class="sr-section">
+  <div class="sub-grid four-col" id="subsec-row1">
+
+    <?php
+    $renderCol = function ($sec, $label) use ($details) {
+        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+    ?>
+    <div class="sub-col" data-section="<?= $sec ?>">
+      <div class="sub-col-title"><?= $label ?></div>
+      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
+      <div class="sub-rows">
+        <?php foreach ($secRows as $sr): ?>
+        <div class="sub-row">
+          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
+          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
+          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
+      <div class="sub-footer">
+        <span>Total</span>
+        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
+      </div>
+    </div>
+    <?php
+    };
+    ?>
+
+    <div class="sub-stack">
+      <?php $renderCol('grab', 'GRAB'); $renderCol('marketing_pullout', 'MARKETING PULL OUT'); ?>
+    </div>
+    <?php $renderCol('deposit_card', 'DEPOSIT (CARD)'); $renderCol('late_payment', 'LATE PAYMENT (CARD)'); $renderCol('cash_out_interest', 'CASH OUT INTEREST (BOOKY)'); ?>
+
+  </div>
+</div>
+
+<!-- ROW 2: Unpaid Med/Corp. (Credit) | Paid Med/Corp. (Card) | Advance Paid (Appigo) | Gift Cert Sold (Tips) -->
+<div class="sr-section">
+  <div class="sub-grid four-col" id="subsec-row2">
+
+    <?php
+    $subsec = [
+        'unpaid_med'        => 'UNPAID MED/CORP. (CREDIT)',
+        'paid_med'          => 'PAID MED/CORP. (CARD)',
+        'advance_payment'   => 'ADVANCE PAID (APPIGO)',
+        'gift_cert_tips'    => 'GIFT CERT SOLD (TIPS)',
+    ];
+    foreach ($subsec as $sec => $label):
+        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+    ?>
+    <div class="sub-col" data-section="<?= $sec ?>">
+      <div class="sub-col-title"><?= $label ?></div>
+      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
+      <div class="sub-rows">
+        <?php foreach ($secRows as $sr): ?>
+        <div class="sub-row">
+          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
+          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
+          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
+      <div class="sub-footer">
+        <span>Total</span>
+        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
+      </div>
+    </div>
+    <?php endforeach; ?>
+
+  </div>
+</div>
+
+<!-- ROW 3: Expenses | GC Sponsorship | GC Sold -->
+<div class="sr-section">
+  <div class="sub-grid three-col" id="subsec-row3">
+
+    <?php
+    $subsec = [
+        'expenses'          => 'EXPENSES',
+        'gc_sponsorship'    => 'GC SPONSORSHIP',
+        'gc_sold'           => 'GC SOLD',
+    ];
+    foreach ($subsec as $sec => $label):
+        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+    ?>
+    <div class="sub-col" data-section="<?= $sec ?>">
+      <div class="sub-col-title"><?= $label ?></div>
+      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
+      <div class="sub-rows">
+        <?php foreach ($secRows as $sr): ?>
+        <div class="sub-row">
+          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
+          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
+          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
+      <div class="sub-footer">
+        <span>Total</span>
+        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
+      </div>
+    </div>
+    <?php endforeach; ?>
+
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════
-     DINE IN SECTION
+     DINE IN SECTION (at the bottom, like the Excel)
 ════════════════════════════════════════════════════════════ -->
 <div class="sr-section">
   <div class="sr-section-title dark-red">DINE IN</div>
@@ -747,7 +878,6 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
         <th>Cash</th>
         <th>Palawan Pay</th>
         <th>Card/Swipe/QR</th>
-        <th colspan="2">Unpaid / Credit</th>
         <th>Discount</th>
         <th>Gift Cert.</th>
         <th>Bank Transfer/Cheque</th>
@@ -756,7 +886,6 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
       </tr>
       <tr>
         <th class="sub"></th><th class="sub"></th><th class="sub"></th>
-        <th class="sub">NAME</th><th class="sub">AMOUNT</th>
         <th class="sub"></th><th class="sub"></th><th class="sub"></th><th class="sub"></th><th class="sub"></th>
       </tr>
     </thead>
@@ -766,8 +895,6 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
         <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['cash'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['palawan_pay'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['card_swipe_qr'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp txt di-inp-name" type="text" value="<?= htmlspecialchars($dr['unpaid_credit_name'] ?? '') ?>" placeholder="Name"></td>
-        <td><input class="di-inp di-inp-amt" type="number" step="0.01" value="<?= (float)$dr['unpaid_credit_amount'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['discount'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" value="<?= (float)($dr['gift_card'] ?? 0) ?: '' ?>" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['bank_transfer_cheque'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
@@ -780,8 +907,6 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
         <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp txt di-inp-name" type="text" placeholder="Name"></td>
-        <td><input class="di-inp di-inp-amt" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
         <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
@@ -795,7 +920,6 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
         <td id="di-tot-cash">0.00</td>
         <td id="di-tot-palawan">0.00</td>
         <td id="di-tot-card">0.00</td>
-        <td colspan="2" id="di-tot-unpaid">0.00</td>
         <td id="di-tot-disc">0.00</td>
         <td id="di-tot-gift">0.00</td>
         <td id="di-tot-bank">0.00</td>
@@ -804,128 +928,12 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
       </tr>
       <tr>
         <td class="total-label" colspan="3">TOTAL</td>
-        <td class="grand-total" colspan="7" id="di-grand-total">0.00</td>
+        <td class="grand-total" colspan="6" id="di-grand-total">0.00</td>
       </tr>
     </tfoot>
   </table>
   </div>
   <button class="btn-add-row" onclick="addDiRow()">+ Add Row</button>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════
-     SUB-SECTIONS ROW 1: Marketing Pullout | GRAB | Expenses | Late Payment
-════════════════════════════════════════════════════════════ -->
-<div class="sr-section">
-  <div class="sub-grid" id="subsec-row1">
-
-    <?php
-    $subsec1 = [
-        'marketing_pullout' => 'Marketing Pullout',
-        'grab'              => 'GRAB',
-        'expenses'          => 'EXPENSES',
-        'late_payment'      => 'LATE PAYMENT',
-    ];
-    foreach ($subsec1 as $sec => $label):
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
-    ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
-      <div class="sub-col-title"><?= $label ?></div>
-      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
-      <div class="sub-rows">
-        <?php foreach ($secRows as $sr): ?>
-        <div class="sub-row">
-          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-      <div class="sub-footer">
-        <span>Total</span>
-        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-      </div>
-    </div>
-    <?php endforeach; ?>
-
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════
-     SUB-SECTIONS ROW 2: Advance Payment | GC Sponsorship | GC Sold
-════════════════════════════════════════════════════════════ -->
-<div class="sr-section">
-  <div class="sub-grid three-col" id="subsec-row2">
-
-    <?php
-    $subsec2 = [
-        'advance_payment'  => 'ADVANCE PAYMENT',
-        'gc_sponsorship'   => 'GC SPONSORSHIP',
-        'gc_sold'          => 'GC SOLD',
-    ];
-    foreach ($subsec2 as $sec => $label):
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
-    ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
-      <div class="sub-col-title"><?= $label ?></div>
-      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
-      <div class="sub-rows">
-        <?php foreach ($secRows as $sr): ?>
-        <div class="sub-row">
-          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-      <div class="sub-footer">
-        <span>Total</span>
-        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-      </div>
-    </div>
-    <?php endforeach; ?>
-
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════
-     SUB-SECTIONS ROW 3: Paid Med/Corp. (Card) | Deposit (Card) | Gift Cert Sold (TIPS) | Cash out Interest (Booky)
-════════════════════════════════════════════════════════════ -->
-<div class="sr-section">
-  <div class="sub-grid four-col" id="subsec-row3">
-
-    <?php
-    $subsec3 = [
-        'paid_med'          => 'PAID MED/CORP. (CARD)',
-        'deposit_card'      => 'DEPOSIT (CARD)',
-        'gift_cert_tips'    => 'GIFT CERT SOLD (TIPS)',
-        'cash_out_interest' => 'CASH OUT INTEREST (BOOKY)',
-    ];
-    foreach ($subsec3 as $sec => $label):
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
-    ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
-      <div class="sub-col-title"><?= $label ?></div>
-      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
-      <div class="sub-rows">
-        <?php foreach ($secRows as $sr): ?>
-        <div class="sub-row">
-          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-      <div class="sub-footer">
-        <span>Total</span>
-        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-      </div>
-    </div>
-    <?php endforeach; ?>
-
-  </div>
 </div>
 
 </div><!-- /.sr-main -->
@@ -1114,12 +1122,12 @@ function diCols(tr) {
     cash:                (float(inps[0])),
     palawan_pay:         (float(inps[1])),
     card_swipe_qr:       (float(inps[2])),
-    unpaid_credit_name:  inps[3]?.value || '',
-    unpaid_credit_amount:(float(inps[4])),
-    discount:            (float(inps[5])),
-    gift_card:           (float(inps[6])),
-    bank_transfer_cheque:(float(inps[7])),
-    cancelled_transactions:(float(inps[8])),
+    unpaid_credit_name:  '',
+    unpaid_credit_amount: 0,
+    discount:            (float(inps[3])),
+    gift_card:           (float(inps[4])),
+    bank_transfer_cheque:(float(inps[5])),
+    cancelled_transactions:(float(inps[6])),
   };
 }
 function float(inp) { return parseFloat(inp?.value) || 0; }
@@ -1138,18 +1146,17 @@ let COH_MANUAL = (function () {
   });
 })();
 function diChanged() {
-  let totCash=0,totPal=0,totCard=0,totUnpaid=0,totDisc=0,totGift=0,totBank=0,totCan=0;
+  let totCash=0,totPal=0,totCard=0,totDisc=0,totGift=0,totBank=0,totCan=0;
   document.querySelectorAll('#di-body tr').forEach(tr => {
     const c = diCols(tr);
     totCash   += c.cash; totPal += c.palawan_pay; totCard += c.card_swipe_qr;
-    totUnpaid += c.unpaid_credit_amount; totDisc += c.discount; totGift += c.gift_card;
+    totDisc += c.discount; totGift += c.gift_card;
     totBank   += c.bank_transfer_cheque; totCan += c.cancelled_transactions;
   });
   const grand = totCash + totPal + totCard + totDisc + totGift + totBank;
   document.getElementById('di-tot-cash').textContent      = fmt(totCash);
   document.getElementById('di-tot-palawan').textContent   = fmt(totPal);
   document.getElementById('di-tot-card').textContent      = fmt(totCard);
-  document.getElementById('di-tot-unpaid').textContent    = fmt(totUnpaid);
   document.getElementById('di-tot-disc').textContent      = fmt(totDisc);
   document.getElementById('di-tot-gift').textContent      = fmt(totGift);
   document.getElementById('di-tot-bank').textContent      = fmt(totBank);
@@ -1157,7 +1164,6 @@ function diChanged() {
   document.getElementById('di-grand-total').textContent   = fmt(grand);
 
   // Auto-feed summary fields
-  setVal('unpaid_med_credit',    fmt(totUnpaid));
   setVal('discount',             fmt(totDisc));
   setVal('gift_card',            fmt(totGift));
   setVal('bank_transfer_cheque', fmt(totBank));
@@ -1176,8 +1182,6 @@ function addDiRow() {
     <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
     <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
     <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-    <td><input class="di-inp txt di-inp-name" type="text" placeholder="Name"></td>
-    <td><input class="di-inp di-inp-amt" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
     <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
     <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
     <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
@@ -1200,6 +1204,7 @@ function subChanged(sec) {
   if (totEl) totEl.textContent = 'P' + fmt(tot);
 
   // Auto-feed summary
+  if (sec === 'unpaid_med')        { setVal('unpaid_med_credit',   fmt(tot)); recalc(); }
   if (sec === 'grab')              { setVal('grab_sales',         fmt(tot)); recalc(); }
   if (sec === 'marketing_pullout') { setVal('marketing_pull_out', fmt(tot)); recalc(); }
   if (sec === 'expenses')          { setVal('pcf_expenses',        fmt(tot)); recalc(); }
@@ -1303,7 +1308,7 @@ async function saveAll() {
   await fetch('stella_sales_report.php', {method:'POST',body:fd1});
 
   // 2. Save each sub-section
-  const allSecs = ['marketing_pullout','grab','expenses','late_payment','advance_payment','gc_sponsorship','gc_sold','paid_med','deposit_card','gift_cert_tips','cash_out_interest'];
+  const allSecs = ['unpaid_med','marketing_pullout','grab','expenses','late_payment','advance_payment','gc_sponsorship','gc_sold','paid_med','deposit_card','gift_cert_tips','cash_out_interest'];
   for (const sec of allSecs) {
     const col = document.querySelector(`.sub-col[data-section="${sec}"]`);
     if (!col) continue;
@@ -1412,6 +1417,220 @@ function showToast(msg, type) {
 }
 
 document.addEventListener('DOMContentLoaded', () => { diChanged(); recalcDepositSwipe(); recalc(); if (REPORT_LOCKED) lockPage(); });
+</script>
+<script>
+// ── Excel-style paste: copy several cells in Excel / Google Sheets, paste into any box,
+//    and the values spread across the columns and down the rows (new rows are added). ──
+(function () {
+  function ctx(el) {
+    const sub = el.closest('.sub-row');
+    if (sub) {
+      const col = sub.closest('.sub-col'); const sec = col && col.dataset.section;
+      return { rows: () => [...col.querySelectorAll('.sub-rows .sub-row')], add: () => addSubRow(sec), row: sub };
+    }
+    const tr = el.closest('tbody tr'), table = el.closest('table');
+    if (!tr || !table) return null;
+    const body = tr.parentElement;
+    let add = null;
+    if (table.id === 'di-table') add = () => addDiRow();
+    else return null;
+    return { rows: () => [...body.querySelectorAll('tr')], add, row: tr };
+  }
+  const cellsOf = row => [...row.querySelectorAll('input,textarea')].filter(i => !['button','hidden'].includes(i.type) && !i.readOnly && !i.disabled);
+  function put(inp, val) {
+    val = String(val).trim();
+    if (inp.type === 'number') {
+      const n = parseFloat(val.replace(/[^0-9.\-]/g, ''));
+      if (val === '') inp.value = ''; else if (isFinite(n)) inp.value = n; else return;
+    } else inp.value = val;
+    inp.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+  document.addEventListener('paste', function (ev) {
+    const el = ev.target;
+    if (!el || !el.matches || !el.matches('input,textarea') || el.readOnly || el.disabled) return;
+    if (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED) return;
+    const c = ctx(el); if (!c) return;
+    const text = (ev.clipboardData || window.clipboardData).getData('text');
+    if (!text || (text.indexOf('\t') < 0 && !/\r?\n./.test(text))) return;   // single value → normal paste
+    const data = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map(l => l.split('\t'));
+    ev.preventDefault();
+    const r0 = c.rows().indexOf(c.row), c0 = cellsOf(c.row).indexOf(el);
+    if (r0 < 0 || c0 < 0) return;
+    data.forEach(function (line, i) {
+      let rows = c.rows();
+      while (rows.length <= r0 + i) { c.add(); const n = c.rows(); if (n.length === rows.length) return; rows = n; }
+      const cells = cellsOf(rows[r0 + i]);
+      line.forEach((v, j) => { if (cells[c0 + j]) put(cells[c0 + j], v); });
+    });
+    if (typeof showToast === 'function') showToast('✓ Pasted ' + data.length + ' row' + (data.length > 1 ? 's' : ''), 'success');
+  });
+})();
+</script>
+<style>
+.xl-sel { background-color:rgba(37,99,235,.16) !important; box-shadow:inset 0 0 0 1px rgba(37,99,235,.55) !important; }
+.xl-selhi { box-shadow:inset 0 0 0 2px #2563eb !important; }
+.xl-pv { background-color:rgba(37,99,235,.08) !important; box-shadow:inset 0 0 0 1px dashed #2563eb; outline:1px dashed #2563eb; outline-offset:-1px; }
+#xlFill { position:fixed; width:9px; height:9px; background:#2563eb; border:1px solid #fff; cursor:crosshair; z-index:9999; display:none; box-sizing:content-box; }
+body.xl-dragging, body.xl-dragging * { user-select:none !important; cursor:crosshair !important; }
+</style>
+<div id="xlFill" title="Drag to fill down / up / across"></div>
+<script>
+// ── Excel-style cell selection + fill handle ─────────────────────────────────────
+//  • drag across boxes to select a block (blue)      • Ctrl+C copies it, Ctrl+V pastes at the top-left
+//  • Delete clears the block                         • drag the little blue square to copy/fill cells
+(function () {
+  if (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED) return;
+  const handle = document.getElementById('xlFill');
+  const cellsOf = row => [...row.querySelectorAll('input')].filter(i => !['button','hidden','checkbox','radio','date'].includes(i.type) && !i.readOnly && !i.disabled);
+  function gridOf(el) {
+    if (!el || !el.closest) return null;
+    const sub = el.closest('.sub-row');
+    if (sub) { const col = sub.closest('.sub-col'), sec = col.dataset.section;
+      return { key:'sub:'+sec, rows:() => [...col.querySelectorAll('.sub-rows .sub-row')], add:() => addSubRow(sec), after:() => subChanged(sec), rowOf:e => e.closest('.sub-row') }; }
+    const table = el.closest('table.di-table'); if (!table || !el.closest('tbody')) return null;
+    const body = table.querySelector('tbody'), isDi = table.id === 'di-table', sec = table.dataset.section;
+    if (!isDi) return null;
+    return { key:'di', rows:() => [...body.querySelectorAll('tr')], add:() => addDiRow(), after:() => diChanged(), rowOf:e => e.closest('tr') };
+  }
+  const pos = (g, el) => { const row = g.rowOf(el), rows = g.rows(), r = rows.indexOf(row); return r < 0 ? null : { r, c: cellsOf(row).indexOf(el) }; };
+  const cellAt = (g, r, c) => { const rows = g.rows(); if (r < 0 || r >= rows.length) return null; return cellsOf(rows[r])[c] || null; };
+  function setVal(inp, v) {
+    v = v == null ? '' : String(v).trim();
+    if (inp.type === 'number') { if (v === '') inp.value = ''; else { const neg = /^\(.*\)$/.test(v) || /^-/.test(v); const n = parseFloat(v.replace(/[^0-9.]/g,'')); if (!isFinite(n)) return; inp.value = neg ? -n : n; } }
+    else inp.value = v;
+    inp.dispatchEvent(new Event('input', {bubbles:true}));
+  }
+  let sel = null, multi = false, down = null, fill = null, pv = [];
+  const clearMarks = () => document.querySelectorAll('.xl-sel,.xl-selhi,.xl-pv').forEach(e => e.classList.remove('xl-sel','xl-selhi','xl-pv'));
+  function range(a, b) { return { r1:Math.min(a.r,b.r), r2:Math.max(a.r,b.r), c1:Math.min(a.c,b.c), c2:Math.max(a.c,b.c) }; }
+  function paint() {
+    clearMarks(); if (!sel) { handle.style.display = 'none'; return; }
+    const {g, r1, r2, c1, c2} = sel; let last = null;
+    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) { const e = cellAt(g, r, c); if (e) { e.classList.add('xl-sel'); last = e; } }
+    if (!multi) { const f = cellAt(g, r1, c1); if (f) f.classList.add('xl-selhi'); }
+    placeHandle(last);
+  }
+  function placeHandle(last) {
+    if (!last || !last.offsetParent) { handle.style.display = 'none'; return; }
+    const b = last.getBoundingClientRect();
+    handle.style.left = (b.right - 5) + 'px'; handle.style.top = (b.bottom - 5) + 'px'; handle.style.display = 'block';
+  }
+  const refresh = () => { if (sel) { const l = cellAt(sel.g, sel.r2, sel.c2); placeHandle(l); } };
+  window.addEventListener('scroll', refresh, true); window.addEventListener('resize', refresh);
+
+  function hit(x, y, g) {
+    let t = document.elementFromPoint(x, y); if (!t) return null;
+    if (t === handle) return null;
+    let inp = t.matches && t.matches('input') ? t : null;
+    if (!inp) { const host = t.closest('td,.sub-row'); if (host) { const arr = cellsOf(host.matches('td') ? host.parentElement : host); inp = host.matches('td') ? (host.querySelector('input') && cellsOf(host)[0]) : arr[0]; } }
+    if (!inp) return null;
+    const g2 = gridOf(inp); if (!g2 || g2.key !== g.key) return null;
+    return { el: inp, p: pos(g2, inp) };
+  }
+
+  document.addEventListener('mousedown', function (ev) {
+    if (ev.button !== 0) return;
+    if (ev.target === handle) {
+      if (!sel) return; ev.preventDefault();
+      fill = { g: sel.g, src: {...sel}, to: null }; document.body.classList.add('xl-dragging'); return;
+    }
+    const inp = ev.target.closest && ev.target.closest('input'); const g = inp && gridOf(inp);
+    if (!g || !cellsOf(g.rowOf(inp)).includes(inp)) { sel = null; multi = false; paint(); return; }
+    const p = pos(g, inp); if (!p) return;
+    down = { g, p, el: inp, moved: false };
+    sel = { g, r1:p.r, r2:p.r, c1:p.c, c2:p.c }; multi = false; paint();
+  }, true);
+
+  document.addEventListener('mousemove', function (ev) {
+    if (fill) {
+      const g = fill.g, rows = g.rows(), src = fill.src;
+      // find target row / col under pointer; below the last row → extra rows
+      let tr = src.r2, tc = src.c2;
+      const lastCell = cellAt(g, rows.length - 1, 0), lb = lastCell ? lastCell.getBoundingClientRect() : null;
+      let h = hit(ev.clientX, ev.clientY, g);
+      if (h) { tr = h.p.r; tc = h.p.c; }
+      else if (lb && ev.clientY > lb.bottom) { const rh = Math.max(20, lb.height); tr = rows.length - 1 + Math.ceil((ev.clientY - lb.bottom) / rh); tc = src.c2; }
+      // choose the axis with the bigger move
+      const dr = tr > src.r2 ? tr - src.r2 : (tr < src.r1 ? src.r1 - tr : 0), dc = tc > src.c2 ? tc - src.c2 : (tc < src.c1 ? src.c1 - tc : 0);
+      fill.to = (dr >= dc) ? { r: tr, c: null } : { r: null, c: tc };
+      document.querySelectorAll('.xl-pv').forEach(e => e.classList.remove('xl-pv'));
+      const R = fill.to.r != null ? [Math.min(src.r1, tr), Math.max(src.r2, tr)] : [src.r1, src.r2];
+      const C = fill.to.c != null ? [Math.min(src.c1, tc), Math.max(src.c2, tc)] : [src.c1, src.c2];
+      for (let r = R[0]; r <= Math.min(R[1], rows.length - 1); r++) for (let c = C[0]; c <= C[1]; c++) { const e = cellAt(g, r, c); if (e && !e.classList.contains('xl-sel')) e.classList.add('xl-pv'); }
+      fill.R = R; fill.C = C; return;
+    }
+    if (!down || !(ev.buttons & 1)) return;
+    const h = hit(ev.clientX, ev.clientY, down.g);
+    if (!h || (h.p.r === down.p.r && h.p.c === down.p.c && !down.moved)) return;
+    if (!down.moved) { down.moved = true; multi = true; document.body.classList.add('xl-dragging'); try { document.activeElement.blur(); } catch (e) {} }
+    const rg = range(down.p, h.p); sel = { g: down.g, ...rg }; paint(); window.getSelection().removeAllRanges();
+  }, true);
+
+  document.addEventListener('mouseup', function () {
+    if (fill) {
+      const f = fill; fill = null; document.body.classList.remove('xl-dragging'); document.querySelectorAll('.xl-pv').forEach(e => e.classList.remove('xl-pv'));
+      if (f.R && f.C) doFill(f);
+      return;
+    }
+    if (down) { document.body.classList.remove('xl-dragging'); down = null; }
+  }, true);
+
+  function valuesOf(g, r1, r2, c1, c2) { const out = []; for (let r = r1; r <= r2; r++) { const row = []; for (let c = c1; c <= c2; c++) { const e = cellAt(g, r, c); row.push(e ? e.value : ''); } out.push(row); } return out; }
+  function doFill(f) {
+    const g = f.g, s = f.src, [R1, R2] = f.R, [C1, C2] = f.C;
+    const srcVals = valuesOf(g, s.r1, s.r2, s.c1, s.c2), nr = srcVals.length, nc = srcVals[0].length;
+    // make sure the rows exist
+    for (let guard = 0; g.rows().length <= R2 && guard < 200; guard++) { const before = g.rows().length; g.add(); if (g.rows().length === before) break; }
+    // numeric series: 2+ numeric cells in a column continue the step (like Excel)
+    const colSeries = c => { if (nr < 2) return null; const v = srcVals.map(r => parseFloat(String(r[c]).replace(/,/g,''))); if (v.some(x => !isFinite(x))) return null; const st = v[1] - v[0]; for (let i = 2; i < v.length; i++) if (Math.abs(v[i] - v[i-1] - st) > 1e-9) return null; return { v, st }; };
+    for (let r = R1; r <= R2; r++) for (let c = C1; c <= C2; c++) {
+      if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2) continue;
+      const e = cellAt(g, r, c); if (!e) continue;
+      const dr = r - s.r1, dc = c - s.c1; const ri = ((dr % nr) + nr) % nr, ci = ((dc % nc) + nc) % nc;
+      let val = srcVals[ri][ci];
+      if (f.to && f.to.r != null && c >= s.c1 && c <= s.c2) { const ser = colSeries(ci); if (ser) val = ser.v[0] + ser.st * dr; }
+      setVal(e, val);
+    }
+    sel = { g, r1: Math.min(s.r1, R1), r2: Math.max(s.r2, R2), c1: Math.min(s.c1, C1), c2: Math.max(s.c2, C2) }; multi = true; paint(); g.after();
+    if (typeof showToast === 'function') showToast('✓ Filled', 'success');
+  }
+
+  document.addEventListener('focusin', function (ev) {
+    if (down || fill) return;
+    const g = gridOf(ev.target); if (!g) return; const p = pos(g, ev.target); if (!p || p.c < 0) return;
+    if (multi && sel && sel.g.key === g.key && p.r >= sel.r1 && p.r <= sel.r2 && p.c >= sel.c1 && p.c <= sel.c2) return;
+    sel = { g, r1:p.r, r2:p.r, c1:p.c, c2:p.c }; multi = false; paint();
+  });
+
+  const tsv = () => valuesOf(sel.g, sel.r1, sel.r2, sel.c1, sel.c2).map(r => r.join('\t')).join('\n');
+  document.addEventListener('keydown', function (ev) {
+    if (!sel || !multi) return;
+    const k = ev.key.toLowerCase();
+    if ((ev.ctrlKey || ev.metaKey) && (k === 'c' || k === 'x')) {
+      ev.preventDefault(); const t = tsv();
+      const done = () => { if (typeof showToast === 'function') showToast('✓ Copied — paste into Excel', 'success'); if (k === 'x') clearSel(); };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => legacy(t, done)); else legacy(t, done);
+    } else if (k === 'delete' || k === 'backspace') { ev.preventDefault(); clearSel(); }
+    else if (k === 'escape') { sel = null; multi = false; paint(); }
+  }, true);
+  function legacy(t, done) { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+  function clearSel() { for (let r = sel.r1; r <= sel.r2; r++) for (let c = sel.c1; c <= sel.c2; c++) { const e = cellAt(sel.g, r, c); if (e) setVal(e, ''); } sel.g.after(); }
+
+  // paste while a block is selected (focus is not inside a box)
+  document.addEventListener('paste', function (ev) {
+    if (!sel || !multi) return;
+    const a = document.activeElement; if (a && a.matches && a.matches('input,textarea') && !a.closest('.xl-sel')) return;
+    const text = (ev.clipboardData || window.clipboardData).getData('text'); if (!text) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    const g = sel.g, data = text.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l => l.split('\t'));
+    if (data.length === 1 && data[0].length === 1) { for (let r = sel.r1; r <= sel.r2; r++) for (let c = sel.c1; c <= sel.c2; c++) { const e = cellAt(g, r, c); if (e) setVal(e, data[0][0]); } }
+    else data.forEach((line, i) => {
+      for (let guard = 0; g.rows().length <= sel.r1 + i && guard < 5; guard++) { const b = g.rows().length; g.add(); if (g.rows().length === b) break; }
+      line.forEach((v, j) => { const e = cellAt(g, sel.r1 + i, sel.c1 + j); if (e) setVal(e, v); });
+    });
+    g.after(); if (typeof showToast === 'function') showToast('✓ Pasted', 'success'); paint();
+  }, true);
+})();
 </script>
 </body>
 </html>
