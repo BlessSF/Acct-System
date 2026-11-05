@@ -93,9 +93,27 @@ foreach ($expRows->fetchAll() as $r) {
     $expenses[$r['account_title']][$r['mo']] = (float)$r['total'];
 }
 
-// Collect all expense titles that actually have data + the standard list
-$allExpTitles = array_unique(array_merge($EXPENSE_ACCOUNTS, array_keys($expenses)));
-sort($allExpTitles);
+// ── P&L rows, laid out like the Excel "PROFIT & LOSS" sheet ──────────
+//  • expenses only (Assets such as Office Equipment are NOT part of the P&L)
+//  • both Purchases titles are shown as ONE row "Purchases"
+//  • every month is a running (year-to-date) total, carried forward to December
+$secRows = $pdo->query("SELECT title, section FROM `stella_acc_titles`")->fetchAll(PDO::FETCH_KEY_PAIR);
+$skipTitles = [];
+foreach ($secRows as $t => $sec) if ($sec === 'assets' || $sec === 'other') $skipTitles[$t] = true;
+$PURCH_TITLES = ['Purchases - Non-Vat', 'Purchases - Vatable'];
+$EXCEL_ORDER = ['Purchases','Kitchen Supplies','Solane','Miscellaneous','Rent','CUSA','Office Supplies','Pest Control','Advertisement','Bio Augmentation','Professional Fee','Bookkeeping Fee','Fare & Transportation','Fuel & Oil','Repairs and Maintenance','Telephone, Light & Water','Delivery Expense','Salaries and Wages','Representation Expense','Meals','Marketing','Drinking Water','Taxes and Licenses','SSS, PHIC, HDMF Contribution','Commission Expense',"M'Nikki",'c/o Nikki','Others'];
+$monthly = [];                       // [label][month] = amount for the month
+foreach (array_unique(array_merge($EXPENSE_ACCOUNTS, array_keys($expenses))) as $t) {
+    if (isset($skipTitles[$t])) continue;
+    $label = in_array($t, $PURCH_TITLES, true) ? 'Purchases' : $t;
+    for ($m = 1; $m <= 12; $m++) $monthly[$label][$m] = ($monthly[$label][$m] ?? 0) + ($expenses[$t][$m] ?? 0);
+}
+$allExpTitles = [];
+foreach ($EXCEL_ORDER as $t) if (isset($monthly[$t]) || $t === 'Purchases' || isset($secRows[$t])) { $allExpTitles[] = $t; if (!isset($monthly[$t])) $monthly[$t] = []; }
+$rest = array_diff(array_keys($monthly), $allExpTitles); sort($rest);
+$allExpTitles = array_merge($allExpTitles, $rest);
+$plCum = [];                         // [label][month] = year-to-date amount
+foreach ($allExpTitles as $t) { $run = 0; for ($m = 1; $m <= 12; $m++) { $run += $monthly[$t][$m] ?? 0; $plCum[$t][$m] = $run; } }
 
 $MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -110,28 +128,22 @@ if (isset($_GET['export_csv'])) {
     $xlsx->subtitle('Stella Profit & Loss Statement');
     $xlsx->subtitle('Year ' . $YEAR . ' · Generated ' . date('F d, Y H:i:s'));
     $xlsx->blank();
-    $xlsx->header(array_merge(['ACCOUNT TITLE'], $MONTHS, ['TOTAL']));
+    $xlsx->header(array_merge(['ACCOUNT TITLE'], $MONTHS));
 
-    // Revenue
+    // Revenue (running total, like the Excel)
     $xlsx->sectionRow('REVENUE');
     $revSubtotals = array_fill(1, 12, 0);
-    $revGrandTotal = 0;
     foreach ($REV_TYPES as $rk => $rl) {
-        $rowTotal = 0;
-        $cells = [$rl];
+        $run = 0; $cells = [$rl];
         for ($m = 1; $m <= 12; $m++) {
-            $val = $revenue[$m][$rk] ?? 0;
-            $rowTotal += $val;
-            $revSubtotals[$m] += $val;
-            $cells[] = $val > 0 ? number_format($val, 2, '.', '') : '-';
+            $run += $revenue[$m][$rk] ?? 0;
+            $revSubtotals[$m] += $run;
+            $cells[] = $run > 0 ? number_format($run, 2, '.', '') : '-';
         }
-        $cells[] = $rowTotal > 0 ? number_format($rowTotal, 2, '.', '') : '-';
-        $revGrandTotal += $rowTotal;
         $xlsx->row($cells);
     }
     $subCells = ['Subtotal'];
     for ($m = 1; $m <= 12; $m++) $subCells[] = $revSubtotals[$m] > 0 ? number_format($revSubtotals[$m], 2, '.', '') : '-';
-    $subCells[] = $revGrandTotal > 0 ? number_format($revGrandTotal, 2, '.', '') : '-';
     $xlsx->totalRow($subCells);
 
     // Expenses
@@ -140,36 +152,29 @@ if (isset($_GET['export_csv'])) {
     $expSubtotals = array_fill(1, 12, 0);
     $expGrandTotal = 0;
     foreach ($allExpTitles as $title) {
-        $rowTotal = 0;
         $cells = [$title];
         for ($m = 1; $m <= 12; $m++) {
-            $val = $expenses[$title][$m] ?? 0;
-            $rowTotal += $val;
+            $val = $plCum[$title][$m] ?? 0;
             $expSubtotals[$m] += $val;
             $cells[] = $val > 0 ? number_format($val, 2, '.', '') : '-';
         }
-        $cells[] = $rowTotal > 0 ? number_format($rowTotal, 2, '.', '') : '-';
-        $expGrandTotal += $rowTotal;
         $xlsx->row($cells);
     }
-    $subCells = ['Subtotal'];
+    $subCells = ['Subtotal.'];
     for ($m = 1; $m <= 12; $m++) $subCells[] = $expSubtotals[$m] > 0 ? number_format($expSubtotals[$m], 2, '.', '') : '-';
-    $subCells[] = $expGrandTotal > 0 ? number_format($expGrandTotal, 2, '.', '') : '-';
     $xlsx->totalRow($subCells);
 
     // Net income
     $xlsx->blank();
     $netCells = ['Income over Expenses'];
-    $netGrandTotal = $revGrandTotal - $expGrandTotal;
     for ($m = 1; $m <= 12; $m++) {
         $net = ($revSubtotals[$m] ?? 0) - ($expSubtotals[$m] ?? 0);
         $netCells[] = $net != 0 ? number_format($net, 2, '.', '') : '-';
     }
-    $netCells[] = $netGrandTotal != 0 ? number_format($netGrandTotal, 2, '.', '') : '-';
     $xlsx->totalRow($netCells);
 
     $xlsx->footer('Generated by SalesHub — ' . date('Y-m-d H:i:s'));
-    $xlsx->columnWidths(array_merge([26], array_fill(0, 12, 10), [12]));
+    $xlsx->columnWidths(array_merge([26], array_fill(0, 12, 12)));
     $xlsx->output('Stella_PL_' . $YEAR . '.xlsx');
     exit;
 }
@@ -326,7 +331,7 @@ tr.pl-net td.td-label { background: #00BCD4 !important; color: #fff; }
 <div class="section-header">
   <div>
     <div class="section-title">Stella <span>Profit & Loss</span></div>
-    <div class="section-subtitle">MERITONI CORP · Expenses auto-pulled from Disbursement · Revenue is manually entered</div>
+    <div class="section-subtitle">MERITONI CORP · Expenses auto-pulled from Disbursement · every month is a running (year-to-date) total, same as the Excel · Revenue is entered per month</div>
   </div>
 </div>
 
@@ -351,14 +356,13 @@ tr.pl-net td.td-label { background: #00BCD4 !important; color: #fff; }
       <?php foreach ($MONTHS as $m): ?>
       <th><?= $m ?></th>
       <?php endforeach; ?>
-      <th class="th-total">TOTAL</th>
     </tr>
   </thead>
   <tbody>
 
     <!-- ── REVENUE ── -->
     <tr class="pl-section">
-      <td class="td-label" colspan="14">REVENUE</td>
+      <td class="td-label" colspan="13">REVENUE</td>
     </tr>
     <?php foreach ($REV_TYPES as $rk => $rl):
       $rowTotal = 0;
@@ -378,46 +382,39 @@ tr.pl-net td.td-label { background: #00BCD4 !important; color: #fff; }
                onfocus="this.select()">
       </td>
       <?php endfor; ?>
-      <td><span class="cell-total"><?= $rowTotal > 0 ? number_format($rowTotal,2) : '-' ?></span></td>
     </tr>
     <?php endforeach; ?>
 
     <!-- Revenue subtotal -->
     <tr class="pl-subtotal" id="rev-subtotal-row">
-      <td class="td-label">Subtotal</td>
+      <td class="td-label">Subtotal <span style="font-weight:400;font-size:.6rem;color:#8a94a6">(running total)</span></td>
       <?php
         $revSubtotals = [];
-        $revGrandTotal = 0;
+        $revRun = 0;
         for ($m = 1; $m <= 12; $m++) {
-            $s = 0;
-            foreach ($REV_TYPES as $rk => $rl) $s += $revenue[$m][$rk] ?? 0;
-            $revSubtotals[$m] = $s;
-            $revGrandTotal += $s;
-            echo '<td><span class="cell-total" id="rev-sub-' . $m . '">' . ($s > 0 ? number_format($s,2) : '-') . '</span></td>';
+            foreach ($REV_TYPES as $rk => $rl) $revRun += $revenue[$m][$rk] ?? 0;
+            $revSubtotals[$m] = $revRun;           // running total, like the Excel
+            echo '<td><span class="cell-total" id="rev-sub-' . $m . '">' . ($revRun > 0 ? number_format($revRun,2) : '-') . '</span></td>';
         }
       ?>
-      <td><span class="cell-total" id="rev-grand"><?= $revGrandTotal > 0 ? number_format($revGrandTotal,2) : '-' ?></span></td>
     </tr>
 
     <!-- spacer -->
-    <tr><td class="td-label" colspan="14" style="padding:4px;background:#f8f9fb;border:1px solid #eee"></td></tr>
+    <tr><td class="td-label" colspan="13" style="padding:4px;background:#f8f9fb;border:1px solid #eee"></td></tr>
 
     <!-- ── EXPENSES ── -->
     <tr class="pl-section">
-      <td class="td-label" colspan="14">EXPENSES</td>
+      <td class="td-label" colspan="13">EXPENSES</td>
     </tr>
 
     <?php
     $expSubtotals = array_fill(1, 12, 0);
-    $expGrandTotal = 0;
     foreach ($allExpTitles as $title):
-        $rowTotal = 0;
     ?>
     <tr>
       <td class="td-label"><?= htmlspecialchars($title) ?></td>
       <?php for ($m = 1; $m <= 12; $m++):
-        $val = $expenses[$title][$m] ?? 0;
-        $rowTotal += $val;
+        $val = $plCum[$title][$m] ?? 0;
         $expSubtotals[$m] += $val;
       ?>
       <td>
@@ -428,11 +425,8 @@ tr.pl-net td.td-label { background: #00BCD4 !important; color: #fff; }
         <?php endif; ?>
       </td>
       <?php endfor; ?>
-      <td><span class="cell-total"><?= $rowTotal > 0 ? number_format($rowTotal,2) : '-' ?></span></td>
     </tr>
-    <?php
-      $expGrandTotal += $rowTotal;
-    endforeach; ?>
+    <?php endforeach; ?>
 
     <!-- Expense subtotal -->
     <tr class="pl-subtotal">
@@ -440,11 +434,10 @@ tr.pl-net td.td-label { background: #00BCD4 !important; color: #fff; }
       <?php for ($m = 1; $m <= 12; $m++): ?>
       <td><span class="cell-total"><?= $expSubtotals[$m] > 0 ? number_format($expSubtotals[$m],2) : '-' ?></span></td>
       <?php endfor; ?>
-      <td><span class="cell-total"><?= $expGrandTotal > 0 ? number_format($expGrandTotal,2) : '-' ?></span></td>
     </tr>
 
     <!-- spacer -->
-    <tr><td class="td-label" colspan="14" style="padding:4px;background:#f8f9fb;border:1px solid #eee"></td></tr>
+    <tr><td class="td-label" colspan="13" style="padding:4px;background:#f8f9fb;border:1px solid #eee"></td></tr>
 
     <!-- ── INCOME OVER EXPENSES ── -->
     <tr class="pl-net" id="net-row">
@@ -454,14 +447,10 @@ tr.pl-net td.td-label { background: #00BCD4 !important; color: #fff; }
       ?>
       <td id="net-<?= $m ?>">
         <span class="cell-net-val <?= $net < 0 ? 'cell-neg' : '' ?>">
-          <?= $net != 0 ? '(' . number_format(abs($net),2) . ')' . ($net < 0 ? '' : '') : '-' ?>
+          <?= $net != 0 ? ($net < 0 ? '(' . number_format(abs($net),2) . ')' : number_format($net,2)) : '-' ?>
         </span>
       </td>
       <?php endfor; ?>
-      <?php $netTotal = $revGrandTotal - $expGrandTotal; ?>
-      <td><span class="cell-net-val <?= $netTotal < 0 ? 'cell-neg' : '' ?>">
-        <?= $netTotal != 0 ? number_format(abs($netTotal),2) : '-' ?>
-      </span></td>
     </tr>
 
   </tbody>
@@ -499,40 +488,24 @@ function recalc() {
     const revTypes = <?= json_encode(array_keys($REV_TYPES)) ?>;
     const expSubs  = <?= json_encode(array_values($expSubtotals)) ?>; // 12 values
 
-    let revGrand = 0;
+    let run = 0;
     for (let m = 1; m <= 12; m++) {
-        let revSum = 0;
         revTypes.forEach(rt => {
             const inp = document.querySelector(`input[data-month="${m}"][data-rev="${rt}"]`);
-            if (inp) revSum += parseFloat(inp.value.replace(/,/g,'')) || 0;
+            if (inp) run += parseFloat(inp.value.replace(/,/g,'')) || 0;
         });
-        // Update revenue subtotal cell
+        // revenue subtotal = running total
         const subCell = document.getElementById('rev-sub-' + m);
-        if (subCell) subCell.textContent = revSum > 0 ? fmt(revSum) : '-';
-        revGrand += revSum;
+        if (subCell) subCell.textContent = run > 0 ? fmt(run) : '-';
 
-        // Update net row
-        const expSum = expSubs[m-1] || 0;
-        const net = revSum - expSum;
+        const net = run - (expSubs[m-1] || 0);
         const netCell = document.getElementById('net-' + m);
         if (netCell) {
             const span = netCell.querySelector('span');
-            span.textContent = net !== 0 ? '(' + fmt(Math.abs(net)) + ')' : '-';
+            span.textContent = net !== 0 ? (net < 0 ? '(' + fmt(Math.abs(net)) + ')' : fmt(net)) : '-';
             span.className = 'cell-net-val' + (net < 0 ? ' cell-neg' : '');
         }
-
-        // Update row totals
-        revTypes.forEach(rt => {
-            const row = document.querySelector(`tr[data-rev="${rt}"]`);
-            if (!row) return;
-            let t = 0;
-            row.querySelectorAll('input.rev-inp').forEach(i => t += parseFloat(i.value.replace(/,/g,''))||0);
-            const lastTd = row.querySelector('td:last-child span');
-            if (lastTd) lastTd.textContent = t > 0 ? fmt(t) : '-';
-        });
     }
-    const grandCell = document.getElementById('rev-grand');
-    if (grandCell) grandCell.textContent = revGrand > 0 ? fmt(revGrand) : '-';
 }
 
 function fmt(n) {

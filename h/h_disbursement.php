@@ -292,9 +292,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
     if ($monthVotes) { arsort($monthVotes); $ym = array_key_first($monthVotes); $fallbackDate = date('Y-m-t', strtotime($ym . '-01')); }
     elseif (!empty($_POST['month']) && preg_match('/^\d{4}-\d{2}$/', $_POST['month'])) { $fallbackDate = date('Y-m-t', strtotime($_POST['month'] . '-01')); }
 
+    // The Excel sheet is the month. A few rows inside it can carry a date from the neighbouring month
+    // (e.g. an invoice dated Sep 8 listed in the October sheet). Excel counts them in the sheet's month,
+    // so keep them in that month here too (their own date is added to the PARTICULAR text).
+    $mainYm = null; $movedStray = 0;
+    if ($monthVotes) {
+        $totVotes = array_sum($monthVotes);
+        $topYm = array_key_first($monthVotes);
+        if ($totVotes >= 5 && $monthVotes[$topYm] / $totVotes >= 0.8) $mainYm = $topYm;
+    }
     foreach ($parsed as $pi => $r) {
         $seq = (int)$pi + 1;                      // row position in the Excel sheet
         $date  = $parseDate($r[0]);
+        $strayNote = '';
         $tin   = trim((string)$r[1]);
         $name  = trim((string)$r[2]);
         $type  = strtoupper(trim((string)$r[3]));
@@ -307,6 +317,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
         if (!$date) {
             if (!$fallbackDate) { $skipped++; continue; }
             $date = $fallbackDate; $undated++;
+        } elseif ($mainYm !== null && substr($date, 0, 7) !== $mainYm) {
+            $strayNote = ' [dated ' . $date . ']';
+            $date = ($date < $mainYm . '-01') ? $mainYm . '-01' : date('Y-m-t', strtotime($mainYm . '-01'));
+            $part = trim($part . $strayNote); $movedStray++;
         }
         $k = $normT($title);
         if (isset($titleMap[$k])) $title = $titleMap[$k]; else $unknownTitles[$title] = true;
@@ -340,7 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import'])) {
         } catch (Throwable $e) { $skipped++; }
     }
     hSyncCogsPurchases($pdo, null);
-    echo json_encode(['ok' => true, 'added' => $added, 'duplicates' => $dups, 'skipped' => $skipped, 'undated' => $undated, 'fallback_date' => $fallbackDate,
+    echo json_encode(['ok' => true, 'added' => $added, 'duplicates' => $dups, 'skipped' => $skipped, 'undated' => $undated, 'moved' => $movedStray, 'fallback_date' => $fallbackDate,
         'unposted' => $unposted, 'unknown_titles' => array_keys($unknownTitles), 'gross' => round($grossSum, 2)]);
     exit;
 }
@@ -1258,6 +1272,7 @@ async function confirmAndImport(full) {
         let m = '✓ Imported ' + out.added + ' entries';
         if (out.duplicates) m += ' · ' + out.duplicates + ' already existed (skipped)';
         if (out.undated)    m += ' · ' + out.undated + ' had no date, so they were dated ' + out.fallback_date;
+        if (out.moved)      m += ' · ' + out.moved + ' dated in another month were kept in this sheet\'s month (like Excel)';
         if (out.unposted)   m += ' · ' + out.unposted + ' not posted to Expenses (no Expenses column on their title)';
         showToast(m, out.unposted ? 'error' : 'success');
         setTimeout(() => location.reload(), 1600);
