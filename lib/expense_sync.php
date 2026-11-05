@@ -298,7 +298,8 @@ function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, str
             $n = count($rows);
             for ($i = 0; $i < $n; $i++) {
                 $lower = $i === 0 ? date('Y-m-d', strtotime($monthStart . ' -1 day')) : $rows[$i - 1]['cogs_date'];
-                $upper = $i === $n - 1 ? $monthEnd : $rows[$i]['cogs_date'];
+                // the last row takes the rest of the month — unless it is only a mid-month (15th or earlier) row
+                $upper = ($i === $n - 1 && (int)date('j', strtotime($rows[$i]['cogs_date'])) > 15) ? $monthEnd : $rows[$i]['cogs_date'];
                 $w = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM `$expTable` WHERE expense_date > ? AND expense_date <= ?");
                 $w->execute([$lower, $upper]);
                 $purc = round((float)$w->fetchColumn(), 2);

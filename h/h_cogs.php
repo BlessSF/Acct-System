@@ -46,8 +46,6 @@ try {
         else                       $pdo->exec("ALTER TABLE `h_cogs` ADD PRIMARY KEY (`id`), MODIFY `id` int(11) NOT NULL AUTO_INCREMENT");
     }
 } catch (Throwable $e) {}
-// Mid-month inventory (typed by hand, for reference — it does not change COS)
-try { if (!$pdo->query("SHOW COLUMNS FROM `h_cogs` LIKE 'mid_inv'")->fetch()) $pdo->exec("ALTER TABLE `h_cogs` ADD COLUMN `mid_inv` decimal(12,2) NOT NULL DEFAULT 0.00"); } catch (Throwable $e) {}
 
 // ── PURC. comes from Disbursement ("Purchases - Non-Vat" / "Purchases - Vatable" → H Expenses Purchases) ──
 $__es = __DIR__ . '/../lib/expense_sync.php';
@@ -78,7 +76,7 @@ function cogsMeiTotal(PDO $pdo, int $y, int $m): float {
     $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM h_month_end_inv WHERE store_name='H' AND inv_year=? AND inv_month=?");
     $q->execute([$y, $m]); return (float)$q->fetchColumn();
 }
-// Mid-month Month End Inventory = the last inventory day saved from the 1st to the 15th of that month.
+// Month End Inventory counted on or before the 15th (mid-month) of a month
 function cogsMidTotal(PDO $pdo, int $y, int $m): float {
     $a = sprintf('%04d-%02d-01', $y, $m); $b = sprintf('%04d-%02d-15', $y, $m);
     $q = $pdo->prepare("SELECT MAX(inv_date) FROM h_month_end_inv WHERE store_name='H' AND inv_date BETWEEN ? AND ?");
@@ -106,32 +104,26 @@ function cogsSuggest(PDO $pdo, string $date): array {
     $w = $pdo->prepare("SELECT COALESCE(SUM(purchases),0) FROM h_expenses WHERE expense_date > ? AND expense_date <= ?");
     $w->execute([$lower, $date]); $purc = round((float)$w->fetchColumn(), 2);
     $end = 0.0;
-    if ($date === date('Y-m-t', strtotime($ms))) {      // month-end row → suggest the Month End Inventory total
+    if ($date === date('Y-m-t', strtotime($ms))) {      // end-of-month row → Month End Inventory counted on the last day
         $end = cogsMeiTotal($pdo, $y, $m);
+    } elseif ((int)date('j', strtotime($date)) <= 15) { // mid-month row → Month End Inventory counted on/before the 15th
+        $end = cogsMidTotal($pdo, $y, $m);
     }
-    $mid = ($date === date('Y-m-t', strtotime($ms))) ? cogsMidTotal($pdo, $y, $m) : 0.0;
-    return ['beg' => round($beg, 2), 'purc' => $purc, 'end_inv' => round($end, 2), 'mid_inv' => round($mid, 2)];
+    return ['beg' => round($beg, 2), 'purc' => $purc, 'end_inv' => round($end, 2)];
 }
-// One BEG. and one END. per month: older rows (15th / last day / accidental duplicates) are folded into one month row.
+// Two rows per month at most: Mid (15th) and End of month. Accidental duplicates of the same slot are folded into one.
 function cogsMergeMonth(PDO $pdo, int $y, int $m): void {
-    $q = $pdo->prepare("SELECT * FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date, id");
+    $q = $pdo->prepare("SELECT id, cogs_date FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date, id");
     $q->execute([$y, $m]);
-    $rows = $q->fetchAll(PDO::FETCH_ASSOC);
-    if (count($rows) < 2) return;
-    $byDate = [];                                   // last saved row of each date wins
-    foreach ($rows as $r) $byDate[$r['cogs_date']] = $r;
-    $list = array_values($byDate);
-    $first = $list[0]; $last = $list[count($list) - 1];
-    $mktg = 0.0; foreach ($list as $r) $mktg += (float)$r['mktg_cost'];
+    $slots = ['mid' => [], 'end' => []];
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $slots[((int)date('j', strtotime($r['cogs_date'])) <= 15) ? 'mid' : 'end'][] = (int)$r['id'];
     $monthEnd = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $y, $m)));
-    $pdo->beginTransaction();
-    try {
-        $keep = (int)$last['id'];
-        $pdo->prepare("UPDATE h_cogs SET cogs_date=?, beg=?, end_inv=?, mktg_cost=? WHERE id=?")
-            ->execute([$monthEnd, (float)$first['beg'], (float)$last['end_inv'], round($mktg, 2), $keep]);
-        $pdo->prepare("DELETE FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? AND id<>?")->execute([$y, $m, $keep]);
-        $pdo->commit();
-    } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); }
+    foreach (['mid' => sprintf('%04d-%02d-15', $y, $m), 'end' => $monthEnd] as $k => $date) {
+        if (!$slots[$k]) continue;
+        $keep = end($slots[$k]);
+        $pdo->prepare("UPDATE h_cogs SET cogs_date=? WHERE id=?")->execute([$date, $keep]);
+        foreach ($slots[$k] as $id) if ($id !== $keep) $pdo->prepare("DELETE FROM h_cogs WHERE id=? AND store_name='H'")->execute([$id]);
+    }
 }
 function cogsMonthState(PDO $pdo, int $y, int $m): array {
     $q = $pdo->prepare("SELECT id, cogs_date, purc, cos FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date, id");
@@ -169,27 +161,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $purc  = (float)($_POST['purc']      ?? 0);
         $end   = (float)($_POST['end_inv']   ?? 0);
         $mktg  = (float)($_POST['mktg_cost'] ?? 0);
-        $mid   = (float)($_POST['mid_inv']   ?? 0);
         $cos   = $beg + $purc - $mktg - $end;   // COS = BEG + PURC - MKTG COST - END
 
-        $date = date('Y-m-t', strtotime($date));            // one row per month, dated the last day
+        // two slots per month: Mid = the 15th, End = last day of the month
+        $date = ((int)date('j', strtotime($date)) <= 15) ? date('Y-m-15', strtotime($date)) : date('Y-m-t', strtotime($date));
         $yr  = (int)date('Y', strtotime($date));
         $mo  = (int)date('n', strtotime($date));
 
         $rowId = (int)($_POST['row_id'] ?? 0);
-        // only ONE row per month: a "new" row for a month that already has one updates that row instead
-        $ex = $pdo->prepare("SELECT id FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=? ORDER BY id DESC LIMIT 1");
-        $ex->execute([$yr, $mo]);
+        // only ONE row per date (15th / month end): saving a date that already has a row updates that row
+        $ex = $pdo->prepare("SELECT id FROM h_cogs WHERE store_name='H' AND cogs_date=? ORDER BY id DESC LIMIT 1");
+        $ex->execute([$date]);
         $existing = (int)$ex->fetchColumn();
         if ($existing > 0) $rowId = $existing;
         if ($rowId > 0) {
-            $pdo->prepare("UPDATE h_cogs SET cogs_date=?, cogs_year=?, cogs_month=?, beg=?, purc=?, end_inv=?, cos=?, mktg_cost=?, mid_inv=?, saved_by=? WHERE id=? AND store_name='H'")
-                ->execute([$date,$yr,$mo,$beg,$purc,$end,$cos,$mktg,$mid,$user['name'],$rowId]);
+            $pdo->prepare("UPDATE h_cogs SET cogs_date=?, cogs_year=?, cogs_month=?, beg=?, purc=?, end_inv=?, cos=?, mktg_cost=?, saved_by=? WHERE id=? AND store_name='H'")
+                ->execute([$date,$yr,$mo,$beg,$purc,$end,$cos,$mktg,$user['name'],$rowId]);
             $outId = $rowId;
         } else {
-            $sql = "INSERT INTO h_cogs (cogs_date, cogs_year, cogs_month, store_name, beg, purc, end_inv, cos, mktg_cost, mid_inv, saved_by) VALUES (?,?,?,'H',?,?,?,?,?,?,?)";
+            $sql = "INSERT INTO h_cogs (cogs_date, cogs_year, cogs_month, store_name, beg, purc, end_inv, cos, mktg_cost, saved_by) VALUES (?,?,?,'H',?,?,?,?,?,?)";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$date,$yr,$mo,$beg,$purc,$end,$cos,$mktg,$mid,$user['name']]);
+            $stmt->execute([$date,$yr,$mo,$beg,$purc,$end,$cos,$mktg,$user['name']]);
             $outId = (int)$pdo->lastInsertId();
         }
         // re-split PURC. between the rows of the month (15th / last day) and refresh COS
@@ -234,7 +226,7 @@ if (isset($_GET['export_csv'])) {
     $xlsx->title('H Branch — COGS');
     $xlsx->subtitle(date('F Y', mktime(0,0,0,$fMonth,1,$fYear)));
     $xlsx->blank();
-    $xlsx->header(['DATE','BEG.','PURC.','END.','COS','MKTG COST','MID INV.']);
+    $xlsx->header(['DATE','BEG.','PURC.','END.','COS','MKTG COST']);
     foreach ($data as $r) {
         $xlsx->row([
             date('M d, Y', strtotime($r['cogs_date'])),
@@ -243,20 +235,18 @@ if (isset($_GET['export_csv'])) {
             number_format($r['end_inv'],2,'.',''),
             number_format($r['cos'],2,'.',''),
             number_format($r['mktg_cost'],2,'.',''),
-            number_format((float)($r['mid_inv'] ?? 0),2,'.',''),
         ]);
     }
-    $xlsx->totalRow(['TOTAL', number_format($t['beg'],2,'.',''), number_format($t['purc'],2,'.',''), number_format($t['end_inv'],2,'.',''), number_format($t['cos'],2,'.',''), number_format($t['mktg_cost'],2,'.',''), number_format($data ? (float)end($data)['mid_inv'] : 0,2,'.','')]);
+    $xlsx->totalRow(['TOTAL', number_format($t['beg'],2,'.',''), number_format($t['purc'],2,'.',''), number_format($t['end_inv'],2,'.',''), number_format($t['cos'],2,'.',''), number_format($t['mktg_cost'],2,'.','')]);
     $xlsx->blank();
     $xlsx->footer('Generated by SalesHub — ' . date('Y-m-d H:i:s'));
-    $xlsx->columnWidths([16,12,12,12,12,14,14]);
+    $xlsx->columnWidths([16,12,12,12,12,14]);
     $xlsx->output('h_cogs_'.date('Y_m',mktime(0,0,0,$fMonth,1,$fYear)).'.xlsx');
 }
 
 // ── Fetch Month End Inv grand total for selected month ─────
 // Month End Inventory total = the last inventory day saved in the selected month
 $meiTotal = cogsMeiTotal($pdo, (int)$fYear, (int)$fMonth);
-$midMei   = cogsMidTotal($pdo, (int)$fYear, (int)$fMonth);
 
 // ── Materials Purchases (Consumables/CGS) grand total for selected month ─
 // Pulled live from the H Expenses ledger's Purchases total — auto-suggests
@@ -298,7 +288,6 @@ $rows = $stmt->fetchAll();
 $totStmt = $pdo->prepare("SELECT COALESCE(SUM(beg),0) beg, COALESCE(SUM(purc),0) purc, COALESCE(SUM(end_inv),0) end_inv, COALESCE(SUM(cos),0) cos, COALESCE(SUM(mktg_cost),0) mktg_cost FROM h_cogs WHERE store_name='H' AND cogs_year=? AND cogs_month=?");
 $totStmt->execute([$fYear,$fMonth]);
 $totals = $totStmt->fetch();
-$totals['mid_inv'] = (float)($rows ? end($rows)['mid_inv'] ?? 0 : 0);
 // rows chain (BEG of the next row = END of the previous), so BEG = first row's BEG and END = last row's END
 if ($rows) { $totals['beg'] = (float)$rows[0]['beg']; $totals['end_inv'] = (float)end($rows)['end_inv']; }
 
@@ -461,7 +450,7 @@ include '../layout.php';
   <div class="cogs-header-left">
     <div class="eyebrow">H Branch · COGS</div>
     <div class="title">Cost of Goods Sold</div>
-    <div class="subtitle">BEG auto-suggests from prior month's END · END auto-suggests from Month End Inventory (editable) · COS = BEG + PURC − MKTG COST − END · one BEG. and one END. per month · auto-saves</div>
+    <div class="subtitle">BEG auto-suggests from prior month's END · END auto-suggests from Month End Inventory (editable) · COS = BEG + PURC − MKTG COST − END · Mid (15th) and End of Month rows · auto-saves</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 12px;border-radius:20px;
@@ -509,7 +498,8 @@ include '../layout.php';
       <?php endfor; ?>
     </select>
   </form>
-  <button class="btn btn-primary addMonthBtn" onclick="addRow()" style="<?= $rows ? 'display:none' : '' ?>">+ Add <?= $months[$fMonth-1] ?> COGS</button>
+  <button class="btn btn-primary addBtn" data-kind="15" onclick="addRow('15')">🗓️ + Mid COGS · <?= substr($months[$fMonth-1],0,3) ?> 15</button>
+  <button class="btn btn-primary addBtn" data-kind="last" onclick="addRow('last')">📦 + End of Month COGS · <?= substr($months[$fMonth-1],0,3) ?> <?= date('t', mktime(0,0,0,$fMonth,1,$fYear)) ?></button>
   <a href="h_cogs.php?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>" class="btn btn-ghost">⬇ Download Excel</a>
 </div>
 
@@ -560,23 +550,6 @@ include '../layout.php';
   </span>
 </div>
 
-<!-- MID Auto-suggest Notice -->
-<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:10px 16px;
-            margin-bottom:12px;display:flex;align-items:center;gap:10px;
-            font-family:var(--font-m);font-size:.72rem;color:#0f766e">
-  <span style="font-size:1rem">🗓️</span>
-  <span>
-    <strong>MID. Inventory</strong> is auto-suggested from the
-    <strong>Month End Inventory</strong> counted on or before the 15th of
-    <?= $months[$fMonth-1] . ' ' . $fYear ?>:
-    <strong><?= number_format($midMei,2) ?></strong>
-    <?php if ($midMei == 0): ?>
-      <span style="color:#dc3545"> — No mid-month inventory found (save a Month End Inventory dated the 15th or earlier).</span>
-    <?php endif; ?>
-    — you can still edit it.
-  </span>
-</div>
-
 <!-- BEG Auto-suggest Notice -->
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 16px;
             margin-bottom:12px;display:flex;align-items:center;gap:10px;
@@ -622,7 +595,6 @@ include '../layout.php';
         <th class="col-num" title="Auto-suggested from Month End Inventory — editable">END. <span style="font-size:.5rem;background:rgba(255,200,0,.2);padding:1px 5px;border-radius:8px;color:#fbbf24">SUGGESTED</span></th>
         <th class="col-num col-cos">COS</th>
         <th class="col-num" style="background:#78350f">MKTG COST</th>
-        <th class="col-num" style="background:#0f766e" title="Type the mid-month (15th) inventory here — for reference, it does not change COS">MID INV. <span style="font-size:.5rem;background:rgba(255,255,255,.2);padding:1px 5px;border-radius:8px;margin-left:3px">TYPE</span></th>
         <th class="col-act">Action</th>
       </tr>
     </thead>
@@ -632,7 +604,7 @@ include '../layout.php';
         <tr data-id="<?= $r['id'] ?>">
           <td class="td-date">
             <input type="date" class="date-input" value="<?= htmlspecialchars($r['cogs_date']) ?>"
-                   readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
+                   readonly tabindex="-1" title="15th = Mid COGS · last day = End of Month COGS" style="pointer-events:none;opacity:.85">
           </td>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input" value="<?= number_format((float)$r['beg'],2) ?>"
                      placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
@@ -648,8 +620,6 @@ include '../layout.php';
                      readonly tabindex="-1"></td>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="<?= number_format((float)$r['mktg_cost'],2) ?>"
                      placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
-          <td title="Auto-suggested from Month End Inventory (on/before the 15th) — editable. Does not change COS"><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mid-field" value="<?= number_format((float)($r['mid_inv'] ?? 0),2) ?>"
-                     placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#f0fdfa;color:#0f766e;font-weight:700"></td>
           <td style="padding:6px 8px;text-align:center">
             <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
               <button class="btn-del-row"  onclick="deleteRow(this)">✕</button>
@@ -660,9 +630,9 @@ include '../layout.php';
         <?php endforeach; ?>
       <?php else: ?>
       <tr id="emptyRow">
-        <td colspan="8" style="text-align:center;padding:48px;color:var(--muted);
+        <td colspan="7" style="text-align:center;padding:48px;color:var(--muted);
                                 font-family:var(--font-m);font-size:.78rem">
-          No COGS entries for <?= $months[$fMonth-1] ?> <?= $fYear ?> — click <strong>+ Add <?= $months[$fMonth-1] ?> COGS</strong>
+          No COGS entries for <?= $months[$fMonth-1] ?> <?= $fYear ?> — click <strong>+ Mid COGS</strong> or <strong>+ End of Month COGS</strong>
         </td>
       </tr>
       <?php endif; ?>
@@ -675,7 +645,6 @@ include '../layout.php';
         <td id="foot_end"><?= number_format($totals['end_inv'],2) ?></td>
         <td class="cos-tot" id="foot_cos"><?= number_format($totals['cos'],2) ?></td>
         <td class="mktg-tot" id="foot_mktg"><?= number_format($totals['mktg_cost'],2) ?></td>
-        <td id="foot_mid"><?= number_format((float)($totals['mid_inv'] ?? 0),2) ?></td>
         <td></td>
       </tr>
     </tfoot>
@@ -683,8 +652,7 @@ include '../layout.php';
 </div>
 
 <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-  <button class="btn btn-primary addMonthBtn" onclick="addRow()" style="<?= $rows ? 'display:none' : '' ?>">+ Add <?= $months[$fMonth-1] ?> COGS</button>
-  <span style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)">One BEG. and one END. per month · changes save automatically · PURC. = this month's purchases from the Disbursement</span>
+  <span style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)">Mid COGS (15th) and End of Month COGS · changes save automatically · PURC. = this month's purchases from the Disbursement</span>
 </div>
 
   </div></div>
@@ -693,7 +661,6 @@ include '../layout.php';
 const CURR_MONTH = <?= $fMonth ?>;
 const CURR_YEAR  = <?= $fYear ?>;
 // Grand total from Month End Inventory for this month — auto-fills END. column
-const MID_MEI    = <?= $midMei ?>;
 const MEI_TOTAL  = <?= $meiTotal ?>;
 // Previous month's Ending Inventory — auto-suggests BEG. on a new row
 const PREV_END_INV = <?= $prevEndInv ?>;
@@ -710,14 +677,13 @@ function dateFor(kind) {
 
 const ROW_HTML = (d) => `
     <td class="td-date">
-      <input type="date" class="date-input" value="${d}" readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
+      <input type="date" class="date-input" value="${d}" readonly tabindex="-1" title="15th = Mid COGS · last day = End of Month COGS" style="pointer-events:none;opacity:.85">
     </td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
-    <td title="Auto-suggested from Month End Inventory (on/before the 15th) — editable. Does not change COS"><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mid-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#f0fdfa;color:#0f766e;font-weight:700"></td>
     <td style="padding:6px 8px;text-align:center">
       <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
         <button class="btn-del-row" onclick="deleteRow(this)">✕</button>
@@ -736,9 +702,7 @@ async function fillSuggestion(tr) {
     ins[0].dataset.auto = ins[0].value ? '1' : '';
     ins[2].value = j.end_inv ? fmtN(j.end_inv) : '';
     ins[2].dataset.auto = ins[2].value ? '1' : '';
-    if (ins[5]) { ins[5].value = j.mid_inv ? fmtN(j.mid_inv) : ''; ins[5].dataset.auto = ins[5].value ? '1' : ''; }
     calcCos(ins[0]);
-    if (j.mid_inv > 0 && ins[5]) changed(ins[5]);
     if (j.end_inv > 0) changed(ins[2]);          // month-end row with an inventory total → save straight away
   } catch (e) {}
 }
@@ -751,19 +715,21 @@ function autoKey(el, ev) {
   }
 }
 function syncAddBtn() {
-  const has = !!document.querySelector('#cogsBody tr[data-id]');
-  document.querySelectorAll('.addMonthBtn').forEach(b => b.style.display = has ? 'none' : '');
+  const have = d => !!Array.from(document.querySelectorAll('#cogsBody tr[data-id] .date-input')).find(i => i.value === d);
+  document.querySelectorAll('.addBtn').forEach(b => b.style.display = have(dateFor(b.dataset.kind)) ? 'none' : '');
 }
-// one BEG. and one END. per month → a single row dated the last day of the month
-function addRow() {
-  if (document.querySelector('#cogsBody tr[data-id]')) { syncAddBtn(); return; }
+// Mid COGS = the 15th, End of Month COGS = the last day. Each can be added once per month.
+function addRow(kind) {
+  const d = dateFor(kind === '15' ? '15' : 'last');
+  const rowsNow = Array.from(document.querySelectorAll('#cogsBody tr[data-id]'));
+  if (rowsNow.find(r => r.querySelector('.date-input').value === d)) { syncAddBtn(); return; }
   const empty = document.getElementById('emptyRow');
   if (empty) empty.remove();
-  const d = dateFor('last');
   const tr = document.createElement('tr');
   tr.dataset.id = '0';
   tr.innerHTML = ROW_HTML(d);
-  document.getElementById('cogsBody').appendChild(tr);
+  const after = rowsNow.find(r => r.querySelector('.date-input').value > d);   // keep date order: Mid above End of Month
+  document.getElementById('cogsBody').insertBefore(tr, after || null);
   fillSuggestion(tr);
   syncAddBtn();
   tr.querySelector('.beg-auto-field').focus();
@@ -798,6 +764,12 @@ function changed(el) {
   const tr = el.closest('tr');
   commaLive(el);
   calcCos(el);
+  // Mid END. = End of Month BEG.
+  if (el.classList.contains('end-auto-field')) {
+    const nx = tr.nextElementSibling;
+    const nb = nx && nx.dataset && nx.dataset.id !== undefined ? nx.querySelector('.beg-auto-field') : null;
+    if (nb && numOf(nb.value) !== numOf(el.value)) { nb.value = el.value; nb.dataset.auto = '1'; changed(nb); }
+  }
   setStatus(tr, 'typing…', 'var(--subtext)');
   clearTimeout(tr._t);
   tr._t = setTimeout(() => { tr._t = null; saveRow(tr); }, 600);
@@ -812,7 +784,7 @@ function getRowData(tr) {
   const ins = tr.querySelectorAll('.cogs-input');
   return {
     cogs_date: tr.querySelector('.date-input').value,
-    beg: gv(ins[0]), purc: gv(ins[1]), end_inv: gv(ins[2]), cos: gv(ins[3]), mktg_cost: gv(ins[4]), mid_inv: ins[5] ? gv(ins[5]) : 0,
+    beg: gv(ins[0]), purc: gv(ins[1]), end_inv: gv(ins[2]), cos: gv(ins[3]), mktg_cost: gv(ins[4]),
   };
 }
 
@@ -882,7 +854,7 @@ async function deleteRow(btn) {
   tr.remove();
   if (!document.querySelector('#cogsBody tr')) {
     const tbody = document.getElementById('cogsBody');
-    tbody.innerHTML = `<tr id="emptyRow"><td colspan="8" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entry — click <strong>+ Add COGS</strong></td></tr>`;
+    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entry — click <strong>+ Mid COGS</strong> or <strong>+ End of Month COGS</strong></td></tr>`;
   }
   refreshFooter();
   updateKPIs();
@@ -909,8 +881,6 @@ function refreshFooter() {
   document.getElementById('foot_end').textContent  = fmtC(t.end);
   document.getElementById('foot_cos').textContent  = fmtC(t.cos);
   document.getElementById('foot_mktg').textContent = fmtC(t.mktg);
-  const fm = document.getElementById('foot_mid'), mi = document.querySelector('#cogsBody .mid-field');
-  if (fm) fm.textContent = fmtC(mi ? numOf(mi.value) : 0);
 }
 
 // Recalculate COS for all existing rows using the correct formula
@@ -923,12 +893,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const mktg = numOf(inputs[4]?.value);
     if (inputs[3]) inputs[3].value = fmtN(beg + purc - end - mktg);
   });
-  // a saved month row whose MID. is still empty gets the Month End Inventory mid-month count
-  if (MID_MEI > 0) document.querySelectorAll('#cogsBody tr[data-id] .mid-field').forEach(m => {
-    if (numOf(m.value) === 0) { m.value = fmtN(MID_MEI); m.dataset.auto = '1'; changed(m); }
-  });
   refreshFooter();
   updateKPIs();
+  syncAddBtn();
 });
 
 function updateKPIs() {
