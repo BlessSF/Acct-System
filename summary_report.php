@@ -65,9 +65,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_quota'])) {
         try {
             $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS quota_target decimal(12,2) NOT NULL DEFAULT 0.00");
         } catch(Throwable $ignored) {}
-        $pdo->prepare("INSERT INTO summary_reports (report_month,store_name,quota_target,created_by)
-            VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE quota_target=VALUES(quota_target), created_by=VALUES(created_by)")
-            ->execute([$month.'-01', $store, $quota, currentUser()['name']]);
+        // ONE row per store + month. The table has no unique key, so every save used to add
+        // ANOTHER row. Update the existing row in place and remove any leftover copies.
+        $mDate = $month.'-01';
+        $cnt = $pdo->prepare("SELECT COUNT(*) FROM summary_reports WHERE store_name=? AND report_month=?");
+        $cnt->execute([$store, $mDate]);
+        $have = (int)$cnt->fetchColumn();
+        if ($have > 0) {
+            $pdo->prepare("UPDATE summary_reports SET quota_target=?, created_by=? WHERE store_name=? AND report_month=?")
+                ->execute([$quota, currentUser()['name'], $store, $mDate]);
+            if ($have > 1) {
+                $pdo->exec("DELETE FROM summary_reports WHERE store_name=" . $pdo->quote($store) . " AND report_month=" . $pdo->quote($mDate) . " LIMIT " . ($have - 1));
+            }
+        } else {
+            $pdo->prepare("INSERT INTO summary_reports (report_month,store_name,quota_target,created_by) VALUES (?,?,?,?)")
+                ->execute([$mDate, $store, $quota, currentUser()['name']]);
+        }
         echo json_encode(['ok'=>true]);
     } catch(Throwable $e){ echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
     exit;
@@ -260,12 +273,32 @@ $SALES_MAP = [
 // but a manually-saved value always takes priority.
 $NEVER_LOCK = ['cancelled_transaction'];
 
+// Live sync: the page asks for the Sales Report figures every few seconds so edits made there
+// show up here without pressing anything.
+if (isset($_GET['ajax_sync'])) {
+    header('Content-Type: application/json'); header('Cache-Control: no-store');
+    $out = [];
+    foreach ($salesRows as $d => $srr) {
+        $o = [];
+        foreach ($SALES_MAP as $k => $src) $o[$k] = round((float)($srr[$src] ?? 0), 2);
+        $out[$d] = $o;
+    }
+    echo json_encode(['ok' => true, 'rows' => $out]);
+    exit;
+}
+
 // ── Load saved quota for this store/month ────────────────
 try {
     $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS quota_target decimal(12,2) NOT NULL DEFAULT 0.00");
 } catch(Throwable $ignored) {}
 try {
-    $quotaRow = $pdo->prepare("SELECT quota_target FROM summary_reports WHERE store_name=? AND YEAR(report_month)=? AND MONTH(report_month)=? LIMIT 1");
+    // remove old duplicate copies for this store/month (keep the newest one)
+    try {
+        $pdo->prepare("DELETE a FROM summary_reports a JOIN summary_reports b
+            ON a.store_name=b.store_name AND a.report_month=b.report_month AND a.id<b.id
+            WHERE a.store_name=? AND YEAR(a.report_month)=? AND MONTH(a.report_month)=?")->execute([$fStore, $fYear, $fMonth]);
+    } catch(Throwable $ignored) {}
+    $quotaRow = $pdo->prepare("SELECT quota_target FROM summary_reports WHERE store_name=? AND YEAR(report_month)=? AND MONTH(report_month)=? ORDER BY id DESC LIMIT 1");
     $quotaRow->execute([$fStore, $fYear, $fMonth]);
     $savedQuota = (float)($quotaRow->fetchColumn() ?: 0);
 } catch(Throwable $e) { $savedQuota = 0; }
@@ -633,11 +666,11 @@ include 'layout.php';
           value="<?= $savedQuota > 0 ? number_format($savedQuota,2,'.','') : '' ?>"
           placeholder="0.00"
           style="background:#fff;border:1px solid #d1d5db;border-radius:7px;color:#1a1d23;font-family:var(--font-m);font-size:.9rem;font-weight:700;padding:6px 10px;width:100%;outline:none;transition:border-color .15s"
-          oninput="recalcSummary()"
+          oninput="recalcSummary();queueQuotaSave()"
           onfocus="this.style.borderColor='#0f7b5c';this.style.boxShadow='0 0 0 3px rgba(15,123,92,.1)'"
           onblur="this.style.borderColor='#d1d5db';this.style.boxShadow='none';saveQuota()">
       </div>
-      <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Input target amount</div>
+      <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px" id="quotaHint">Input target amount · saves automatically</div>
     </div>
 
     <!-- SALES PERCENTAGE -->
@@ -671,17 +704,37 @@ include 'layout.php';
 const STORE = <?=json_encode($fStore)?>;
 const COLS  = <?=json_encode(array_map(fn($c)=>['key'=>$c[0],'grp'=>$c[2],'comp'=>$c[3]],$COLS))?>;
 
-// ── Mark dirty ────────────────────────────────────────────
+// ── Mark dirty + auto-save (debounced per row) ───────────
+const saveTimers = {};
+const AUTOCOLS = ['total_inclusive_sc','store_gross','total_deductions','short_over','total_swipe'];
+function rowHasInput(rid) {
+  const tr = document.getElementById(rid); if (!tr) return false;
+  return [...tr.querySelectorAll('input[data-col]')].some(function(el){
+    const c = el.dataset.col;
+    if (AUTOCOLS.indexOf(c) >= 0) return false;
+    if (c === 'remarks' || c === 'remarks2') return el.value.trim() !== '';
+    return (parseFloat(el.value) || 0) !== 0;
+  });
+}
+function setStat(rid, cls, txt) {
+  const b = document.getElementById('btn_'+rid);
+  if (b) { b.className = 'bsr ' + cls; b.textContent = txt; }
+}
 function changed(el) {
   const rid = el.dataset.row;
   recalc(rid);
   recalcTotals();
-  const btn = document.getElementById('btn_'+rid);
   const row = document.getElementById(rid);
-  btn.textContent = 'Save';
-  btn.className = 'bsr';
+  const wasSaved = row.dataset.saved === '1' || row.dataset.wasSaved === '1';
+  if (wasSaved) row.dataset.wasSaved = '1';
+  if (!rowHasInput(rid) && !wasSaved) {          // nothing entered → nothing to save
+    clearTimeout(saveTimers[rid]); setStat(rid, '', '—'); return;
+  }
   row.dataset.saved = '0';
   document.getElementById('dot_'+rid).className = 'sdot new';
+  setStat(rid, 'saving', 'Typing…');
+  clearTimeout(saveTimers[rid]);
+  saveTimers[rid] = setTimeout(function(){ saveRow(rid, row.dataset.date); }, 600);
 }
 
 // ── Get / Set helpers ─────────────────────────────────────
@@ -764,8 +817,10 @@ function recalcTotals() {
 
 // ── Save single row ───────────────────────────────────────
 async function saveRow(rid, ds) {
-  const btn = document.getElementById('btn_'+rid);
-  btn.textContent='…'; btn.className='bsr saving';
+  clearTimeout(saveTimers[rid]);
+  const trr = document.getElementById(rid);
+  if (!rowHasInput(rid) && trr.dataset.saved !== '1' && trr.dataset.wasSaved !== '1') { setStat(rid, '', '—'); return; }
+  setStat(rid, 'saving', 'Saving…');
 
   const fd = new FormData();
   fd.append('ajax_save','1');
@@ -780,19 +835,55 @@ async function saveRow(rid, ds) {
     const res  = await fetch('summary_report.php',{method:'POST',body:fd});
     const data = await res.json();
     if(data.ok){
-      btn.textContent='Update'; btn.className='bsr ok';
-      document.getElementById(rid).dataset.saved='1';
+      setStat(rid, 'ok', 'Saved ✓');
+      trr.dataset.saved='1'; trr.dataset.wasSaved='1';
       document.getElementById('dot_'+rid).className='sdot ok';
-      setTimeout(()=>{ if(btn.className.includes('ok')) btn.className='bsr'; },2200);
     } else {
-      btn.textContent='Error'; btn.className='bsr err';
+      setStat(rid, 'err', 'Error');
       showToast('❌ '+data.msg,'error');
-      setTimeout(()=>{ btn.textContent='Save'; btn.className='bsr'; },3000);
     }
   } catch(e) {
-    btn.textContent='Error'; btn.className='bsr err';
+    setStat(rid, 'err', 'Error');
     showToast('❌ Network error','error');
   }
+}
+
+// ── Live sync with the Stella Sales Report (Stella only) ──
+// Every few seconds pull the Sales Report figures and refresh the linked cells,
+// so a change made in the Sales Report also changes here — and gets saved.
+let syncBusy = false;
+const SYNC_NEVER = ['cancelled_transaction'];
+async function syncFromSales() {
+  if (STORE !== 'Stella' || syncBusy || document.hidden) return;
+  syncBusy = true;
+  try {
+    const res = await fetch('summary_report.php' + location.search + (location.search ? '&' : '?') + 'ajax_sync=1&_=' + Date.now(), {cache:'no-store'});
+    const data = await res.json();
+    if (!data.ok) return;
+    const f2 = v => v != 0 ? Number(v).toFixed(2) : '';
+    Object.keys(data.rows).forEach(function(ds) {
+      const rid = 'r' + ds.replace(/-/g, '');
+      const tr = document.getElementById(rid); if (!tr) return;
+      let any = false; const vals = data.rows[ds];
+      Object.keys(vals).forEach(function(col) {
+        const el = tr.querySelector(`[data-col="${col}"]`);
+        if (!el || el === document.activeElement) return;
+        const nv = f2(vals[col]);
+        if (SYNC_NEVER.indexOf(col) >= 0) {
+          const prev = el.dataset.srv;
+          if (prev === undefined) { el.dataset.srv = nv; return; }
+          if (el.value === prev || el.value === '') { if (el.value !== nv) { el.value = nv; any = true; } }
+          el.dataset.srv = nv; return;
+        }
+        if (el.readOnly !== true) { el.readOnly = true; el.tabIndex = -1; el.classList.add('calc'); el.removeAttribute('oninput'); }
+        if (el.value !== nv) { el.value = nv; any = true; }
+      });
+      if (tr.dataset.fromsr !== '1') { tr.dataset.fromsr = '1'; any = true; }
+      if (any) { recalc(rid); clearTimeout(saveTimers[rid]); saveTimers[rid] = setTimeout(function(){ saveRow(rid, ds); }, 300); }
+    });
+    recalcTotals();
+  } catch(e) { /* offline — try again next tick */ }
+  finally { syncBusy = false; }
 }
 
 // ── Save all rows ─────────────────────────────────────────
@@ -889,10 +980,14 @@ function recalcSummary() {
   }
 }
 
-// ── Save quota to DB ───────────────────────────────────────
+// ── Save quota to DB (auto-saves a moment after you stop typing) ──
+let quotaTimer = null;
+function setQuotaHint(msg, color) { const h = document.getElementById('quotaHint'); if (h) { h.textContent = msg; h.style.color = color || ''; } }
+function queueQuotaSave() { clearTimeout(quotaTimer); setQuotaHint('Typing…', ''); quotaTimer = setTimeout(saveQuota, 700); }
 async function saveQuota() {
+  clearTimeout(quotaTimer);
   const quota = parseFloat(document.getElementById('quotaInput')?.value) || 0;
-  if (quota <= 0) return;
+  setQuotaHint('Saving…', '');
   const fd = new FormData();
   fd.append('ajax_quota','1');
   fd.append('store_name', STORE);
@@ -901,9 +996,9 @@ async function saveQuota() {
   try {
     const res = await fetch('summary_report.php',{method:'POST',body:fd});
     const data = await res.json();
-    if(data.ok) showToast('✓ Quota saved','success');
-    else showToast('❌ '+data.msg,'error');
-  } catch(e) { showToast('❌ Network error saving quota','error'); }
+    if(data.ok) { setQuotaHint('✓ Saved', 'var(--accent)'); setTimeout(function(){ setQuotaHint('Input target amount · saves automatically', ''); }, 2500); }
+    else setQuotaHint('❌ ' + (data.msg || 'Not saved'), 'var(--accent2)');
+  } catch(e) { setQuotaHint('❌ Network error — not saved', 'var(--accent2)'); }
 }
 <?php endif; ?>
 
@@ -912,6 +1007,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#srt tbody tr').forEach(r=>recalc(r.id));
   recalcTotals();
   if(typeof recalcSummary === 'function') recalcSummary();
+  // rows filled from the Sales Report but never saved → save them automatically (staggered)
+  let n = 0;
+  document.querySelectorAll('#srt tbody tr').forEach(function(r){
+    if (r.dataset.saved !== '1' && r.dataset.fromsr === '1' && rowHasInput(r.id)) {
+      saveTimers[r.id] = setTimeout(function(){ saveRow(r.id, r.dataset.date); }, 400 + (n++) * 150);
+    }
+  });
+  if (STORE === 'Stella') setInterval(syncFromSales, 5000);
 });
 </script>
 <script src="assets/js/keynav.js"></script>
