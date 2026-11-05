@@ -1169,10 +1169,7 @@ function diChanged() {
   setVal('bank_transfer_cheque', fmt(totBank));
   setVal('gcash',                fmt(totPal));
   setVal('maya_swipe',           fmt(totCard));
-  // COH (Cash on Hand) follows the DINE IN Cash total automatically (and auto-saves with the rest),
-  // until the cashier types a different counted amount — then their number is kept. Clear the box to go back to automatic.
-  const cohEl = document.getElementById('coh');
-  if (cohEl && !COH_MANUAL) cohEl.value = totCash ? totCash.toFixed(2) : '';
+  // COH (Cash on Hand) is typed in by hand (the counted cash) — it is NOT filled from the Dine In Cash total.
   recalc();
 }
 
@@ -1419,6 +1416,17 @@ function showToast(msg, type) {
 document.addEventListener('DOMContentLoaded', () => { diChanged(); recalcDepositSwipe(); recalc(); if (REPORT_LOCKED) lockPage(); });
 </script>
 <script>
+// Excel's Dine In block has merged cells, so copying it gives blank "spacer" cells after Card/Swipe and after
+// Discount (Cash | GCash | Card | _ | Discount | _ | Gift). When a 7-column block like that is pasted at the
+// first column, drop the two spacer columns so every number lands under its own heading.
+function dineInFixMerged(data) {
+  if (!data.length || data.some(r => r.length !== 7)) return data;
+  if (data.some(r => String(r[3]).trim() !== '' || String(r[5]).trim() !== '')) return data;
+  if (!data.some(r => String(r[4]).trim() !== '' || String(r[6]).trim() !== '')) return data;
+  return data.map(r => [r[0], r[1], r[2], r[4], r[6], '', '']);
+}
+</script>
+<script>
 // ── Excel-style paste: copy several cells in Excel / Google Sheets, paste into any box,
 //    and the values spread across the columns and down the rows (new rows are added). ──
 (function () {
@@ -1452,10 +1460,11 @@ document.addEventListener('DOMContentLoaded', () => { diChanged(); recalcDeposit
     const c = ctx(el); if (!c) return;
     const text = (ev.clipboardData || window.clipboardData).getData('text');
     if (!text || (text.indexOf('\t') < 0 && !/\r?\n./.test(text))) return;   // single value → normal paste
-    const data = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map(l => l.split('\t'));
+    let data = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map(l => l.split('\t'));
     ev.preventDefault();
     const r0 = c.rows().indexOf(c.row), c0 = cellsOf(c.row).indexOf(el);
     if (r0 < 0 || c0 < 0) return;
+    if (c0 === 0 && el.closest('#di-table')) data = dineInFixMerged(data);
     data.forEach(function (line, i) {
       let rows = c.rows();
       while (rows.length <= r0 + i) { c.add(); const n = c.rows(); if (n.length === rows.length) return; rows = n; }
@@ -1622,7 +1631,8 @@ body.xl-dragging, body.xl-dragging * { user-select:none !important; cursor:cross
     const a = document.activeElement; if (a && a.matches && a.matches('input,textarea') && !a.closest('.xl-sel')) return;
     const text = (ev.clipboardData || window.clipboardData).getData('text'); if (!text) return;
     ev.preventDefault(); ev.stopImmediatePropagation();
-    const g = sel.g, data = text.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l => l.split('\t'));
+    const g = sel.g; let data = text.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l => l.split('\t'));
+    if (g.key === 'di' && sel.c1 === 0) data = dineInFixMerged(data);
     if (data.length === 1 && data[0].length === 1) { for (let r = sel.r1; r <= sel.r2; r++) for (let c = sel.c1; c <= sel.c2; c++) { const e = cellAt(g, r, c); if (e) setVal(e, data[0][0]); } }
     else data.forEach((line, i) => {
       for (let guard = 0; g.rows().length <= sel.r1 + i && guard < 5; guard++) { const b = g.rows().length; g.add(); if (g.rows().length === b) break; }
