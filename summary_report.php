@@ -443,6 +443,10 @@ include 'layout.php';
 .sri.neg   { color: #be123c !important; font-weight: 600; }
 
 /* ── Save button ── */
+.asv { font-size:.68rem; font-weight:600; color:var(--subtext); }
+.asv.saving { color:#b45309; }
+.asv.ok { color:#15803d; }
+.asv.err { color:#be123c; }
 .bsr {
   padding: 4px 8px; font-size: .6rem;
   font-family: var(--font-m); font-weight: 700;
@@ -501,7 +505,7 @@ include 'layout.php';
 <div class="section-header">
   <div>
     <div class="section-title" style="color:#1a1d23"><?= htmlspecialchars($fStore) ?> <span style="color:var(--accent)">Summary Report</span></div>
-    <div class="section-subtitle">Daily spreadsheet entry · each row has its own Save button · Save All saves every row</div>
+    <div class="section-subtitle">Auto-saves as you type (empty rows are never saved) · linked cells update by themselves from the Sales Report</div>
   </div>
 </div>
 
@@ -530,7 +534,6 @@ include 'layout.php';
     <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
     <?php endfor; ?>
   </select>
-  <button type="button" class="btn btn-primary btn-sm" onclick="saveAll()">💾 Save All</button>
   <a id="csvDownloadBtn" href="#" class="btn btn-ghost btn-sm" style="color:var(--accent3);border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)" onclick="downloadCSV(event)">⬇ Download CSV</a>
 </form>
 
@@ -567,7 +570,7 @@ include 'layout.php';
       <?php foreach($COLS as $c): ?>
       <th class="g-<?=$c[2]?> <?=$c[2]==='text'?'col-text':'col-num'?>"><?=htmlspecialchars($c[1])?></th>
       <?php endforeach; ?>
-      <th class="th-act">SAVE</th>
+      <th class="th-act">AUTO-SAVE</th>
     </tr>
   </thead>
 
@@ -622,9 +625,7 @@ include 'layout.php';
     <?php endforeach; ?>
 
     <td class="td-act">
-      <button class="bsr" id="btn_<?=$rid?>" onclick="saveRow('<?=$rid?>','<?=$ds?>')">
-        <?=$saved?'Update':'Save'?>
-      </button>
+      <span class="asv" id="btn_<?=$rid?>"><?=$saved?'Saved':'—'?></span>
     </td>
   </tr>
   <?php endforeach; ?>
@@ -643,9 +644,6 @@ include 'layout.php';
 </table>
 </div><!-- /sr-outer -->
 
-<div style="display:flex;justify-content:flex-end;margin-top:12px;gap:10px">
-  <button class="btn btn-primary" onclick="saveAll()">💾 Save All Rows</button>
-</div>
 
 <!-- ── Monthly Summary Panel — Stella only ── -->
 <?php if ($fStore === 'Stella'): ?>
@@ -718,7 +716,7 @@ function rowHasInput(rid) {
 }
 function setStat(rid, cls, txt) {
   const b = document.getElementById('btn_'+rid);
-  if (b) { b.className = 'bsr ' + cls; b.textContent = txt; }
+  if (b) { b.className = 'asv ' + cls; b.textContent = txt; }
 }
 function changed(el) {
   const rid = el.dataset.row;
