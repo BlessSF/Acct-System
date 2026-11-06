@@ -221,7 +221,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $vals['marketing_pull_out']  = $secSums['marketing_pullout'] ?? 0;
         $vals['paid_med_card']       = $secSums['paid_med'] ?? 0;
         $vals['advance_paid_appigo'] = $secSums['advance_payment'] ?? 0;
-        $vals['gift_cert_sold_tips'] = $secSums['gc_sold'] ?? 0;
+        // Gift Cert Sold (TIPS) = GC SOLD box + GIFT CERT SOLD (TIPS) box (the latter also feeds Deposit Swipe)
+        $vals['gift_cert_sold_tips'] = ($secSums['gc_sold'] ?? 0) + ($secSums['gift_cert_tips'] ?? 0);
         $vals['cash_out_interest']   = $secSums['cash_out_interest'] ?? 0;
 
         // Total Swipe = Deposit Swipe + Late Payment + Maya Swipe + Paid Med (CARD)
@@ -467,7 +468,7 @@ $paidMedCalc       = $secSum('paid_med');
 $depositCardCalc   = $secSum('deposit_card');
 $cashOutCalc       = $secSum('cash_out_interest');
 $advancePaidCalc   = $secSum('advance_payment');
-$giftCertSoldCalc  = $secSum('gc_sold');
+$giftCertSoldCalc  = $secSum('gc_sold') + $secSum('gift_cert_tips');
 
 $totalDineInCalc = $diSum('cash') + $diSum('palawan_pay') + $diSum('card_swipe_qr')
                  + $diSum('discount') + $diSum('gift_card') + $diSum('bank_transfer_cheque');
@@ -1207,11 +1208,21 @@ function subChanged(sec) {
   if (sec === 'expenses')          { setVal('pcf_expenses',        fmt(tot)); recalc(); }
   if (sec === 'late_payment')      { setVal('late_payment_card',   fmt(tot)); recalc(); }
   if (sec === 'advance_payment')   { setVal('advance_paid_appigo', fmt(tot)); recalc(); }
-  if (sec === 'gc_sold')           { setVal('gift_cert_sold_tips', fmt(tot)); recalc(); }
-  if (sec === 'gift_cert_tips')    { setVal('gift_cert_sold_tips', fmt(tot)); recalcDepositSwipe(); }
+  if (sec === 'gc_sold')           { recalcGiftCert(); recalc(); }
+  if (sec === 'gift_cert_tips')    { recalcGiftCert(); recalcDepositSwipe(); }
   if (sec === 'paid_med')          { setVal('paid_med_card',       fmt(tot)); recalc(); }
   if (sec === 'deposit_card')      { recalcDepositSwipe(); }
   if (sec === 'cash_out_interest') { setVal('cash_out_interest',   fmt(tot)); recalc(); }
+}
+
+// Gift Cert. Sold (TIPS) = GC SOLD box + GIFT CERT SOLD (TIPS) box → goes into Gross Sales
+function recalcGiftCert() {
+  let t = 0;
+  ['gc_sold','gift_cert_tips'].forEach(sec => {
+    const c = document.querySelector(`.sub-col[data-section="${sec}"]`);
+    if (c) c.querySelectorAll('input[type=number]').forEach(i => t += parseFloat(i.value)||0);
+  });
+  setVal('gift_cert_sold_tips', fmt(t));
 }
 
 function recalcDepositSwipe() {
