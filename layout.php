@@ -577,13 +577,13 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     <a href="<?= BASE_URL ?>/h/h_sales_report.php" class="nav-item <?= ($activePage==='h_sales_report')?'active':'' ?>">
       <span class="ni">🧾</span> <?= isBranch() ? 'Sales Report' : 'H Sales Report' ?>
     </a>
-    <a href="<?= BASE_URL ?>/h/h_carwash_sales_report.php" class="nav-item <?= ($activePage==='h_carwash_sales_report')?'active':'' ?>">
+    <a href="<?= BASE_URL ?>/h/h_carwash_sales_report.php" class="nav-item <?= ($activePage==='h_carwash_sales_report' && basename($_SERVER['SCRIPT_NAME'])!=='h_carwash_summary_report.php')?'active':'' ?>">
       <span class="ni">🚗</span> <?= isBranch() ? 'Carwash Sales Report' : 'H Carwash Sales Report' ?>
     </a>
     <a href="<?= BASE_URL ?>/h/carwash_services.php" class="nav-item <?= ($activePage==='h_carwash_services')?'active':'' ?>">
       <span class="ni">🛠️</span> <?= isBranch() ? 'Services' : 'H Carwash Services' ?>
     </a>
-    <a href="<?= BASE_URL ?>/h/h_carwash_summary_report.php" class="nav-item <?= ($activePage==='h_carwash_summary')?'active':'' ?>">
+    <a href="<?= BASE_URL ?>/h/h_carwash_summary_report.php" class="nav-item <?= ($activePage==='h_carwash_summary' || basename($_SERVER['SCRIPT_NAME'])==='h_carwash_summary_report.php')?'active':'' ?>">
       <span class="ni">📊</span> <?= isBranch() ? 'Carwash Summary' : 'H Carwash Summary' ?>
     </a>
     <a href="<?= BASE_URL ?>/h/h_carwash_income_statement.php" class="nav-item <?= ($activePage==='h_carwash_income_statement')?'active':'' ?>">
@@ -778,11 +778,6 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     </a>
     <?php if ($branch === 'H'): ?>
     <a href="<?= BASE_URL ?>/h/h_income_statement_acct.php" class="nav-item <?= ($activePage==='h_income_statement_acct')?'active':'' ?>">
-      <span class="ni">📑</span> Income Stmt (Acct Titles)
-    </a>
-    <?php endif; ?>
-    <?php if ($branch === 'Stella'): ?>
-    <a href="<?= BASE_URL ?>/stella/stella_income_statement_acct.php" class="nav-item <?= ($activePage==='stella_income_statement_acct')?'active':'' ?>">
       <span class="ni">📑</span> Income Stmt (Acct Titles)
     </a>
     <?php endif; ?>

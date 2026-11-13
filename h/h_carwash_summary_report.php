@@ -1,468 +1,148 @@
 <?php
 // ============================================================
-//  h_carwash_sales_report.php — Hero Carwash Daily Sales Report
-//  Cash Breakdown + Transactions (service price lookup, auto
-//  commission/net sales) + Expenses / Unpaids / Marketing
-//  sub-sections — mirrors the "JUNE.xlsx" workbook exactly.
+//  h_carwash_summary_report.php — Hero Carwash Daily Summary Entry
+//  Mirrors ../dois/dois_summary_report.php pattern — standalone flat table
 // ============================================================
 require_once '../config.php';
 require_once '../auth.php';
-require_once '../lib/audit_log.php';
 requireLogin();
-enforceCashierAccess();
+
+// Only H branch and management can access this page
+if (isBranch() && currentBranch() !== 'H') {
+    header('Location: ../dashboard.php');
+    exit;
+}
 
 $pdo  = getPDO();
 $user = currentUser();
 
-// Only management (non-branch users) may lock/unlock a date's report.
-$canLock = !isBranch();
-
-const CW_STORE = 'HEROCARWASH';
-
-// ── Main summary table ──────────────────────────────────────
-$pdo->exec("CREATE TABLE IF NOT EXISTS `h_carwash_report` (
-    `id`                 int(11) NOT NULL AUTO_INCREMENT,
-    `store_name`         varchar(50) NOT NULL DEFAULT 'HEROCARWASH',
-    `report_date`        date NOT NULL,
-    `opening_cashier`    varchar(150) DEFAULT NULL,
-    `closing_cashier`    varchar(150) DEFAULT NULL,
-    `sold_gc`            decimal(12,2) NOT NULL DEFAULT 0.00,
-    `qr_palawan_pay`     decimal(12,2) NOT NULL DEFAULT 0.00,
-    `card_payments`      decimal(12,2) NOT NULL DEFAULT 0.00,
-    `gross_sales`        decimal(12,2) NOT NULL DEFAULT 0.00,
-    `staff_cf`           decimal(12,2) NOT NULL DEFAULT 0.00,
-    `pos_reading`        decimal(12,2) NOT NULL DEFAULT 0.00,
-    `expenses`           decimal(12,2) NOT NULL DEFAULT 0.00,
-    `unpaids`            decimal(12,2) NOT NULL DEFAULT 0.00,
-    `discounts`          decimal(12,2) NOT NULL DEFAULT 0.00,
-    `marketing_expense`  decimal(12,2) NOT NULL DEFAULT 0.00,
-    `net_cash`           decimal(12,2) NOT NULL DEFAULT 0.00,
-    `coh`                decimal(12,2) NOT NULL DEFAULT 0.00,
-    `short_over`         decimal(12,2) NOT NULL DEFAULT 0.00,
-    `total_commission`   decimal(12,2) NOT NULL DEFAULT 0.00,
-    `remarks`            text DEFAULT NULL,
-    `saved_by`           varchar(100) DEFAULT NULL,
-    `created_at`         timestamp NOT NULL DEFAULT current_timestamp(),
-    `updated_at`         timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uniq_store_date` (`store_name`,`report_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-
-// ── Cash Breakdown rows (QTY × Denomination) ───────────────
-$pdo->exec("CREATE TABLE IF NOT EXISTS `h_carwash_cash_rows` (
-    `id`            int(11) NOT NULL AUTO_INCREMENT,
-    `store_name`    varchar(50) NOT NULL DEFAULT 'HEROCARWASH',
-    `report_date`   date NOT NULL,
-    `qty`           decimal(12,2) DEFAULT 0.00,
-    `denomination`  decimal(12,2) DEFAULT 0.00,
-    `sort_order`    int(4) DEFAULT 0,
-    PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-
-// ── Transactions (plate, service, staff, price, discount…) ─
-$pdo->exec("CREATE TABLE IF NOT EXISTS `h_carwash_transactions` (
-    `id`            int(11) NOT NULL AUTO_INCREMENT,
-    `store_name`    varchar(50) NOT NULL DEFAULT 'HEROCARWASH',
-    `report_date`   date NOT NULL,
-    `plate_no`      varchar(30) DEFAULT NULL,
-    `service`       varchar(100) DEFAULT NULL,
-    `staff`         varchar(100) DEFAULT NULL,
-    `price`         decimal(12,2) NOT NULL DEFAULT 0.00,
-    `discount`      decimal(12,2) NOT NULL DEFAULT 0.00,
-    `commission`    decimal(12,2) NOT NULL DEFAULT 0.00,
-    `net_sales`     decimal(12,2) NOT NULL DEFAULT 0.00,
-    `mop`           varchar(30) DEFAULT NULL,
-    `remarks`       varchar(200) DEFAULT NULL,
-    `sort_order`    int(4) DEFAULT 0,
-    PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-
-// ── Expenses / Unpaids detail rows ─────────────────────────
-$pdo->exec("CREATE TABLE IF NOT EXISTS `h_carwash_detail_rows` (
-    `id`            int(11) NOT NULL AUTO_INCREMENT,
-    `store_name`    varchar(50) NOT NULL DEFAULT 'HEROCARWASH',
-    `report_date`   date NOT NULL,
-    `section`       varchar(20) NOT NULL,
-    `particular`    varchar(150) DEFAULT NULL,
-    `amount`        decimal(12,2) NOT NULL DEFAULT 0.00,
-    `sort_order`    int(4) DEFAULT 0,
-    PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-
-// ── Marketing rows (particular, amount, staff, commission) ─
-$pdo->exec("CREATE TABLE IF NOT EXISTS `h_carwash_marketing_rows` (
-    `id`            int(11) NOT NULL AUTO_INCREMENT,
-    `store_name`    varchar(50) NOT NULL DEFAULT 'HEROCARWASH',
-    `report_date`   date NOT NULL,
-    `particular`    varchar(150) DEFAULT NULL,
-    `amount`        decimal(12,2) NOT NULL DEFAULT 0.00,
-    `staff`         varchar(100) DEFAULT NULL,
-    `commission`    decimal(12,2) NOT NULL DEFAULT 0.00,
-    `sort_order`    int(4) DEFAULT 0,
-    PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-
-// ── Services price list — now a live DB catalog instead of a static
-// array, so services added via carwash_services.php show up here
-// immediately (mirrors the workbook's "X" sheet VLOOKUP table). ──
-require_once __DIR__ . '/carwash_services_lib.php';
-ensureCarwashServicesTable($pdo);
-seedCarwashServicesIfEmpty($pdo, CW_STORE);
-$SERVICES = getCarwashServicesGrouped($pdo, CW_STORE);
-$SERVICE_PRICE_MAP = [];
-$SERVICE_LIST = [];
-foreach ($SERVICES as $grp => $items) {
-    foreach ($items as $name => $price) {
-        $SERVICE_PRICE_MAP[$name] = $price;
-        $SERVICE_LIST[] = ['name' => $name, 'price' => $price, 'category' => $grp];
-    }
-}
-
-$MOP_OPTIONS = ['CASH', 'Card - Cafe', 'QR', 'GCash', 'Bank Transfer'];
-
-// Default cash-breakdown denominations (mirrors the workbook's pre-filled rows)
-$DEFAULT_DENOMS = [1000, 500, 200, 100, 50, 20, 10, 5, 0.5, 0.1, 0.05, null, null, null, null];
-
-// ── Auto-create shared report_locks table (safe to run repeatedly) ─
+// ── Auto-create H table (safe to run repeatedly) ──────────
 try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `report_locks` (
-        `id`          int(11) NOT NULL AUTO_INCREMENT,
-        `store_name`  varchar(50) NOT NULL,
-        `report_date` date NOT NULL,
-        `locked_by`   varchar(100) DEFAULT NULL,
-        `locked_at`   timestamp NOT NULL DEFAULT current_timestamp(),
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `h_carwash_summary_entries` (
+        `id`                    int(11) NOT NULL AUTO_INCREMENT,
+        `report_date`           date NOT NULL,
+        `store_name`            varchar(100) NOT NULL DEFAULT 'HEROCARWASH',
+        `gross_sales_excl_mktg` decimal(12,2) DEFAULT 0.00,
+        `store_gross`           decimal(12,2) DEFAULT 0.00,
+        `z_reading_gross`       decimal(12,2) DEFAULT 0.00,
+        `cash_for_depo`         decimal(12,2) DEFAULT 0.00,
+        `sales_of_day_swipe`    decimal(12,2) DEFAULT 0.00,
+        `palawan_gcash`         decimal(12,2) DEFAULT 0.00,
+        `deposit_swipe`         decimal(12,2) DEFAULT 0.00,
+        `late_payment`          decimal(12,2) DEFAULT 0.00,
+        `cancelled_transaction` decimal(12,2) DEFAULT 0.00,
+        `unpaid`                decimal(12,2) DEFAULT 0.00,
+        `paid`                  decimal(12,2) DEFAULT 0.00,
+        `advance_payment`       decimal(12,2) DEFAULT 0.00,
+        `grab`                  decimal(12,2) DEFAULT 0.00,
+        `bank_trans`            decimal(12,2) DEFAULT 0.00,
+        `gc_sponsor_marketing`  decimal(12,2) DEFAULT 0.00,
+        `gc_sold`               decimal(12,2) DEFAULT 0.00,
+        `discount`              decimal(12,2) DEFAULT 0.00,
+        `marketing_pull_out`    decimal(12,2) DEFAULT 0.00,
+        `personal`              decimal(12,2) DEFAULT 0.00,
+        `expenses`              decimal(12,2) DEFAULT 0.00,
+        `other_expenses`        decimal(12,2) DEFAULT 0.00,
+        `sc_for_depo`           decimal(12,2) DEFAULT 0.00,
+        `total_deductions`      decimal(12,2) DEFAULT 0.00,
+        `short_over`            decimal(12,2) DEFAULT 0.00,
+        `total_swipe`           decimal(12,2) DEFAULT 0.00,
+        `cash_deposit`          decimal(12,2) DEFAULT 0.00,
+        `other_sales`           decimal(12,2) DEFAULT 0.00,
+        `remarks`               text DEFAULT NULL,
+        `remarks2`              text DEFAULT NULL,
+        `saved_by`              varchar(100) DEFAULT NULL,
+        `created_at`            timestamp NOT NULL DEFAULT current_timestamp(),
+        `updated_at`            timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
         PRIMARY KEY (`id`),
-        UNIQUE KEY `uniq_store_date` (`store_name`,`report_date`)
+        UNIQUE KEY `unique_date_store` (`report_date`, `store_name`),
+        KEY `idx_date` (`report_date`),
+        KEY `idx_store` (`store_name`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 } catch (Throwable $ignored) {}
 
-function isDateLocked(PDO $pdo, string $store, string $date): bool {
-    try {
-        $stmt = $pdo->prepare("SELECT 1 FROM report_locks WHERE store_name=? AND report_date=? LIMIT 1");
-        $stmt->execute([$store, $date]);
-        return (bool) $stmt->fetchColumn();
-    } catch (Throwable $e) {
-        return false;
-    }
+// Palawan/Gcash column (added later) — add it to existing installs too.
+foreach (['palawan_gcash','store_gross','gross_sales_excl_mktg','store_gross_excl_mktg','z_reading_gross','sc_for_depo','personal','other_expenses','expenses','total_deductions','total_swipe','cash_deposit','other_sales','gc_sponsor_marketing','gc_sold','bank_trans','grab','advance_payment','paid','late_payment','deposit_swipe','cancelled_transaction'] as $c) {
+    try { $pdo->exec("ALTER TABLE `h_carwash_summary_entries` ADD COLUMN IF NOT EXISTS `$c` decimal(12,2) DEFAULT 0.00"); } catch (Throwable $ignored) {}
+}
+foreach (['remarks','remarks2'] as $c) {
+    try { $pdo->exec("ALTER TABLE `h_carwash_summary_entries` ADD COLUMN IF NOT EXISTS `$c` text DEFAULT NULL"); } catch (Throwable $ignored) {}
 }
 
-// ── AJAX: Lock / unlock a date ─────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_toggle_lock'])) {
+// One row per store per date — remove any old duplicates and enforce it.
+try {
+    require_once __DIR__ . '/../lib/branch_sales.php';
+    ensureUniqueStoreDate($pdo, 'h_carwash_summary_entries');
+} catch (Throwable $ignored) {}
+
+// ── Handle AJAX save (per-row) ────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     header('Content-Type: application/json');
-    if (!$canLock) {
-        echo json_encode(['ok' => false, 'msg' => 'Only management can lock or unlock reports.']);
-        exit;
-    }
     $reportDate = $_POST['report_date'] ?? '';
-    $lock       = ($_POST['lock'] ?? '') === '1';
     if (!$reportDate) {
         echo json_encode(['ok' => false, 'msg' => 'Missing date.']);
         exit;
     }
+
+    $numCols = [
+        'gross_sales_excl_mktg','store_gross','z_reading_gross','cash_for_depo',
+        'sales_of_day_swipe','palawan_gcash','deposit_swipe','late_payment',
+        'cancelled_transaction','unpaid','paid','advance_payment',
+        'grab','bank_trans','gc_sponsor_marketing','gc_sold','discount',
+        'marketing_pull_out','personal','expenses','other_expenses','sc_for_depo',
+        'total_deductions','short_over','total_swipe','cash_deposit','other_sales'
+    ];
+    $txtCols = ['remarks','remarks2'];
+
+    $data = ['store_name' => 'HEROCARWASH', 'report_date' => $reportDate];
+    foreach ($numCols as $f) $data[$f] = (float)($_POST[$f] ?? 0);
+    foreach ($txtCols as $f) $data[$f] = trim($_POST[$f] ?? '');
+    $data['store_gross_excl_mktg'] = $data['store_gross'];
+    $data['saved_by'] = $user['name'];
+
+    $fields    = array_keys($data);
+    $dupUpdate = implode(',', array_map(fn($f) => "`$f`=VALUES(`$f`)", $fields));
+
     try {
-        if ($lock) {
-            $pdo->prepare("INSERT INTO report_locks (store_name, report_date, locked_by)
-                VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE locked_by = VALUES(locked_by), locked_at = CURRENT_TIMESTAMP")
-                ->execute([CW_STORE, $reportDate, $user['name']]);
-        } else {
-            $pdo->prepare("DELETE FROM report_locks WHERE store_name=? AND report_date=?")
-                ->execute([CW_STORE, $reportDate]);
-        }
-        logAudit($pdo, 'H', 'Carwash Sales Report', $lock ? 'locked' : 'unlocked', $reportDate,
-            $lock ? 'Locked the carwash report for editing' : 'Unlocked the carwash report for editing');
-        echo json_encode(['ok' => true, 'locked' => $lock]);
+        $sql = "INSERT INTO h_carwash_summary_entries ("
+             . implode(',', array_map(fn($f) => "`$f`", $fields))
+             . ") VALUES (" . implode(',', array_fill(0, count($fields), '?')) . ")"
+             . " ON DUPLICATE KEY UPDATE $dupUpdate";
+        $pdo->prepare($sql)->execute(array_values($data));
+        echo json_encode(['ok' => true]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
     }
     exit;
 }
 
-// ── AJAX: Save Cash Breakdown rows ─────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save_cash'])) {
+// ── Handle AJAX quota save ────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_quota'])) {
     header('Content-Type: application/json');
+    $month = trim($_POST['report_month'] ?? '');
+    $quota = (float)($_POST['quota'] ?? 0);
+    if (!$month) { echo json_encode(['ok'=>false,'msg'=>'Missing data']); exit; }
     try {
-        $reportDate = $_POST['report_date'];
-        if (isDateLocked($pdo, CW_STORE, $reportDate)) {
-            echo json_encode(['ok' => false, 'msg' => 'This date is locked. Ask management to unlock it before editing.']);
-            exit;
-        }
-        $rows = json_decode($_POST['rows'] ?? '[]', true);
-        $pdo->prepare("DELETE FROM h_carwash_cash_rows WHERE store_name=? AND report_date=?")->execute([CW_STORE, $reportDate]);
-        $ins = $pdo->prepare("INSERT INTO h_carwash_cash_rows (store_name,report_date,qty,denomination,sort_order) VALUES (?,?,?,?,?)");
-        foreach ($rows as $i => $r) {
-            $ins->execute([CW_STORE, $reportDate, (float)($r['qty']??0), (float)($r['denomination']??0), $i]);
-        }
-        logAudit($pdo, 'H', 'Carwash Sales Report', 'updated', $reportDate,
-            'Updated Cash Breakdown rows (' . count($rows) . ' row' . (count($rows) === 1 ? '' : 's') . ')');
-        echo json_encode(['ok'=>true]);
-    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
-    exit;
-}
-
-// ── AJAX: Save Transactions rows ───────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save_transactions'])) {
-    header('Content-Type: application/json');
-    try {
-        $reportDate = $_POST['report_date'];
-        if (isDateLocked($pdo, CW_STORE, $reportDate)) {
-            echo json_encode(['ok' => false, 'msg' => 'This date is locked. Ask management to unlock it before editing.']);
-            exit;
-        }
-        $rows = json_decode($_POST['rows'] ?? '[]', true);
-        $pdo->prepare("DELETE FROM h_carwash_transactions WHERE store_name=? AND report_date=?")->execute([CW_STORE, $reportDate]);
-        $ins = $pdo->prepare("INSERT INTO h_carwash_transactions
-            (store_name,report_date,plate_no,service,staff,price,discount,commission,net_sales,mop,remarks,sort_order)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-        foreach ($rows as $i => $r) {
-            $price      = (float)($r['price'] ?? 0);
-            $discount   = (float)($r['discount'] ?? 0);
-            $commission = ($price - $discount) * 0.25;
-            $netSales   = $price - $commission;
-            $ins->execute([CW_STORE, $reportDate, $r['plate_no']??null, $r['service']??null, $r['staff']??null,
-                $price, $discount, $commission, $netSales, $r['mop']??null, $r['remarks']??null, $i]);
-        }
-        logAudit($pdo, 'H', 'Carwash Sales Report', 'updated', $reportDate,
-            'Updated Transactions rows (' . count($rows) . ' row' . (count($rows) === 1 ? '' : 's') . ')');
-        echo json_encode(['ok'=>true]);
-    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
-    exit;
-}
-
-// ── AJAX: Save Expenses / Unpaids detail rows ──────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save_detail'])) {
-    header('Content-Type: application/json');
-    try {
-        $reportDate = $_POST['report_date'];
-        $section    = $_POST['section'];
-        if (isDateLocked($pdo, CW_STORE, $reportDate)) {
-            echo json_encode(['ok' => false, 'msg' => 'This date is locked. Ask management to unlock it before editing.']);
-            exit;
-        }
-        $rows = json_decode($_POST['rows'] ?? '[]', true);
-        $pdo->prepare("DELETE FROM h_carwash_detail_rows WHERE store_name=? AND report_date=? AND section=?")->execute([CW_STORE, $reportDate, $section]);
-        $ins = $pdo->prepare("INSERT INTO h_carwash_detail_rows (store_name,report_date,section,particular,amount,sort_order) VALUES (?,?,?,?,?,?)");
-        foreach ($rows as $i => $r) {
-            $ins->execute([CW_STORE, $reportDate, $section, $r['particular']??null, (float)($r['amount']??0), $i]);
-        }
-        logAudit($pdo, 'H', 'Carwash Sales Report', 'updated', $reportDate,
-            'Updated "' . $section . '" rows (' . count($rows) . ' row' . (count($rows) === 1 ? '' : 's') . ')');
-        echo json_encode(['ok'=>true]);
-    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
-    exit;
-}
-
-// ── AJAX: Save Marketing rows ──────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save_marketing'])) {
-    header('Content-Type: application/json');
-    try {
-        $reportDate = $_POST['report_date'];
-        if (isDateLocked($pdo, CW_STORE, $reportDate)) {
-            echo json_encode(['ok' => false, 'msg' => 'This date is locked. Ask management to unlock it before editing.']);
-            exit;
-        }
-        $rows = json_decode($_POST['rows'] ?? '[]', true);
-        $pdo->prepare("DELETE FROM h_carwash_marketing_rows WHERE store_name=? AND report_date=?")->execute([CW_STORE, $reportDate]);
-        $ins = $pdo->prepare("INSERT INTO h_carwash_marketing_rows (store_name,report_date,particular,amount,staff,commission,sort_order) VALUES (?,?,?,?,?,?,?)");
-        foreach ($rows as $i => $r) {
-            $ins->execute([CW_STORE, $reportDate, $r['particular']??null, (float)($r['amount']??0), $r['staff']??null, (float)($r['commission']??0), $i]);
-        }
-        logAudit($pdo, 'H', 'Carwash Sales Report', 'updated', $reportDate,
-            'Updated Marketing rows (' . count($rows) . ' row' . (count($rows) === 1 ? '' : 's') . ')');
-        echo json_encode(['ok'=>true]);
-    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
-    exit;
-}
-
-// ── AJAX: Save main summary ────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
-    header('Content-Type: application/json');
-    try {
-        $reportDate = $_POST['report_date'] ?? date('Y-m-d');
-        if (isDateLocked($pdo, CW_STORE, $reportDate)) {
-            echo json_encode(['ok' => false, 'msg' => 'This date is locked. Ask management to unlock it before editing.']);
-            exit;
-        }
-
-        $openingCashier = trim((string)($_POST['opening_cashier'] ?? ''));
-        $closingCashier = trim((string)($_POST['closing_cashier'] ?? ''));
-        $soldGc         = (float)($_POST['sold_gc'] ?? 0);
-        $qrPalawanPay   = (float)($_POST['qr_palawan_pay'] ?? 0);
-        $cardPayments   = (float)($_POST['card_payments'] ?? 0);
-        $remarks        = trim((string)($_POST['remarks'] ?? ''));
-
-        // Transactions totals — PRICE / (PRICE-DISCOUNT)*25% / PRICE-COMMISSION
-        $txStmt = $pdo->prepare("SELECT COALESCE(SUM(price),0) AS price, COALESCE(SUM(discount),0) AS discount
-            FROM h_carwash_transactions WHERE store_name=? AND report_date=?");
-        $txStmt->execute([CW_STORE, $reportDate]);
-        $tx = $txStmt->fetch(PDO::FETCH_ASSOC) ?: ['price'=>0,'discount'=>0];
-        $totalPrice    = (float)$tx['price'];
-        $totalDiscount = (float)$tx['discount'];
-        $staffCf       = ($totalPrice - $totalDiscount) * 0.25; // STAFF CF (25% commission fee)
-
-        // Expenses / Unpaids totals
-        $detStmt = $pdo->prepare("SELECT section, COALESCE(SUM(amount),0) AS total
-            FROM h_carwash_detail_rows WHERE store_name=? AND report_date=? GROUP BY section");
-        $detStmt->execute([CW_STORE, $reportDate]);
-        $detTotals = [];
-        foreach ($detStmt->fetchAll(PDO::FETCH_ASSOC) as $r) $detTotals[$r['section']] = (float)$r['total'];
-        $expenses = $detTotals['expenses'] ?? 0;
-        $unpaids  = $detTotals['unpaids'] ?? 0;
-
-        // Marketing totals (amount + commission)
-        $mktStmt = $pdo->prepare("SELECT COALESCE(SUM(amount),0) AS amount, COALESCE(SUM(commission),0) AS commission
-            FROM h_carwash_marketing_rows WHERE store_name=? AND report_date=?");
-        $mktStmt->execute([CW_STORE, $reportDate]);
-        $mkt = $mktStmt->fetch(PDO::FETCH_ASSOC) ?: ['amount'=>0,'commission'=>0];
-        $marketingExpense    = (float)$mkt['amount'];
-        $marketingCommission = (float)$mkt['commission'];
-
-        // Cash Breakdown total = COH (Cash on Hand)
-        $cashStmt = $pdo->prepare("SELECT COALESCE(SUM(qty*denomination),0) AS total
-            FROM h_carwash_cash_rows WHERE store_name=? AND report_date=?");
-        $cashStmt->execute([CW_STORE, $reportDate]);
-        $coh = (float)$cashStmt->fetchColumn();
-
-        // POS READING (mirrors Excel B33 = I34 + P55): total service price + marketing amount
-        $posReading = $totalPrice + $marketingExpense;
-        // GROSS SALES (mirrors Excel B30 = B33 - B31): POS Reading - Staff CF
-        $grossSales = $posReading - $staffCf;
-        // Net Cash (mirrors Excel B40)
-        $netCash = $posReading - $expenses - $unpaids - $totalDiscount - $marketingExpense - $qrPalawanPay - $cardPayments;
-        // (Short)Over (mirrors Excel B44 = B41 - B40)
-        $shortOver = $coh - $netCash;
-        // Total Commission (shown next to the transactions table: STAFF CF + Marketing commission)
-        $totalCommission = $staffCf + $marketingCommission;
-
-        $fields = ['store_name','report_date','opening_cashier','closing_cashier','sold_gc',
-            'qr_palawan_pay','card_payments','gross_sales','staff_cf','pos_reading','expenses',
-            'unpaids','discounts','marketing_expense','net_cash','coh','short_over',
-            'total_commission','remarks','saved_by'];
-        $data = [CW_STORE, $reportDate, $openingCashier, $closingCashier, $soldGc,
-            $qrPalawanPay, $cardPayments, $grossSales, $staffCf, $posReading, $expenses,
-            $unpaids, $totalDiscount, $marketingExpense, $netCash, $coh, $shortOver,
-            $totalCommission, $remarks, $user['name']];
-        $dupFields = array_diff($fields, ['store_name','report_date']);
-        $dupUpdate = implode(',', array_map(fn($f) => "`$f`=VALUES(`$f`)", $dupFields));
-        $sql = "INSERT INTO h_carwash_report (" . implode(',', array_map(fn($f)=>"`$f`",$fields)) . ")
-                VALUES (" . implode(',', array_fill(0,count($fields),'?')) . ")
-                ON DUPLICATE KEY UPDATE $dupUpdate";
-        $pdo->prepare($sql)->execute($data);
-
-        // ── Push mapped totals into the Carwash Summary Report ──────
-        // Every time this day's Sales Report is saved, mirror the relevant
-        // totals into h_carwash_summary_entries so the Summary page's
-        // "AUTO-CALCULATED" / "SALES-INCOME" columns fill in automatically.
-        // Only the columns below have a real 1:1 source in this report —
-        // Deposit Swipe, Late Payment, Cancelled Transaction, and Paid have
-        // no equivalent here and stay manually-entered on the Summary page.
-        try {
-            $pdo->exec("CREATE TABLE IF NOT EXISTS `h_carwash_summary_entries` (
-                `id`                     int(11) NOT NULL AUTO_INCREMENT,
-                `report_date`            date NOT NULL,
-                `store_name`             varchar(100) NOT NULL DEFAULT 'HEROCARWASH',
-                `gross_sales_excl_mktg`  decimal(12,2) DEFAULT 0.00,
-                `store_gross_excl_mktg`  decimal(12,2) DEFAULT 0.00,
-                `z_reading_gross`        decimal(12,2) DEFAULT 0.00,
-                `cash_for_depo`          decimal(12,2) DEFAULT 0.00,
-                `sales_of_day_swipe`     decimal(12,2) DEFAULT 0.00,
-                `deposit_swipe`          decimal(12,2) DEFAULT 0.00,
-                `late_payment`           decimal(12,2) DEFAULT 0.00,
-                `cancelled_transaction`  decimal(12,2) DEFAULT 0.00,
-                `unpaid`                 decimal(12,2) DEFAULT 0.00,
-                `paid`                   decimal(12,2) DEFAULT 0.00,
-                `advance_payment`        decimal(12,2) DEFAULT 0.00,
-                `grab`                   decimal(12,2) DEFAULT 0.00,
-                `bank_trans`             decimal(12,2) DEFAULT 0.00,
-                `gc_sponsor_marketing`   decimal(12,2) DEFAULT 0.00,
-                `gc_sold`                decimal(12,2) DEFAULT 0.00,
-                `discount`               decimal(12,2) DEFAULT 0.00,
-                `marketing_pull_out`     decimal(12,2) DEFAULT 0.00,
-                `personal`               decimal(12,2) DEFAULT 0.00,
-                `expenses`               decimal(12,2) DEFAULT 0.00,
-                `other_expenses`         decimal(12,2) DEFAULT 0.00,
-                `sc_for_depo`            decimal(12,2) DEFAULT 0.00,
-                `total_deductions`       decimal(12,2) DEFAULT 0.00,
-                `short_over`             decimal(12,2) DEFAULT 0.00,
-                `total_swipe`            decimal(12,2) DEFAULT 0.00,
-                `cash_deposit`           decimal(12,2) DEFAULT 0.00,
-                `other_sales`            decimal(12,2) DEFAULT 0.00,
-                `remarks`                text DEFAULT NULL,
-                `remarks2`               text DEFAULT NULL,
-                `saved_by`               varchar(100) DEFAULT NULL,
-                `created_at`             timestamp NOT NULL DEFAULT current_timestamp(),
-                `updated_at`             timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-                PRIMARY KEY (`id`),
-                UNIQUE KEY `unique_date_store` (`report_date`, `store_name`),
-                KEY `idx_date` (`report_date`),
-                KEY `idx_store` (`store_name`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-
-            // Table may already exist from before this change — add any
-            // missing columns instead of dropping/losing saved data.
-            foreach ([
-                'grab'                 => "decimal(12,2) DEFAULT 0.00",
-                'bank_trans'           => "decimal(12,2) DEFAULT 0.00",
-                'gc_sponsor_marketing' => "decimal(12,2) DEFAULT 0.00",
-                'gc_sold'              => "decimal(12,2) DEFAULT 0.00",
-                'discount'             => "decimal(12,2) DEFAULT 0.00",
-                'marketing_pull_out'   => "decimal(12,2) DEFAULT 0.00",
-                'personal'             => "decimal(12,2) DEFAULT 0.00",
-                'expenses'             => "decimal(12,2) DEFAULT 0.00",
-                'other_expenses'       => "decimal(12,2) DEFAULT 0.00",
-                'sc_for_depo'          => "decimal(12,2) DEFAULT 0.00",
-                'total_deductions'     => "decimal(12,2) DEFAULT 0.00",
-                'short_over'           => "decimal(12,2) DEFAULT 0.00",
-                'total_swipe'          => "decimal(12,2) DEFAULT 0.00",
-                'cash_deposit'         => "decimal(12,2) DEFAULT 0.00",
-                'other_sales'          => "decimal(12,2) DEFAULT 0.00",
-                'remarks2'             => "text DEFAULT NULL",
-            ] as $col => $def) {
-                try { $pdo->exec("ALTER TABLE h_carwash_summary_entries ADD COLUMN IF NOT EXISTS `$col` $def"); } catch (Throwable $ignored) {}
+        try { $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS quota_target decimal(12,2) NOT NULL DEFAULT 0.00"); } catch(Throwable $ignored) {}
+        // One row per month. The table can be missing its unique key (then every save
+        // used to add ANOTHER row and the page kept reading the oldest one), so update
+        // in place and trim any leftover duplicates instead of relying on the key.
+        $mDate = $month.'-01';
+        $cnt = $pdo->prepare("SELECT COUNT(*) FROM summary_reports WHERE store_name='HEROCARWASH' AND report_month=?");
+        $cnt->execute([$mDate]);
+        $have = (int)$cnt->fetchColumn();
+        if ($have > 0) {
+            $pdo->prepare("UPDATE summary_reports SET quota_target=?, created_by=? WHERE store_name='HEROCARWASH' AND report_month=?")
+                ->execute([$quota, $user['name'], $mDate]);
+            if ($have > 1) {
+                $pdo->exec("DELETE FROM summary_reports WHERE store_name='HEROCARWASH' AND report_month=" . $pdo->quote($mDate) . " LIMIT " . ($have - 1));
             }
-
-            $summaryMapped = [
-                // Z Reading Gross (Incl SC/Mktg) — this IS the POS/Z reading.
-                'z_reading_gross'       => $posReading,
-                // Gross Sales Excl Mktg — this report's own Gross Sales
-                // figure (POS Reading − Staff CF), mirrored as-is.
-                'gross_sales_excl_mktg' => $grossSales,
-                // Store Gross (Excl SC/Mktg) — same, further excluding discounts.
-                'store_gross_excl_mktg' => $grossSales - $marketingExpense - $totalDiscount,
-                // Cash for Depo — the computed cash that should be deposited.
-                'cash_for_depo'         => $netCash,
-                // Sales of the Day (Swipe) — today's card-swipe sales.
-                'sales_of_day_swipe'    => $cardPayments,
-                // Unpaid — today's unpaid total from the Expenses/Unpaids section.
-                'unpaid'                => $unpaids,
-                // Advance Payment — Sold GC is money collected in advance
-                // for services not yet rendered.
-                'advance_payment'       => $soldGc,
-                // Discount, Marketing Pull Out, Expenses — same totals this
-                // report already computes for its own Gross Sales / Net Cash math.
-                'discount'              => $totalDiscount,
-                'marketing_pull_out'    => $marketingExpense,
-                'expenses'              => $expenses,
-                // Short/Over — this report's own cash-reconciliation figure
-                // (Cash on Hand − Net Cash), mirrored as-is.
-                'short_over'            => $shortOver,
-            ];
-            $sumFields = array_merge(['store_name','report_date'], array_keys($summaryMapped));
-            $sumData   = array_merge([CW_STORE, $reportDate], array_values($summaryMapped));
-            $sumUpdate = implode(',', array_map(fn($f) => "`$f`=VALUES(`$f`)", array_keys($summaryMapped)));
-            $sumSql = "INSERT INTO h_carwash_summary_entries (" . implode(',', array_map(fn($f)=>"`$f`",$sumFields)) . ")
-                       VALUES (" . implode(',', array_fill(0,count($sumFields),'?')) . ")
-                       ON DUPLICATE KEY UPDATE $sumUpdate";
-            $pdo->prepare($sumSql)->execute($sumData);
-        } catch (Throwable $ignored) {}
-
-        logAudit($pdo, 'H', 'Carwash Sales Report', 'updated', $reportDate, 'Saved daily summary totals',
-            ['gross_sales' => $grossSales, 'net_cash' => $netCash, 'short_over' => $shortOver]);
-        echo json_encode(['ok'=>true,
-            'gross_sales'=>$grossSales, 'staff_cf'=>$staffCf, 'pos_reading'=>$posReading,
-            'net_cash'=>$netCash, 'coh'=>$coh, 'short_over'=>$shortOver,
-            'total_commission'=>$totalCommission]);
-    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
+        } else {
+            $pdo->prepare("INSERT INTO summary_reports (report_month,store_name,quota_target,created_by) VALUES (?,?,?,?)")
+                ->execute([$mDate, 'HEROCARWASH', $quota, $user['name']]);
+        }
+        echo json_encode(['ok'=>true]);
+    } catch(Throwable $e){ echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
     exit;
 }
 
@@ -473,1172 +153,999 @@ if (isset($_GET['export_csv'])) {
     require_once __DIR__ . '/../lib/xlsx_writer.php';
     require_once __DIR__ . '/../lib/branch_colors.php';
 
-    $reportDate = $_GET['date'] ?? date('Y-m-d');
-    $stmt = $pdo->prepare("SELECT * FROM h_carwash_report WHERE store_name=? AND report_date=?");
-    $stmt->execute([CW_STORE, $reportDate]);
-    $r = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-    $g = fn($k) => number_format((float)($r[$k] ?? 0), 2, '.', '');
+    $csvYear  = (int)($_GET['year']  ?? date('Y'));
+    $csvMonth = (int)($_GET['month'] ?? date('n'));
+    $csvMonthNames = ['','January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
 
-    $filename = 'HeroCarwash_SalesReport_'.$reportDate.'.xlsx';
+    $csvCols = [
+        'report_date'           => 'Date',
+        'gross_sales_excl_mktg' => 'Gross Sales Excl Marketing',
+        'store_gross'           => 'Store Gross Sales (Excl SC/Mktg)',
+        'z_reading_gross'       => 'Z Reading Gross (Incl SC/Mktg)',
+        'cash_for_depo'         => 'Cash for Depo',
+        'sales_of_day_swipe'    => 'Sales of the Day (Swipe)',
+        'palawan_gcash'         => 'Palawan/Gcash',
+        'deposit_swipe'         => 'Deposit Swipe',
+        'late_payment'          => 'Late Payment',
+        'cancelled_transaction' => 'Cancelled Transaction',
+        'unpaid'                => 'Unpaid',
+        'paid'                  => 'Paid',
+        'advance_payment'       => 'Advance Payment',
+        'grab'                  => 'Grab',
+        'bank_trans'            => 'Bank Trans',
+        'gc_sponsor_marketing'  => 'GC Sponsor / Marketing',
+        'gc_sold'               => 'GC Sold',
+        'discount'              => 'Discount',
+        'marketing_pull_out'    => 'Marketing Pull Out',
+        'personal'              => 'Personal',
+        'expenses'              => 'Expenses',
+        'other_expenses'        => 'Other Expenses',
+        'sc_for_depo'           => 'SC for Depo',
+        'total_deductions'      => 'Total Deductions',
+        'short_over'            => 'Short / Over',
+        'total_swipe'           => 'Total Swipe',
+        'cash_deposit'          => 'Cash Deposit',
+        'other_sales'           => 'Other Sales',
+        'remarks'               => 'Remarks',
+        'remarks2'              => 'Remarks (2)',
+    ];
 
-    $xlsx = new SimpleXlsxWriter(salesReportAccentColor('H Carwash'));
-    $xlsx->title('Hero Carwash — Daily Sales Report');
-    $xlsx->subtitle(date('F j, Y', strtotime($reportDate))
-        . ' · Opening Cashier: ' . (string)($r['opening_cashier'] ?? '—')
-        . ' · Closing Cashier: ' . (string)($r['closing_cashier'] ?? '—'));
-    $xlsx->blank();
-
-    // — TRANSACTIONS —
-    $xlsx->sectionRow('TRANSACTIONS');
-    $xlsx->header(['No.','Plate No.','Service','Staff','Price','Discount','Commission Fee 25%','Net Sales','MOP','Remarks']);
-    $txStmt = $pdo->prepare("SELECT * FROM h_carwash_transactions WHERE store_name=? AND report_date=? ORDER BY sort_order ASC");
-    $txStmt->execute([CW_STORE, $reportDate]);
-    $n = 1;
-    foreach ($txStmt->fetchAll(PDO::FETCH_ASSOC) as $tx) {
-        $xlsx->row([$n++, $tx['plate_no'], $tx['service'], $tx['staff'],
-            number_format((float)$tx['price'],2,'.',''), number_format((float)$tx['discount'],2,'.',''),
-            number_format((float)$tx['commission'],2,'.',''), number_format((float)$tx['net_sales'],2,'.',''),
-            $tx['mop'], $tx['remarks']]);
+    $daysInCsvMonth = cal_days_in_month(CAL_GREGORIAN, $csvMonth, $csvYear);
+    $csvDays = [];
+    for ($d = 1; $d <= $daysInCsvMonth; $d++) {
+        $csvDays[] = sprintf('%04d-%02d-%02d', $csvYear, $csvMonth, $d);
     }
-    $xlsx->blank();
 
-    // — CASH BREAKDOWN —
-    $xlsx->sectionRow('CASH BREAKDOWN');
-    $xlsx->header(['Qty','Denomination','Total Collection']);
-    $cashStmt = $pdo->prepare("SELECT * FROM h_carwash_cash_rows WHERE store_name=? AND report_date=? ORDER BY sort_order ASC");
-    $cashStmt->execute([CW_STORE, $reportDate]);
-    foreach ($cashStmt->fetchAll(PDO::FETCH_ASSOC) as $cr) {
-        $xlsx->row([(float)$cr['qty'] ?: '', (float)$cr['denomination'] ?: '',
-            number_format((float)$cr['qty'] * (float)$cr['denomination'], 2, '.', '')]);
-    }
-    $xlsx->blank();
+    $csvStmt = $pdo->prepare("SELECT * FROM h_carwash_summary_entries WHERE store_name='HEROCARWASH' AND YEAR(report_date)=? AND MONTH(report_date)=?");
+    $csvStmt->execute([$csvYear, $csvMonth]);
+    $csvRows = [];
+    foreach ($csvStmt->fetchAll() as $r) $csvRows[$r['report_date']] = $r;
 
-    // — EXPENSES — / — UNPAIDS —
-    foreach (['expenses'=>'EXPENSES','unpaids'=>'UNPAIDS'] as $sec => $label) {
-        $xlsx->sectionRow($label);
-        $xlsx->header(['Particular','Amount']);
-        $ds = $pdo->prepare("SELECT * FROM h_carwash_detail_rows WHERE store_name=? AND report_date=? AND section=? ORDER BY sort_order ASC");
-        $ds->execute([CW_STORE, $reportDate, $sec]);
-        foreach ($ds->fetchAll(PDO::FETCH_ASSOC) as $d) {
-            $xlsx->row([$d['particular'], number_format((float)$d['amount'],2,'.','')]);
+    $filename = 'H_' . $csvMonthNames[$csvMonth] . '_' . $csvYear . '_SummaryReport.xlsx';
+
+    $xlsx = new SimpleXlsxWriter(branchAccentColor('H'));
+    $xlsx->title('Hero Carwash — Summary Report');
+    $xlsx->subtitle($csvMonthNames[$csvMonth] . ' ' . $csvYear);
+    $xlsx->blank();
+    $xlsx->header(array_values($csvCols));
+
+    $totals = array_fill_keys(array_keys($csvCols), 0);
+    foreach ($csvDays as $ds) {
+        $row  = $csvRows[$ds] ?? null;
+        $line = [];
+        foreach (array_keys($csvCols) as $key) {
+            if ($key === 'report_date') {
+                $line[] = date('d-M-Y (D)', strtotime($ds));
+            } elseif (in_array($key, ['remarks','remarks2'])) {
+                $line[] = $row[$key] ?? '';
+            } else {
+                $val    = (float)($row[$key] ?? 0);
+                $line[] = $val != 0 ? number_format($val, 2, '.', '') : '';
+                $totals[$key] += $val;
+            }
         }
-        $xlsx->blank();
+        $xlsx->row($line);
     }
-
-    // — MARKETING —
-    $xlsx->sectionRow('MARKETING');
-    $xlsx->header(['Particular','Amount','Staff','Commission']);
-    $ms = $pdo->prepare("SELECT * FROM h_carwash_marketing_rows WHERE store_name=? AND report_date=? ORDER BY sort_order ASC");
-    $ms->execute([CW_STORE, $reportDate]);
-    foreach ($ms->fetchAll(PDO::FETCH_ASSOC) as $m) {
-        $xlsx->row([$m['particular'], number_format((float)$m['amount'],2,'.',''), $m['staff'], number_format((float)$m['commission'],2,'.','')]);
+    $totalLine = ['TOTAL'];
+    foreach (array_keys($csvCols) as $key) {
+        if ($key === 'report_date') continue;
+        if (in_array($key, ['remarks','remarks2'])) { $totalLine[] = ''; continue; }
+        $totalLine[] = $totals[$key] != 0 ? number_format($totals[$key], 2, '.', '') : '0.00';
     }
-    $xlsx->blank();
-
-    // — SUMMARY REPORT —
-    $xlsx->sectionRow('SUMMARY REPORT');
-    $xlsx->header(['Particular', 'Amount']);
-    $xlsx->row(['Gross Sales', $g('gross_sales')]);
-    $xlsx->row(['Staff CF', $g('staff_cf')]);
-    $xlsx->row(['Sold GC', $g('sold_gc')]);
-    $xlsx->row(['POS Reading', $g('pos_reading')]);
-    $xlsx->row(['Expenses', $g('expenses')]);
-    $xlsx->row(['Unpaids', $g('unpaids')]);
-    $xlsx->row(['Discounts', $g('discounts')]);
-    $xlsx->row(['Marketing Expense', $g('marketing_expense')]);
-    $xlsx->row(['QR/Palawan Pay', $g('qr_palawan_pay')]);
-    $xlsx->row(['Card Payments', $g('card_payments')]);
-    $xlsx->totalRow(['Net Cash', $g('net_cash')]);
-    $xlsx->totalRow(['COH (Cash on Hand)', $g('coh')]);
-    $xlsx->totalRow(['(Short)Over', $g('short_over')]);
-    $xlsx->totalRow(['Total Commission', $g('total_commission')]);
-    $xlsx->row(['Remarks', (string)($r['remarks'] ?? '')]);
+    $xlsx->totalRow($totalLine);
     $xlsx->blank();
     $xlsx->footer('Generated by SalesHub — ' . date('Y-m-d H:i:s'));
-    $xlsx->columnWidths([8, 14, 18, 16, 12, 12, 16, 14, 10, 22]);
+    $xlsx->columnWidths(array_merge([14], array_fill(0, count($csvCols) - 3, 11), [16, 16]));
     $xlsx->output($filename);
 }
 
-// ── Fetch data for display ─────────────────────────────────
-$fDate  = $_GET['date'] ?? date('Y-m-d');
-$locked = isDateLocked($pdo, CW_STORE, $fDate);
-$stmt   = $pdo->prepare("SELECT * FROM h_carwash_report WHERE store_name=? AND report_date=?");
-$stmt->execute([CW_STORE, $fDate]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-$v   = fn($k) => (float)($row[$k] ?? 0);
-$vs  = fn($k) => (string)($row[$k] ?? '');
-$fmt = fn($n)  => number_format((float)$n, 2);
+// ── Filters ───────────────────────────────────────────────
+$fYear  = (int)($_GET['year']  ?? date('Y'));
+$fMonth = (int)($_GET['month'] ?? date('n'));
+$monthNames = ['','January','February','March','April','May','June',
+               'July','August','September','October','November','December'];
 
-// Transactions
-$txStmt = $pdo->prepare("SELECT * FROM h_carwash_transactions WHERE store_name=? AND report_date=? ORDER BY sort_order ASC");
-$txStmt->execute([CW_STORE, $fDate]);
-$txRows = $txStmt->fetchAll(PDO::FETCH_ASSOC);
-$txTotalPrice    = array_sum(array_column($txRows, 'price'));
-$txTotalDiscount = array_sum(array_column($txRows, 'discount'));
-$txTotalCommission = ($txTotalPrice - $txTotalDiscount) * 0.25;
-$txTotalNetSales = $txTotalPrice - $txTotalCommission;
-
-// Cash breakdown
-$cashStmt = $pdo->prepare("SELECT * FROM h_carwash_cash_rows WHERE store_name=? AND report_date=? ORDER BY sort_order ASC");
-$cashStmt->execute([CW_STORE, $fDate]);
-$cashRows = $cashStmt->fetchAll(PDO::FETCH_ASSOC);
-if (empty($cashRows)) {
-    // Seed with the workbook's default denominations (empty rows for QTY)
-    $cashRows = array_map(fn($d) => ['qty'=>0, 'denomination'=>$d], $DEFAULT_DENOMS);
+$daysInMonth = cal_days_in_month(CAL_GREGORIAN, $fMonth, $fYear);
+$allDays = [];
+for ($d = 1; $d <= $daysInMonth; $d++) {
+    $allDays[] = sprintf('%04d-%02d-%02d', $fYear, $fMonth, $d);
 }
-$cashTotal = 0;
-foreach ($cashRows as $cr) $cashTotal += (float)$cr['qty'] * (float)$cr['denomination'];
 
-// Expenses / Unpaids detail rows
-$detStmt = $pdo->prepare("SELECT * FROM h_carwash_detail_rows WHERE store_name=? AND report_date=? ORDER BY section, sort_order ASC");
-$detStmt->execute([CW_STORE, $fDate]);
-$allDetails = $detStmt->fetchAll(PDO::FETCH_ASSOC);
-$details = [];
-foreach ($allDetails as $d) $details[$d['section']][] = $d;
-$expensesTotal = array_sum(array_column($details['expenses'] ?? [], 'amount'));
-$unpaidsTotal  = array_sum(array_column($details['unpaids'] ?? [], 'amount'));
+// ── Load saved rows ───────────────────────────────────────
+$savedRows = [];
+try {
+    $stmt = $pdo->prepare("SELECT * FROM h_carwash_summary_entries WHERE store_name='HEROCARWASH' AND YEAR(report_date)=? AND MONTH(report_date)=?");
+    $stmt->execute([$fYear, $fMonth]);
+    foreach ($stmt->fetchAll() as $r) { if ((float)($r['store_gross'] ?? 0) == 0) $r['store_gross'] = $r['store_gross_excl_mktg'] ?? 0; $savedRows[$r['report_date']] = $r; }
+} catch (Throwable $ignored) {}
 
-// Marketing rows
-$mktStmt = $pdo->prepare("SELECT * FROM h_carwash_marketing_rows WHERE store_name=? AND report_date=? ORDER BY sort_order ASC");
-$mktStmt->execute([CW_STORE, $fDate]);
-$mktRows = $mktStmt->fetchAll(PDO::FETCH_ASSOC);
-$mktAmountTotal     = array_sum(array_column($mktRows, 'amount'));
-$mktCommissionTotal = array_sum(array_column($mktRows, 'commission'));
+// ── Pull fallback data from the Carwash Sales Report for dates that don't    ──
+// have a manually-saved summary row yet. Same pattern as
+// ../dois/dois_summary_report.php / ../dois/dois_sales_report.php.
+$salesRows = [];
+try {
+    $ssStmt = $pdo->prepare("SELECT * FROM h_carwash_report WHERE store_name='HEROCARWASH' AND YEAR(report_date)=? AND MONTH(report_date)=?");
+    $ssStmt->execute([$fYear, $fMonth]);
+    foreach ($ssStmt->fetchAll(PDO::FETCH_ASSOC) as $r) $salesRows[$r['report_date']] = $r;
 
-// Summary calcs (mirrors the workbook's formula chain)
-$posReadingCalc  = $txTotalPrice + $mktAmountTotal;
-$grossSalesCalc  = $posReadingCalc - $txTotalCommission;
-$netCashCalc     = $posReadingCalc - $expensesTotal - $unpaidsTotal - $txTotalDiscount - $mktAmountTotal - $v('qr_palawan_pay') - $v('card_payments');
-$shortOverCalc   = $cashTotal - $netCashCalc;
-$totalCommissionCalc = $txTotalCommission + $mktCommissionTotal;
+    // Carwash has no dine-in rows — Cancelled Transaction stays manual.
+} catch (Throwable $ignored) {}
 
-$pageTitle  = 'Hero Carwash Sales Report';
-$activePage = 'h_carwash_sales_report';
+// Map: Summary Report column => Carwash Sales Report source column (or a
+// computed key above). Fields with no clear 1:1 source — Gross Sales
+// Excl Mktg, Store Gross, Total Deductions (all computed here), Paid,
+// Advance Payment, GC Sponsor/Marketing, Personal, Cash Deposit, Other
+// Sales, and both Remarks — have no equivalent in h_sales_report and
+// stay manual entries, same as before.
+$SALES_MAP = [
+    'z_reading_gross'        => 'pos_reading',
+    'cash_for_depo'          => 'net_cash',
+    'sales_of_day_swipe'     => 'card_payments',
+    'palawan_gcash'          => 'qr_palawan_pay',
+    'unpaid'                 => 'unpaids',
+    'gc_sold'                => 'sold_gc',
+    'discount'               => 'discounts',
+    'marketing_pull_out'     => 'marketing_expense',
+    'expenses'               => 'expenses',
+    'short_over'             => 'short_over',
+];
+// Fields that stay editable/never lock even when the Sales Report has
+// data for the date — pre-filled from the Sales Report as a starting
+// default, but a manually-saved value always takes priority.
+$NEVER_LOCK = ['cancelled_transaction'];
+
+// ── Live sync: current Carwash Sales Report values for this month (polled by JS) ──
+if (isset($_GET['ajax_sync'])) {
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    $out = [];
+    foreach ($salesRows as $d => $sr) {
+        $o = [];
+        foreach ($SALES_MAP as $k => $src) $o[$k] = round((float)($sr[$src] ?? 0), 2);
+        $out[$d] = $o;
+    }
+    echo json_encode(['ok' => true, 'rows' => $out]);
+    exit;
+}
+
+// ── Load saved quota ──────────────────────────────────────
+$savedQuota = 0;
+try {
+    try { $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS quota_target decimal(12,2) NOT NULL DEFAULT 0.00"); } catch(Throwable $ignored) {}
+    $qRow = $pdo->prepare("SELECT quota_target FROM summary_reports WHERE store_name='HEROCARWASH' AND YEAR(report_month)=? AND MONTH(report_month)=? ORDER BY updated_at DESC, created_at DESC LIMIT 1");
+    $qRow->execute([$fYear, $fMonth]);
+    $savedQuota = (float)($qRow->fetchColumn() ?: 0);
+} catch(Throwable $ignored) {}
+
+// ── Column keys (numeric, for tfoot totals) ───────────────
+$COLS = [
+    'gross_sales_excl_mktg','store_gross','z_reading_gross','cash_for_depo',
+    'sales_of_day_swipe','palawan_gcash','deposit_swipe','late_payment',
+    'cancelled_transaction','unpaid','paid','advance_payment',
+    'grab','bank_trans','gc_sponsor_marketing','gc_sold','discount',
+    'marketing_pull_out','personal','expenses','other_expenses','sc_for_depo',
+    'total_deductions','short_over','total_swipe','cash_deposit','other_sales'
+];
+
+$pageTitle  = 'Hero Carwash Summary Report';
+$activePage = 'h_carwash_summary';
 include '../layout.php';
 ?>
 
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+<style>
+.page-content { padding: 20px 24px !important; overflow-x: hidden; }
 
-<!-- Shared floating panel for the Service search dropdown (positioned via JS) -->
-<div id="cw-service-dropdown"></div>
+/* ── Scroll container ── */
+.sr-outer {
+  width: 100%; overflow: auto;
+  max-height: calc(100vh - 260px);   /* refined by fitTable() in the script below */
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); scrollbar-width: thin;
+  scrollbar-color: #c1c7d0 #f1f3f5;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.sr-outer::-webkit-scrollbar { height: 8px; }
+.sr-outer::-webkit-scrollbar-track { background: #f1f3f5; }
+.sr-outer::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 4px; }
+.sr-outer::-webkit-scrollbar-thumb:hover { background: #9aa3af; }
+
+/* ── Table ── */
+.sr-table { border-collapse: collapse; width: max-content; font-size: .69rem; table-layout: fixed; }
+.sr-table thead th {
+  background: #f4f5f7; color: #4b5563;
+  font-family: var(--font-m); font-size: .52rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 9px 6px; border: 1px solid #e3e6ea;
+  white-space: nowrap; text-align: center;
+  position: sticky; top: 0; z-index: 20;
+}
+.sr-table thead tr.grp-row th {
+  font-size: .5rem; padding: 4px 6px;
+  background: #ebedf0; letter-spacing: .05em; color: #374151;
+}
+
+/* 2nd header row sits right under the group row (height set by fitTable()) */
+.sr-table thead tr:nth-child(2) th { top: var(--grp-h, 20px); }
+
+/* ── Sticky date + action columns ── */
+.th-date {
+  position: sticky !important; left: 0; z-index: 30 !important;
+  width: 88px; min-width: 88px;
+  background: #ebedf0 !important; color: var(--accent) !important;
+  box-shadow: 2px 0 5px rgba(0,0,0,.07);
+}
+.th-act {
+  position: sticky !important; right: 0; z-index: 30 !important;
+  width: 66px; min-width: 66px;
+  background: #ebedf0 !important; box-shadow: -2px 0 5px rgba(0,0,0,.07);
+}
+.td-date {
+  position: sticky; left: 0; z-index: 5;
+  background: #f8f9fb !important; box-shadow: 2px 0 5px rgba(0,0,0,.06);
+  font-family: var(--font-m); font-size: .69rem;
+  color: var(--accent); font-weight: 600;
+  text-align: center; padding: 0 6px;
+  white-space: nowrap; width: 88px; min-width: 88px;
+}
+.td-act {
+  position: sticky; right: 0; z-index: 5;
+  background: #f8f9fb !important; box-shadow: -2px 0 5px rgba(0,0,0,.06);
+  text-align: center; padding: 3px 5px;
+  width: 66px; min-width: 66px;
+}
+
+/* ── Column colours ── */
+.g-income { background: #f0fdf4 !important; }
+.g-deduct { background: #fff7f7 !important; }
+.g-calc   { background: #eff6ff !important; }
+.g-text   { background: #faf5ff !important; }
+
+/* ── Column widths ── */
+.col-num  { width: 100px; min-width: 100px; }
+.col-txt  { width: 160px; min-width: 160px; }
+
+/* ── Body rows ── */
+.sr-table tbody tr { border-bottom: 1px solid #e8eaed; transition: background .1s; }
+.sr-table tbody tr:hover td { filter: brightness(.97); }
+.sr-table td { border: 1px solid #e8eaed; padding: 0; vertical-align: middle; }
+
+/* ── Inputs ── */
+.sri {
+  width: 100%; padding: 6px;
+  background: transparent; border: none; outline: none;
+  color: #1a1d23; font-family: var(--font-m); font-size: .69rem;
+  text-align: right; display: block; box-sizing: border-box;
+}
+.sri:focus { background: rgba(15,123,92,.07); outline: 1px solid rgba(15,123,92,.4); }
+.sri.calc  { color: #1d4ed8; background: rgba(37,99,235,.05); cursor: default; font-weight: 600; }
+.sri.txt   { text-align: left; font-family: var(--font-h); font-size: .69rem; }
+.sri.neg   { color: #be123c !important; font-weight: 600; }
+
+/* ── Save button ── */
+.asv { font-size:.68rem; font-weight:600; color:var(--subtext); }
+.asv.saving { color:#b45309; }
+.asv.ok { color:#15803d; }
+.asv.err { color:#be123c; }
+.bsr {
+  padding: 4px 8px; font-size: .6rem;
+  font-family: var(--font-m); font-weight: 700;
+  background: #f0fdf4; color: #15803d;
+  border: 1px solid #bbf7d0; border-radius: 5px;
+  cursor: pointer; white-space: nowrap;
+  transition: all .13s; letter-spacing: .02em; width: 56px;
+}
+.bsr:hover  { background: #dcfce7; border-color: #86efac; }
+.bsr.saving { opacity: .5; pointer-events: none; }
+.bsr.ok     { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.bsr.err    { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+
+/* ── Totals row ── */
+.sr-table tfoot td {
+  padding: 8px 6px; font-family: var(--font-m); font-size: .69rem; font-weight: 700;
+  text-align: right; border: 1px solid #d1d5db;
+  background: #f0f2f5; color: #1a1d23;
+}
+.sr-table tfoot td.tfl {
+  text-align: center; color: var(--accent);
+  font-size: .6rem; text-transform: uppercase; letter-spacing: .06em;
+}
+/* TOTAL row stays pinned to the bottom of the table while the rows scroll */
+.sr-table tfoot td {
+  position: sticky; bottom: 0; z-index: 15;
+  box-shadow: 0 -2px 6px rgba(0,0,0,.10);
+}
+.sr-table tfoot td:first-child { left: 0;  z-index: 35; }
+.sr-table tfoot td:last-child  { right: 0; z-index: 35; }
+
+/* ── Status dot ── */
+.sdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+.sdot.ok  { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+.sdot.new { background: #f59e0b; }
+.sdot.auto { background: #3b82f6; box-shadow: 0 0 4px #3b82f6; }
+
+/* ── Toast ── */
+.toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
+
+/* ── Legend ── */
+.sr-leg {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-family: var(--font-m); font-size: .62rem; color: var(--subtext);
+  margin-bottom: 10px; align-items: center;
+}
+.sr-leg span { display: flex; align-items: center; gap: 5px; }
+.ld { display: inline-block; width: 9px; height: 9px; border-radius: 3px; }
+
+/* ── Controls ── */
+.sr-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+
+/* ── Scroll hint ── */
+.scroll-hint {
+  font-family: var(--font-m); font-size: .62rem; color: var(--subtext);
+  text-align: center; padding: 6px 12px; border-bottom: 1px solid var(--border);
+  background: #f8f9fb;
+}
+</style>
 
 <!-- Header -->
-<div class="cw-header-card">
+<div class="section-header">
   <div>
-    <div class="eyebrow">Hero Carwash · Sales</div>
-    <div class="title">🚗 Hero Carwash Daily Sales Report</div>
-    <div class="subtitle">Cash Breakdown + Transactions · Commission &amp; Net Sales auto-calculated</div>
-  </div>
-  <span style="background:rgba(255,255,255,.15);color:#fff;padding:5px 14px;border-radius:20px;font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">📌 HERO CARWASH</span>
-</div>
-
-<?php if ($locked): ?>
-<div class="locked-banner">
-  🔒 <?= date('M j, Y', strtotime($fDate)) ?> is locked by management. All fields on this page are read-only.
-</div>
-<?php endif; ?>
-
-<!-- Opening / Closing Cashier -->
-<div class="sr-oc-bar">
-  <div class="sr-oc-field">
-    <label for="opening_cashier">Opening Cashier:</label>
-    <input type="text" id="opening_cashier" style="text-transform:uppercase" value="<?= htmlspecialchars($vs('opening_cashier')) ?>" placeholder="e.g. HENCEL">
-  </div>
-  <div class="sr-oc-field">
-    <label for="closing_cashier">Closing Cashier:</label>
-    <input type="text" id="closing_cashier" style="text-transform:uppercase" value="<?= htmlspecialchars($vs('closing_cashier')) ?>" placeholder="e.g. HENCEL">
+    <div class="section-title" style="color:#1a1d23">Hero Carwash <span style="color:var(--accent)">Summary Report</span></div>
+    <div class="section-subtitle">Auto-saves as you type (empty rows are never saved) · linked cells update by themselves from the Sales Report</div>
   </div>
 </div>
 
 <!-- Controls -->
-<div class="sr-controls">
-  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($fDate) ?>" onchange="this.form.submit()">
-    <button type="button" class="btn btn-primary" onclick="saveAll()">💾 Save All</button>
-    <a href="h_carwash_sales_report.php?export_csv=1&date=<?= htmlspecialchars($fDate) ?>" class="btn btn-ghost">⬇ Download Excel</a>
-    <a href="carwash_services.php" class="btn btn-ghost">⚙ Manage Services</a>
-    <span id="saveStatus" class="sr-save-status"></span>
-  </form>
-
-  <?php if ($canLock): ?>
-  <div class="lock-wrap">
-    <button type="button" class="btn-lock <?= $locked ? 'is-locked' : '' ?>" id="lockBtn" onclick="toggleLockPopover(event)"
-      title="<?= $locked ? 'Unlock '.date('M j, Y', strtotime($fDate)) : 'Lock '.date('M j, Y', strtotime($fDate)) ?>">
-      <?= $locked ? '🔒 Locked' : '🔓 Lock' ?>
-    </button>
-    <div class="lock-popover" id="lockPopover">
-      <div class="lock-popover-title"><?= $locked ? 'Unlock this date?' : 'Lock this date?' ?></div>
-      <div class="lock-popover-date">📅 <?= date('l, M j, Y', strtotime($fDate)) ?></div>
-      <div class="lock-popover-desc">
-        <?= $locked
-            ? 'This will make the Carwash Sales Report editable again for this date.'
-            : 'This will make the Carwash Sales Report read-only for this date. No one will be able to edit or save changes until it’s unlocked.' ?>
-      </div>
-      <div class="lock-popover-actions">
-        <button type="button" class="btn-cancel" onclick="hideLockPopover()">Cancel</button>
-        <button type="button" class="btn-confirm <?= $locked ? 'unlock' : '' ?>" onclick="confirmToggleLock()"><?= $locked ? 'Unlock' : 'Lock' ?></button>
-      </div>
-    </div>
+<form method="GET" class="sr-controls">
+  <div style="font-family:var(--font-m);font-size:.76rem;color:var(--accent);padding:7px 13px;background:var(--accent-dim);border-radius:8px;border:1px solid rgba(34,211,165,.2)">
+    📍 Hero Carwash
   </div>
-  <?php elseif ($locked): ?>
-  <span class="lock-badge-static" title="Locked by management">🔒 Locked</span>
-  <?php endif; ?>
+  <select name="month" class="form-control" style="max-width:130px" onchange="this.form.submit()">
+    <?php for ($m = 1; $m <= 12; $m++): ?>
+    <option value="<?=$m?>" <?=$fMonth===$m?'selected':''?>><?=$monthNames[$m]?></option>
+    <?php endfor; ?>
+  </select>
+  <select name="year" class="form-control" style="max-width:100px" onchange="this.form.submit()">
+    <?php for ($y = 2050; $y >= 2023; $y--): ?>
+    <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
+    <?php endfor; ?>
+  </select>
+  <a href="#" class="btn btn-ghost btn-sm" style="color:var(--accent3);border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)" onclick="downloadCSV(event)">⬇ Download Excel</a>
+</form>
+
+<!-- Legend -->
+<div class="sr-leg">
+  <span><span class="ld" style="background:#bbf7d0;border:1px solid #86efac"></span>Income / Sales</span>
+  <span><span class="ld" style="background:#fecaca;border:1px solid #fca5a5"></span>Deductions</span>
+  <span><span class="ld" style="background:#bfdbfe;border:1px solid #93c5fd"></span>Auto-calculated</span>
+  <span style="margin-left:8px"><span class="sdot ok"></span> Saved &nbsp;<span class="sdot new"></span> Unsaved</span>
 </div>
 
-<style>
-.cw-main-grid.cw-main-grid.cw-main-grid { grid-template-columns:340px 310px minmax(0,1fr); }
-@media (max-width:1300px) { .cw-main-grid.cw-main-grid.cw-main-grid { grid-template-columns:340px 310px; } .cw-main-grid > div:last-child { grid-column:1 / -1; } }
-@media (max-width:1100px) { .cw-main-grid.cw-main-grid.cw-main-grid { grid-template-columns:1fr; } }
-</style>
-<div class="cw-main-grid">
-<!-- ══════════════════════════════════════════════════════════
-     LEFT COLUMN: Summary Report (top, no scrolling)
-════════════════════════════════════════════════════════════ -->
-<div>
+<!-- Spreadsheet -->
+<div class="sr-outer">
+<div class="scroll-hint">← Scroll horizontally to see all columns →</div>
+<table class="sr-table" id="srt">
+  <thead>
+    <tr class="grp-row">
+      <th class="th-date"></th>
+      <!-- AUTO-CALC SALES -->
+      <th colspan="2" class="g-calc">AUTO-CALCULATED</th>
+      <!-- SALES / INCOME -->
+      <th colspan="6" class="g-income">SALES / INCOME</th>
+      <!-- COLLECTIONS -->
+      <th colspan="9" class="g-income">COLLECTIONS</th>
+      <!-- DEDUCTIONS -->
+      <th colspan="5" class="g-deduct">DEDUCTIONS</th>
+      <!-- SC FOR DEPO (user input) -->
+      <th colspan="1" class="g-deduct">SC FOR DEPO</th>
+      <!-- AUTO-CALCULATED -->
+      <th colspan="3" class="g-calc">AUTO-CALCULATED</th>
+      <!-- OTHER -->
+      <th colspan="2" class="g-income">OTHER</th>
+      <!-- NOTES + OTHER SALES -->
+      <th colspan="1" class="g-text">NOTES</th>
+      <th colspan="1" class="g-income">OTHER</th>
+      <th colspan="1" class="g-text">NOTES</th>
+      <th class="th-act"></th>
+    </tr>
+    <tr>
+      <th class="th-date">DATE</th>
+      <!-- AUTO-CALC SALES -->
+      <th class="g-calc col-num">GROSS SALES EXCL MKTG</th>
+      <th class="g-calc col-num">STORE GROSS (EXCL SC/MKTG)</th>
+      <!-- SALES / INCOME -->
+      <th class="g-income col-num">Z READING GROSS (INCL SC/MKTG)</th>
+      <th class="g-income col-num">CASH FOR DEPO</th>
+      <th class="g-income col-num">SALES OF THE DAY (SWIPE)</th>
+      <th class="g-income col-num">PALAWAN/GCASH</th>
+      <th class="g-income col-num">DEPOSIT SWIPE</th>
+      <th class="g-income col-num">LATE PAYMENT</th>
+      <!-- COLLECTIONS -->
+      <th class="g-deduct col-num">CANCELLED TRANSACTION</th>
+      <th class="g-deduct col-num">UNPAID</th>
+      <th class="g-income col-num">PAID</th>
+      <th class="g-income col-num">ADVANCE PAYMENT</th>
+      <th class="g-income col-num">GRAB</th>
+      <th class="g-income col-num">BANK TRANS</th>
+      <th class="g-income col-num">GC SPONSOR / MARKETING</th>
+      <th class="g-deduct col-num">GC SOLD</th>
+      <th class="g-deduct col-num">DISCOUNT</th>
+      <!-- DEDUCTIONS -->
+      <th class="g-deduct col-num">MARKETING PULL OUT</th>
+      <th class="g-deduct col-num">PERSONAL</th>
+      <th class="g-deduct col-num">EXPENSES</th>
+      <th class="g-deduct col-num">OTHER EXPENSES</th>
+      <!-- SC FOR DEPO — user editable -->
+      <th class="g-deduct col-num">SC FOR DEPO</th>
+      <!-- AUTO-CALCULATED -->
+      <th class="g-calc col-num">TOTAL DEDUCTIONS</th>
+      <th class="g-calc col-num">SHORT / OVER</th>
+      <th class="g-calc col-num">TOTAL SWIPE</th>
+      <!-- OTHER INPUT -->
+      <th class="g-income col-num">CASH DEPOSIT</th>
+      <!-- NOTES 1 -->
+      <th class="g-text col-txt">REMARKS</th>
+      <!-- OTHER SALES -->
+      <th class="g-income col-num">OTHER SALES</th>
+      <!-- NOTES 2 -->
+      <th class="g-text col-txt">REMARKS (2)</th>
+      <th class="th-act">AUTO-SAVE</th>
+    </tr>
+  </thead>
 
-  <!-- ══════════════════════════════════════════════════════
-       SUMMARY REPORT
-  ═══════════════════════════════════════════════════════ -->
-  <div class="sr-card">
-    <div class="sr-title-row"><div class="sr-main-title">Summary Report</div></div>
+  <tbody>
+  <?php foreach ($allDays as $ds):
+    $dayN  = (int)date('j', strtotime($ds));
+    $dayNm = date('D', strtotime($ds));
+    $row   = $savedRows[$ds] ?? null;
+    $saved = $row !== null;
+    $sr    = $salesRows[$ds] ?? null;
+    $hasSR = $sr !== null;          // Carwash Sales Report has data for this date
+    $fromSR= $hasSR && !$saved;     // used only for the status dot
+    $rid   = 'r' . str_replace('-', '', $ds);
+    // Sales-Report-mapped fields ALWAYS mirror the Sales Report (source of
+    // truth) when it has data for the date. NEVER_LOCK fields stay editable,
+    // using the Sales Report figure only as a starting default when nothing's
+    // been manually saved yet.
+    $isSR  = fn($k) => $hasSR && isset($SALES_MAP[$k]) && !in_array($k, $NEVER_LOCK, true);
+    $dv    = function($k) use ($row, $sr, $SALES_MAP, $NEVER_LOCK, $hasSR) {
+        if ($hasSR && isset($SALES_MAP[$k]) && !in_array($k, $NEVER_LOCK, true)) {
+            $v = (float)($sr[$SALES_MAP[$k]] ?? 0);
+            return $v != 0 ? number_format($v, 2, '.', ',') : '';
+        }
+        if ($row && isset($row[$k]) && (float)$row[$k] != 0) {
+            return number_format((float)$row[$k], 2, '.', ',');
+        }
+        if ($hasSR && isset($SALES_MAP[$k]) && in_array($k, $NEVER_LOCK, true)) {
+            $v = (float)($sr[$SALES_MAP[$k]] ?? 0);
+            return $v != 0 ? number_format($v, 2, '.', ',') : '';
+        }
+        return '';
+    };
+    // Attributes/class for a Sales-Report-mappable cell: readonly blue mirror
+    // when locked, otherwise the normal editable input.
+    $cls   = fn($k) => $isSR($k) ? 'sri calc' : 'sri';
+    $attrs = fn($k) => $isSR($k) ? 'readonly tabindex="-1"' : 'oninput="changed(this)"';
+  ?>
+  <tr id="<?=$rid?>" data-date="<?=$ds?>" data-saved="<?=$saved?1:0?>" data-fromsr="<?=$hasSR?1:0?>">
+    <td class="td-date">
+      <?=$dayN?>-<?=date('M',strtotime($ds))?> <small style="color:var(--subtext);font-size:.6rem"><?=$dayNm?></small>
+      <span class="sdot <?=$saved?'ok':($fromSR?'auto':'new')?>" id="dot_<?=$rid?>" title="<?=$fromSR?'Auto-filled from Carwash Sales Report — saves automatically':''?>"></span>
+    </td>
 
-    <div class="sr-row" style="background:#f8f9fb">
-      <div class="sr-label" style="text-align:left;flex:1">For</div>
-      <div class="sr-value-wrap"><span class="sr-input readout" style="font-size:.78rem"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
-    </div>
+    <!-- AUTO-CALC SALES -->
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="gross_sales_excl_mktg" data-row="<?=$rid?>" value="<?=$dv('gross_sales_excl_mktg')?>" readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="store_gross"           data-row="<?=$rid?>" value="<?=$dv('store_gross')?>"           readonly tabindex="-1"></td>
+    <!-- SALES / INCOME -->
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('z_reading_gross')?>" data-col="z_reading_gross"       data-row="<?=$rid?>" value="<?=$dv('z_reading_gross')?>"       placeholder="0.00" <?=$attrs('z_reading_gross')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('cash_for_depo')?>" data-col="cash_for_depo"         data-row="<?=$rid?>" value="<?=$dv('cash_for_depo')?>"         placeholder="0.00" <?=$attrs('cash_for_depo')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('sales_of_day_swipe')?>" data-col="sales_of_day_swipe"    data-row="<?=$rid?>" value="<?=$dv('sales_of_day_swipe')?>"    placeholder="0.00" <?=$attrs('sales_of_day_swipe')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('palawan_gcash')?>" data-col="palawan_gcash"         data-row="<?=$rid?>" value="<?=$dv('palawan_gcash')?>"         placeholder="0.00" <?=$attrs('palawan_gcash')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('deposit_swipe')?>" data-col="deposit_swipe"         data-row="<?=$rid?>" value="<?=$dv('deposit_swipe')?>"         placeholder="0.00" <?=$attrs('deposit_swipe')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('late_payment')?>" data-col="late_payment"          data-row="<?=$rid?>" value="<?=$dv('late_payment')?>"          placeholder="0.00" <?=$attrs('late_payment')?>></td>
+    <!-- COLLECTIONS -->
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('cancelled_transaction')?>" data-col="cancelled_transaction" data-row="<?=$rid?>" value="<?=$dv('cancelled_transaction')?>" placeholder="0.00" <?=$attrs('cancelled_transaction')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('unpaid')?>" data-col="unpaid"                data-row="<?=$rid?>" value="<?=$dv('unpaid')?>"                placeholder="0.00" <?=$attrs('unpaid')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="paid"                  data-row="<?=$rid?>" value="<?=$dv('paid')?>"                  placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="advance_payment"       data-row="<?=$rid?>" value="<?=$dv('advance_payment')?>"       placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('grab')?>" data-col="grab"                  data-row="<?=$rid?>" value="<?=$dv('grab')?>"                  placeholder="0.00" <?=$attrs('grab')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('bank_trans')?>" data-col="bank_trans"            data-row="<?=$rid?>" value="<?=$dv('bank_trans')?>"            placeholder="0.00" <?=$attrs('bank_trans')?>></td>
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="gc_sponsor_marketing"  data-row="<?=$rid?>" value="<?=$dv('gc_sponsor_marketing')?>"  placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('gc_sold')?>" data-col="gc_sold"               data-row="<?=$rid?>" value="<?=$dv('gc_sold')?>"               placeholder="0.00" <?=$attrs('gc_sold')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('discount')?>" data-col="discount"              data-row="<?=$rid?>" value="<?=$dv('discount')?>"              placeholder="0.00" <?=$attrs('discount')?>></td>
+    <!-- DEDUCTIONS -->
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('marketing_pull_out')?>" data-col="marketing_pull_out"    data-row="<?=$rid?>" value="<?=$dv('marketing_pull_out')?>"    placeholder="0.00" <?=$attrs('marketing_pull_out')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="personal"              data-row="<?=$rid?>" value="<?=$dv('personal')?>"              placeholder="0.00" oninput="changed(this)"></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('expenses')?>" data-col="expenses"              data-row="<?=$rid?>" value="<?=$dv('expenses')?>"              placeholder="0.00" <?=$attrs('expenses')?>></td>
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('other_expenses')?>" data-col="other_expenses"        data-row="<?=$rid?>" value="<?=$dv('other_expenses')?>"        placeholder="0.00" <?=$attrs('other_expenses')?>></td>
+    <!-- SC FOR DEPO -->
+    <td class="g-deduct"><input type="text" inputmode="decimal" autocomplete="off" class="<?=$cls('sc_for_depo')?>" data-col="sc_for_depo"           data-row="<?=$rid?>" value="<?=$dv('sc_for_depo')?>"           placeholder="0.00" <?=$attrs('sc_for_depo')?>></td>
+    <!-- AUTO-CALCULATED -->
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="total_deductions"   data-row="<?=$rid?>" value="<?=$dv('total_deductions')?>"      readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="short_over"         data-row="<?=$rid?>" value="<?=$dv('short_over')?>"            readonly tabindex="-1"></td>
+    <td class="g-calc"><input type="text" inputmode="decimal" autocomplete="off" class="sri calc" data-col="total_swipe"        data-row="<?=$rid?>" value="<?=$dv('total_swipe')?>"           readonly tabindex="-1"></td>
+    <!-- OTHER INPUT -->
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="cash_deposit"          data-row="<?=$rid?>" value="<?=$dv('cash_deposit')?>"          placeholder="0.00" oninput="changed(this)"></td>
+    <!-- REMARKS 1 -->
+    <td class="g-text"><input type="text" class="sri txt" data-col="remarks"  data-row="<?=$rid?>" value="<?=htmlspecialchars($row['remarks'] ??'')?>"  placeholder="…" oninput="changed(this)"></td>
+    <!-- OTHER SALES -->
+    <td class="g-income"><input type="text" inputmode="decimal" autocomplete="off" class="sri" data-col="other_sales"           data-row="<?=$rid?>" value="<?=$dv('other_sales')?>"           placeholder="0.00" oninput="changed(this)"></td>
+    <!-- REMARKS 2 -->
+    <td class="g-text"><input type="text" class="sri txt" data-col="remarks2" data-row="<?=$rid?>" value="<?=htmlspecialchars($row['remarks2']??'')?>" placeholder="…" oninput="changed(this)"></td>
 
-    <div class="sr-row tan">
-      <div class="sr-label">Gross Sales <span style="font-size:.62rem;opacity:.7">(auto: POS Reading − Staff CF)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="gross_sales" value="<?= $fmt($grossSalesCalc) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row tan">
-      <div class="sr-label">Staff CF <span style="font-size:.62rem;opacity:.7">(auto: Total Commission Fee 25%)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="staff_cf" value="<?= $fmt($txTotalCommission) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row tan">
-      <div class="sr-label">Sold GC</div>
-      <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="sold_gc" value="<?= $v('sold_gc') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
-    </div>
-    <div class="sr-row tan">
-      <div class="sr-label">POS Reading <span style="font-size:.62rem;opacity:.7">(auto: Total Price + Marketing)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="pos_reading" value="<?= $fmt($posReadingCalc) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row pink-val">
-      <div class="sr-label">Expenses <span style="font-size:.62rem;opacity:.7">(auto from Expenses)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="expenses" value="<?= $fmt($expensesTotal) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row pink-val">
-      <div class="sr-label">Unpaids <span style="font-size:.62rem;opacity:.7">(auto from Unpaids)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="unpaids" value="<?= $fmt($unpaidsTotal) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row pink-val">
-      <div class="sr-label">Discounts <span style="font-size:.62rem;opacity:.7">(auto from Discount col)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="discounts" value="<?= $fmt($txTotalDiscount) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row pink-val">
-      <div class="sr-label">Marketing Expense <span style="font-size:.62rem;opacity:.7">(auto from Marketing)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="marketing_expense" value="<?= $fmt($mktAmountTotal) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row" style="background:#eef2f7">
-      <div class="sr-label">QR/Palawan Pay</div>
-      <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="qr_palawan_pay" value="<?= $v('qr_palawan_pay') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
-    </div>
-    <div class="sr-row" style="background:#eef2f7">
-      <div class="sr-label">Card Payments</div>
-      <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="card_payments" value="<?= $v('card_payments') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
-    </div>
-
-    <div class="sr-row net">
-      <div class="sr-label">Net Cash</div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_cash" value="<?= $fmt($netCashCalc) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row coh">
-      <div class="sr-label">COH (Cash on Hand) <span style="font-size:.62rem;opacity:.7">(auto from Cash Breakdown)</span></div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="coh" value="<?= $fmt($cashTotal) ?>" readonly tabindex="-1"></div>
-    </div>
-    <div class="sr-row short">
-      <div class="sr-label">(Short)Over</div>
-      <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="short_over" value="<?= $fmt($shortOverCalc) ?>" readonly tabindex="-1"></div>
-    </div>
-
-    <div class="sr-row" style="flex-direction:column;align-items:stretch;background:#f8f9fb">
-      <div class="sr-label" style="text-align:left;padding-right:0;margin-bottom:6px">Remarks</div>
-      <textarea class="sr-remarks" id="remarks" placeholder="Optional notes…"><?= htmlspecialchars($vs('remarks')) ?></textarea>
-    </div>
-  </div>
-
-  <div style="font-family:var(--font-h);font-size:.68rem;color:#b91c1c;font-style:italic;margin-top:10px">
-    Only the gray/editable cells need to be filled out — everything else auto-calculates.
-  </div>
-
-</div>
-
-<!-- ══ MIDDLE COLUMN: Cash Breakdown (right beside the Summary Report) ══ -->
-<div>
-
-  <div class="sr-section">
-    <div class="sr-section-title dark-red">Cash Breakdown</div>
-    <div style="overflow-x:auto">
-    <table class="di-table cash-table" id="cash-table">
-      <thead>
-        <tr><th>Qty</th><th>Denomination</th><th>Total Collection</th><th style="width:32px"></th></tr>
-      </thead>
-      <tbody id="cash-body">
-        <?php foreach ($cashRows as $cr): $tot = (float)$cr['qty'] * (float)$cr['denomination']; ?>
-        <tr>
-          <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$cr['qty'] ?: '' ?>" placeholder="" oninput="cashChanged()"></td>
-          <td><input class="di-inp" type="number" step="0.01" value="<?= $cr['denomination']!==null ? (float)$cr['denomination'] : '' ?>" placeholder="" oninput="cashChanged()"></td>
-          <td class="cash-row-total"><?= $fmt($tot) ?></td>
-          <td><button class="btn-del-row" onclick="delCashRow(this)">✕</button></td>
-        </tr>
-        <?php endforeach; ?>
-      </tbody>
-      <tfoot>
-        <tr>
-          <td class="total-label" colspan="2">TOTAL</td>
-          <td class="grand-total" id="cash-grand-total"><?= $fmt($cashTotal) ?></td>
-          <td></td>
-        </tr>
-      </tfoot>
-    </table>
-    </div>
-    <button class="btn-add-row" onclick="addCashRow()">+ Add Row</button>
-  </div>
-
-
-</div>
-
-<!-- ══════════════════════════════════════════════════════════
-     RIGHT COLUMN: Transactions + Expenses/Unpaids/Marketing
-════════════════════════════════════════════════════════════ -->
-<div>
-
-  <div class="sr-section">
-    <div class="sr-section-title dark-red">Transactions</div>
-    <div style="overflow-x:auto">
-    <table class="di-table" id="tx-table">
-      <thead>
-        <tr>
-          <th style="width:36px">No.</th>
-          <th>Plate No.</th>
-          <th>Services</th>
-          <th>Staff</th>
-          <th>Price</th>
-          <th>Discount</th>
-          <th>Commission Fee 25%</th>
-          <th>Net Sales</th>
-          <th>MOP</th>
-          <th>Remarks</th>
-          <th style="width:32px"></th>
-        </tr>
-      </thead>
-      <tbody id="tx-body">
-        <?php foreach ($txRows as $i => $tx): ?>
-        <tr>
-          <td class="tx-no" style="text-align:center"><?= $i+1 ?></td>
-          <td><input class="di-inp txt" type="text" value="<?= htmlspecialchars($tx['plate_no'] ?? '') ?>" placeholder="Plate No."></td>
-          <td>
-            <input class="di-inp tx-service" type="text" autocomplete="off"
-                   value="<?= htmlspecialchars($tx['service'] ?? '') ?>" placeholder="🔍 Search service…">
-          </td>
-          <td><input class="di-inp txt" type="text" value="<?= htmlspecialchars($tx['staff'] ?? '') ?>" placeholder="Staff"></td>
-          <td><input class="di-inp tx-price" type="number" step="0.01" value="<?= (float)$tx['price'] ?: '' ?>" readonly tabindex="-1"></td>
-          <td><input class="di-inp tx-discount" type="number" step="0.01" value="<?= (float)$tx['discount'] ?: '' ?>" placeholder="" oninput="txChanged()"></td>
-          <td><input class="di-inp tx-commission" type="number" step="0.01" value="<?= $fmt($tx['commission']) ?>" readonly tabindex="-1"></td>
-          <td><input class="di-inp tx-net" type="number" step="0.01" value="<?= $fmt($tx['net_sales']) ?>" readonly tabindex="-1"></td>
-          <td>
-            <select class="di-inp">
-              <?php foreach ($MOP_OPTIONS as $mop): ?>
-              <option value="<?= htmlspecialchars($mop) ?>" <?= ($tx['mop'] ?? 'CASH') === $mop ? 'selected' : '' ?>><?= htmlspecialchars($mop) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </td>
-          <td><input class="di-inp txt" type="text" value="<?= htmlspecialchars($tx['remarks'] ?? '') ?>" placeholder=""></td>
-          <td><button class="btn-del-row" onclick="delTxRow(this)">✕</button></td>
-        </tr>
-        <?php endforeach; ?>
-      </tbody>
-      <tfoot>
-        <tr>
-          <td class="total-label" colspan="4">TOTAL</td>
-          <td id="tx-tot-price"><?= $fmt($txTotalPrice) ?></td>
-          <td id="tx-tot-discount"><?= $fmt($txTotalDiscount) ?></td>
-          <td id="tx-tot-commission"><?= $fmt($txTotalCommission) ?></td>
-          <td id="tx-tot-net"><?= $fmt($txTotalNetSales) ?></td>
-          <td colspan="3"></td>
-        </tr>
-      </tfoot>
-    </table>
-    </div>
-    <button class="btn-add-row" onclick="addTxRow()">+ Add Row</button>
-  </div>
-
-  <div class="total-commission-box">
-    <span class="label">Total Commission (Staff + Marketing)</span>
-    <span class="value" id="total-commission-display">₱<?= $fmt($totalCommissionCalc) ?></span>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════
-       EXPENSES | UNPAIDS
-  ═══════════════════════════════════════════════════════ -->
-  <div class="sr-section">
-    <div class="sub-grid" id="subsec-row1">
-      <?php
-      $subsec1 = ['expenses' => 'EXPENSES', 'unpaids' => 'UNPAIDS'];
-      foreach ($subsec1 as $sec => $label):
-          $secRows = $details[$sec] ?? [['particular'=>'','amount'=>0]];
-      ?>
-      <div class="sub-col" data-section="<?= $sec ?>">
-        <div class="sub-col-title"><?= $label ?></div>
-        <div class="sub-col-hdr"><span>Particular</span><span>Amount</span><span></span></div>
-        <div class="sub-rows">
-          <?php foreach ($secRows as $sr): ?>
-          <div class="sub-row">
-            <input class="sub-inp" type="text" placeholder="Enter particular…" value="<?= htmlspecialchars($sr['particular'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-            <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-            <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-          </div>
-          <?php endforeach; ?>
-        </div>
-        <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-        <div class="sub-footer">
-          <span>Total</span>
-          <span id="sub-tot-<?= $sec ?>">₱<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-        </div>
-      </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════
-       MARKETING
-  ═══════════════════════════════════════════════════════ -->
-  <div class="sr-section">
-    <div class="sr-section-title dark-gold">Marketing</div>
-    <div class="mkt-hdr"><span>Particular</span><span>Amount</span><span>Staff</span><span>Commission</span><span></span></div>
-    <div id="mkt-rows">
-      <?php $mktSeed = empty($mktRows) ? [['particular'=>'','amount'=>0,'staff'=>'','commission'=>0]] : $mktRows; ?>
-      <?php foreach ($mktSeed as $mr): ?>
-      <div class="mkt-row">
-        <input class="sub-inp" type="text" placeholder="Enter particular…" value="<?= htmlspecialchars($mr['particular'] ?? '') ?>" oninput="mktChanged()">
-        <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$mr['amount'] ?: '' ?>" oninput="mktChanged()">
-        <input class="sub-inp" type="text" placeholder="Staff" value="<?= htmlspecialchars($mr['staff'] ?? '') ?>" oninput="mktChanged()">
-        <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$mr['commission'] ?: '' ?>" oninput="mktChanged()">
-        <button class="btn-del-row" onclick="delMktRow(this)" style="margin:2px 4px">✕</button>
-      </div>
-      <?php endforeach; ?>
-    </div>
-    <button class="btn-add-row" onclick="addMktRow()">+ Add</button>
-    <div class="mkt-footer">
-      <span>Total</span>
-      <span id="mkt-tot-amount">₱<?= $fmt($mktAmountTotal) ?></span>
-      <span></span>
-      <span id="mkt-tot-commission">₱<?= $fmt($mktCommissionTotal) ?></span>
-    </div>
-  </div>
-
-</div>
-</div>
-
-<script>
-// ── AUTO-SAVE: every change saves by itself — no Save button / Enter needed ──
-window.addEventListener('load', function () {
-  if (typeof saveAll !== 'function') return;
-  if (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED) return;
-  const origToast = window.showToast;
-  let quiet = false;
-  if (typeof origToast === 'function') {
-    window.showToast = function (m, t) { if (quiet && t !== 'error') return; return origToast.apply(this, arguments); };
-  }
-  let timer = null, running = false, again = false, dirty = false;
-  async function run() {
-    if (running) { again = true; return; }
-    running = true; dirty = false; quiet = true;
-    try { await saveAll(); }
-    catch (e) { quiet = false; if (origToast) origToast('❌ Auto-save failed — check your connection', 'error'); }
-    quiet = false; running = false;
-    if (again) { again = false; run(); }
-  }
-  function schedule(ms) { dirty = true; clearTimeout(timer); timer = setTimeout(run, ms); }
-  const skip = el => !el || !el.matches || !el.matches('input,select,textarea') || el.readOnly || el.disabled ||
-    el.closest('#filterForm,.sr-controls,#lockPopover,.lock-wrap,.se-controls');
-  document.addEventListener('input',  e => { if (!skip(e.target)) schedule(900); });
-  document.addEventListener('change', e => { if (!skip(e.target)) schedule(200); });
-  document.addEventListener('click', e => {
-    const b = e.target.closest && e.target.closest('[onclick^="del"],[onclick^="pick"],.btn-del-row,.bdel');
-    if (b) schedule(500);
-  });
-  window.addEventListener('beforeunload', e => { if (dirty || running) { e.preventDefault(); e.returnValue = ''; } });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) { clearTimeout(timer); run(); } });
-  const sb = document.querySelector('button[onclick="saveAll()"]');
-  if (sb) { const chip = document.createElement('span'); chip.textContent = '✓ Auto-save on';
-    chip.style.cssText = 'font-family:var(--font-m);font-size:.72rem;font-weight:700;color:var(--accent);padding:6px 10px';
-    sb.replaceWith(chip); }
-});
-</script>
-<script>
-const FDATE = <?= json_encode($fDate) ?>;
-const REPORT_LOCKED = <?= $locked ? 'true' : 'false' ?>;
-const fmt = n => (parseFloat(n)||0).toFixed(2);
-function gv(id) { const el = document.getElementById(id); return el ? (parseFloat(el.value)||0) : 0; }
-function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
-
-// ── Service → Price lookup map (mirrors the workbook's VLOOKUP table) ──
-const SERVICE_PRICES = <?= json_encode($SERVICE_PRICE_MAP) ?>;
-const SERVICE_LIST   = <?= json_encode($SERVICE_LIST) ?>;
-
-// ── Cash Breakdown ──────────────────────────────────────────
-function cashRowData(tr) {
-  const inps = tr.querySelectorAll('input');
-  return { qty: parseFloat(inps[0]?.value)||0, denomination: parseFloat(inps[1]?.value)||0 };
-}
-function cashChanged() {
-  let total = 0;
-  document.querySelectorAll('#cash-body tr').forEach(tr => {
-    const d = cashRowData(tr);
-    const rowTotal = d.qty * d.denomination;
-    tr.querySelector('.cash-row-total').textContent = fmt(rowTotal);
-    total += rowTotal;
-  });
-  document.getElementById('cash-grand-total').textContent = fmt(total);
-  setVal('coh', fmt(total));
-  recalc();
-}
-function addCashRow() {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="cashChanged()"></td>
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="cashChanged()"></td>
-    <td class="cash-row-total">0.00</td>
-    <td><button class="btn-del-row" onclick="delCashRow(this)">✕</button></td>`;
-  document.getElementById('cash-body').appendChild(tr);
-}
-function delCashRow(btn) { btn.closest('tr').remove(); cashChanged(); }
-
-// ── Transactions ────────────────────────────────────────────
-function renumberTx() {
-  document.querySelectorAll('#tx-body tr').forEach((tr, i) => {
-    tr.querySelector('.tx-no').textContent = i + 1;
-  });
-}
-// ── Custom Service Search Dropdown (replaces native <select>/<datalist>) ──
-let activeServiceInput = null;
-
-function escHtml(s) {
-  return (s + '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
-function highlightMatch(name, q) {
-  if (!q) return escHtml(name);
-  const idx = name.toLowerCase().indexOf(q);
-  if (idx === -1) return escHtml(name);
-  return escHtml(name.slice(0, idx)) + '<mark>' + escHtml(name.slice(idx, idx + q.length)) + '</mark>' + escHtml(name.slice(idx + q.length));
-}
-
-function positionServiceDropdown(input) {
-  const dd = document.getElementById('cw-service-dropdown');
-  const rect = input.getBoundingClientRect();
-  const vh = window.innerHeight;
-  dd.style.left  = rect.left + 'px';
-  dd.style.width = Math.max(rect.width, 240) + 'px';
-  const spaceBelow = vh - rect.bottom;
-  if (spaceBelow < 260 && rect.top > 260) {
-    dd.style.top = 'auto';
-    dd.style.bottom = (vh - rect.top + 4) + 'px';
-  } else {
-    dd.style.bottom = 'auto';
-    dd.style.top = (rect.bottom + 4) + 'px';
-  }
-}
-
-function filterServiceDropdown(query) {
-  const dd = document.getElementById('cw-service-dropdown');
-  const q = (query || '').trim().toLowerCase();
-  const matches = SERVICE_LIST.filter(s => !q || s.name.toLowerCase().includes(q)).slice(0, 40);
-  if (!matches.length) {
-    dd.innerHTML = '<div class="cw-sd-empty">No matching services — try Manage Services to add one</div>';
-    return;
-  }
-  let lastCat = null, html = '';
-  matches.forEach((s, i) => {
-    if (s.category !== lastCat) {
-      html += `<div class="cw-sd-group">${escHtml(s.category)}</div>`;
-      lastCat = s.category;
-    }
-    html += `<div class="cw-sd-item${i === 0 ? ' active' : ''}" data-name="${escAttr(s.name)}" data-price="${s.price}">
-               <span class="cw-sd-name">${highlightMatch(s.name, q)}</span>
-               <span class="cw-sd-price">₱${Number(s.price).toFixed(2)}</span>
-             </div>`;
-  });
-  dd.innerHTML = html;
-}
-
-function openServiceDropdown(input) {
-  activeServiceInput = input;
-  positionServiceDropdown(input);
-  filterServiceDropdown(input.value);
-  document.getElementById('cw-service-dropdown').style.display = 'block';
-}
-
-function closeServiceDropdown() {
-  const dd = document.getElementById('cw-service-dropdown');
-  dd.style.display = 'none';
-  dd.innerHTML = '';
-  activeServiceInput = null;
-}
-
-function selectServiceItem(item) {
-  if (!activeServiceInput || !item) return;
-  activeServiceInput.value = item.dataset.name;
-  const tr = activeServiceInput.closest('tr');
-  if (tr) tr.querySelector('.tx-price').value = parseFloat(item.dataset.price) || '';
-  txChanged();
-  closeServiceDropdown();
-}
-
-document.addEventListener('focusin', e => {
-  if (e.target.classList && e.target.classList.contains('tx-service')) openServiceDropdown(e.target);
-});
-document.addEventListener('input', e => {
-  if (e.target.classList && e.target.classList.contains('tx-service')) {
-    activeServiceInput = e.target;
-    positionServiceDropdown(e.target);
-    filterServiceDropdown(e.target.value);
-    document.getElementById('cw-service-dropdown').style.display = 'block';
-  }
-});
-document.addEventListener('change', e => {
-  if (e.target.classList && e.target.classList.contains('tx-service')) {
-    const price = SERVICE_PRICES[e.target.value] || 0;
-    const tr = e.target.closest('tr');
-    if (tr) { tr.querySelector('.tx-price').value = price || ''; txChanged(); }
-  }
-});
-document.addEventListener('keydown', e => {
-  if (!e.target.classList || !e.target.classList.contains('tx-service')) return;
-  const dd = document.getElementById('cw-service-dropdown');
-  if (dd.style.display === 'none') return;
-  const items = Array.from(dd.querySelectorAll('.cw-sd-item'));
-  if (!items.length) return;
-  let idx = items.findIndex(i => i.classList.contains('active'));
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    idx = Math.min(items.length - 1, idx + 1);
-    items.forEach(i => i.classList.remove('active'));
-    items[idx].classList.add('active'); items[idx].scrollIntoView({ block: 'nearest' });
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    idx = Math.max(0, idx - 1);
-    items.forEach(i => i.classList.remove('active'));
-    items[idx].classList.add('active'); items[idx].scrollIntoView({ block: 'nearest' });
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    selectServiceItem(items[idx] || items[0]);
-  } else if (e.key === 'Escape') {
-    closeServiceDropdown();
-  }
-});
-document.addEventListener('mousedown', e => {
-  const dd = document.getElementById('cw-service-dropdown');
-  const item = e.target.closest('.cw-sd-item');
-  if (item && dd.contains(item)) { e.preventDefault(); selectServiceItem(item); return; }
-  if (!dd.contains(e.target) && !(e.target.classList && e.target.classList.contains('tx-service'))) closeServiceDropdown();
-});
-window.addEventListener('scroll', () => { if (activeServiceInput) positionServiceDropdown(activeServiceInput); }, true);
-window.addEventListener('resize', () => { if (activeServiceInput) positionServiceDropdown(activeServiceInput); });
-function txChanged() {
-  let totPrice=0, totDiscount=0;
-  document.querySelectorAll('#tx-body tr').forEach(tr => {
-    const price    = parseFloat(tr.querySelector('.tx-price')?.value) || 0;
-    const discount = parseFloat(tr.querySelector('.tx-discount')?.value) || 0;
-    const commission = (price - discount) * 0.25;
-    const netSales    = price - commission;
-    tr.querySelector('.tx-commission').value = fmt(commission);
-    tr.querySelector('.tx-net').value        = fmt(netSales);
-    totPrice += price; totDiscount += discount;
-  });
-  const totCommission = (totPrice - totDiscount) * 0.25;
-  const totNet         = totPrice - totCommission;
-  document.getElementById('tx-tot-price').textContent      = fmt(totPrice);
-  document.getElementById('tx-tot-discount').textContent   = fmt(totDiscount);
-  document.getElementById('tx-tot-commission').textContent = fmt(totCommission);
-  document.getElementById('tx-tot-net').textContent        = fmt(totNet);
-
-  setVal('staff_cf',  fmt(totCommission));
-  setVal('discounts', fmt(totDiscount));
-  recalc();
-}
-function buildMopOptions() {
-  let html = '';
-  <?php foreach ($MOP_OPTIONS as $mop): ?>
-  html += '<option value="<?= htmlspecialchars($mop, ENT_QUOTES) ?>"<?= $mop === 'CASH' ? ' selected' : '' ?>><?= htmlspecialchars($mop, ENT_QUOTES) ?></option>';
+    <td class="td-act">
+      <span class="asv" id="btn_<?=$rid?>"><?=$saved?'Saved':'—'?></span>
+    </td>
+  </tr>
   <?php endforeach; ?>
-  return html;
-}
-function addTxRow() {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td class="tx-no" style="text-align:center"></td>
-    <td><input class="di-inp txt" type="text" placeholder="Plate No."></td>
-    <td><input class="di-inp tx-service" type="text" autocomplete="off" placeholder="🔍 Search service…"></td>
-    <td><input class="di-inp txt" type="text" placeholder="Staff"></td>
-    <td><input class="di-inp tx-price" type="number" step="0.01" readonly tabindex="-1"></td>
-    <td><input class="di-inp tx-discount" type="number" step="0.01" placeholder="" oninput="txChanged()"></td>
-    <td><input class="di-inp tx-commission" type="number" step="0.01" readonly tabindex="-1"></td>
-    <td><input class="di-inp tx-net" type="number" step="0.01" readonly tabindex="-1"></td>
-    <td><select class="di-inp">${buildMopOptions()}</select></td>
-    <td><input class="di-inp txt" type="text" placeholder=""></td>
-    <td><button class="btn-del-row" onclick="delTxRow(this)">✕</button></td>`;
-  document.getElementById('tx-body').appendChild(tr);
-  renumberTx();
-}
-function delTxRow(btn) { btn.closest('tr').remove(); renumberTx(); txChanged(); }
+  </tbody>
 
-// ── Expenses / Unpaids sub-sections ────────────────────────
-function subChanged(sec) {
-  const col = document.querySelector(`.sub-col[data-section="${sec}"]`);
-  let tot = 0;
-  col.querySelectorAll('input[type=number]').forEach(i => tot += parseFloat(i.value)||0);
-  const totEl = document.getElementById(`sub-tot-${sec}`);
-  if (totEl) totEl.textContent = '₱' + fmt(tot);
+  <tfoot>
+    <tr>
+      <td class="tfl">TOTAL</td>
+      <?php foreach ($COLS as $col): ?>
+      <td id="tot_<?=$col?>">—</td>
+      <?php endforeach; ?>
+      <td>—</td><!-- remarks -->
+      <td>—</td><!-- remarks2 -->
+      <td class="tfl"></td>
+    </tr>
+  </tfoot>
+</table>
+</div>
 
-  if (sec === 'expenses') { setVal('expenses', fmt(tot)); recalc(); }
-  if (sec === 'unpaids')  { setVal('unpaids',  fmt(tot)); recalc(); }
-}
-function addSubRow(sec) {
-  const col  = document.querySelector(`.sub-col[data-section="${sec}"]`);
-  const rows = col.querySelector('.sub-rows');
-  const div  = document.createElement('div');
-  div.className = 'sub-row';
-  div.innerHTML = `
-    <input class="sub-inp" type="text" placeholder="Enter particular…" oninput="subChanged('${sec}')">
-    <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" oninput="subChanged('${sec}')">
-    <button class="btn-del-row" onclick="delSubRow(this,'${sec}')" style="margin:2px 4px">✕</button>`;
-  rows.appendChild(div);
-}
-function delSubRow(btn, sec) { btn.closest('.sub-row').remove(); subChanged(sec); }
+<div style="display:flex;justify-content:flex-end;margin-top:12px;gap:10px">
+</div>
 
-// ── Marketing section ──────────────────────────────────────
-function mktChanged() {
-  let totAmount=0, totCommission=0;
-  document.querySelectorAll('#mkt-rows .mkt-row').forEach(row => {
-    const inps = row.querySelectorAll('input[type=number]');
-    totAmount     += parseFloat(inps[0]?.value)||0;
-    totCommission += parseFloat(inps[1]?.value)||0;
-  });
-  document.getElementById('mkt-tot-amount').textContent     = '₱' + fmt(totAmount);
-  document.getElementById('mkt-tot-commission').textContent = '₱' + fmt(totCommission);
-  setVal('marketing_expense', fmt(totAmount));
-  recalc();
-}
-function addMktRow() {
-  const wrap = document.getElementById('mkt-rows');
-  const div = document.createElement('div');
-  div.className = 'mkt-row';
-  div.innerHTML = `
-    <input class="sub-inp" type="text" placeholder="Enter particular…" oninput="mktChanged()">
-    <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" oninput="mktChanged()">
-    <input class="sub-inp" type="text" placeholder="Staff" oninput="mktChanged()">
-    <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" oninput="mktChanged()">
-    <button class="btn-del-row" onclick="delMktRow(this)" style="margin:2px 4px">✕</button>`;
-  wrap.appendChild(div);
-}
-function delMktRow(btn) { btn.closest('.mkt-row').remove(); mktChanged(); }
+<!-- ── TARGET SALES SUMMARY PANEL ── -->
+<div class="card" style="margin-top:20px;border-top:2px solid var(--accent3);overflow:hidden">
+  <div style="padding:12px 20px;background:#fffbeb;border-bottom:1px solid var(--border)">
+    <div style="font-family:var(--font-m);font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--subtext)">Hero Carwash — Monthly Performance</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0">
 
-// ── Summary recalc (mirrors the workbook's formula chain) ──
-function recalc() {
-  const totPriceText = document.getElementById('tx-tot-price')?.textContent || '0';
-  const mktAmountText = (document.getElementById('mkt-tot-amount')?.textContent || '₱0').replace('₱','');
-  const posReading = (parseFloat(totPriceText)||0) + (parseFloat(mktAmountText)||0);
-  setVal('pos_reading', fmt(posReading));
+    <div style="padding:16px 20px;border-right:1px solid var(--border)">
+      <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--subtext);margin-bottom:8px">Target Sales</div>
+      <input id="hQuotaInput" type="text" inputmode="decimal" autocomplete="off"
+        value="<?= $savedQuota > 0 ? number_format($savedQuota,2,'.',',') : '' ?>"
+        placeholder="0.00"
+        style="background:#fff;border:1px solid #d1d5db;border-radius:7px;color:#1a1d23;font-family:var(--font-m);font-size:.88rem;font-weight:700;padding:6px 10px;width:100%;outline:none;transition:border-color .15s"
+        oninput="liveFormat(this);recalcHSummary();queueQuotaSave()"
+        onfocus="this.style.borderColor='#0f7b5c';this.style.boxShadow='0 0 0 3px rgba(15,123,92,.1)'"
+        onblur="this.style.borderColor='#d1d5db';this.style.boxShadow='none';if(this.value.trim()!=='')this.value=fmt2(num(this.value));saveHQuota()"
+        onkeydown="if(event.key==='Enter'){this.blur();}">
+      <div id="hQuotaHint" style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Input target amount · saves automatically</div>
+    </div>
 
-  const staffCf = gv('staff_cf');
-  const grossSales = posReading - staffCf;
-  setVal('gross_sales', fmt(grossSales));
+    <div style="padding:16px 20px;border-right:1px solid var(--border);background:#eff6ff">
+      <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--subtext);margin-bottom:8px">Sales Percentage</div>
+      <div id="hSalesPct" style="font-size:1.4rem;font-weight:800;color:#2563eb;font-family:var(--font-m)">—</div>
+      <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Total Store Gross ÷ Target</div>
+    </div>
 
-  const expenses  = gv('expenses');
-  const unpaids   = gv('unpaids');
-  const discounts = gv('discounts');
-  const marketing = gv('marketing_expense');
-  const qrPay     = gv('qr_palawan_pay');
-  const cardPay   = gv('card_payments');
+    <div style="padding:16px 20px;border-right:1px solid var(--border);background:#fffbeb">
+      <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--subtext);margin-bottom:8px">Needed Sales to Reach Target</div>
+      <div id="hNeeded" style="font-size:1.25rem;font-weight:800;color:#b45309;font-family:var(--font-m)">—</div>
+      <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Target − Total Store Gross</div>
+    </div>
 
-  const netCash = posReading - expenses - unpaids - discounts - marketing - qrPay - cardPay;
-  setVal('net_cash', fmt(netCash));
+    <div style="padding:16px 20px;background:#f0fdf4">
+      <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--subtext);margin-bottom:8px">Daily Sales Quota</div>
+      <div id="hDailyQuota" style="font-size:1.25rem;font-weight:800;color:#0f7b5c;font-family:var(--font-m)">—</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+        <span style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);white-space:nowrap">÷ days:</span>
+        <input id="hDaysInput" type="number" min="1" step="1" value="1"
+          style="width:60px;background:#fff;border:1px solid #d1d5db;border-radius:6px;color:#1a1d23;font-family:var(--font-m);font-size:.82rem;font-weight:700;padding:4px 8px;outline:none;transition:border-color .15s"
+          oninput="recalcHSummary()"
+          onfocus="this.style.borderColor='#0f7b5c'"
+          onblur="this.style.borderColor='#d1d5db'">
+        <span style="font-family:var(--font-m);font-size:.58rem;color:var(--subtext)">update daily</span>
+      </div>
+    </div>
 
-  const coh = gv('coh');
-  const shortOver = coh - netCash;
-  setVal('short_over', fmt(shortOver));
-  const soEl = document.getElementById('short_over');
-  soEl.style.color = shortOver < 0 ? '#ffd54f' : '#b71c1c';
+  </div>
+</div>
 
-  const mktCommission = parseFloat(document.getElementById('mkt-tot-commission')?.textContent.replace('₱',''))||0;
-  const totalCommission = staffCf + mktCommission;
-  document.getElementById('total-commission-display').textContent = '₱' + fmt(totalCommission);
-}
+  </div></div>
 
-// ── Save All ───────────────────────────────────────────────
-async function saveAll() {
-  if (REPORT_LOCKED) {
-    showToast('🔒 This date is locked and cannot be edited.', 'error');
-    return;
+<script>
+const COLS = <?=json_encode($COLS)?>;
+
+// ── Helpers ───────────────────────────────────────────────
+// Number cells show thousands commas (1,234,567.89). num() strips them back
+// out for math/saving; fmt2() puts them in for display.
+function num(v) { return parseFloat(String(v == null ? '' : v).replace(/,/g, '')) || 0; }
+function fmt2(n) { return Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+// Live comma formatting while typing (keeps the cursor in the right place).
+function liveFormat(el) {
+  const c = el.dataset.col;
+  if (c === 'remarks' || c === 'remarks2' || el.readOnly) return;
+  const old = el.value, pos = el.selectionStart == null ? old.length : el.selectionStart;
+  let sig = 0;
+  for (let i = 0; i < pos; i++) if (/[\d.\-]/.test(old[i])) sig++;
+  let t = old.replace(/[^\d.\-]/g, '');
+  const neg = t.charAt(0) === '-';
+  t = t.replace(/-/g, '');
+  const dot = t.indexOf('.');
+  let ip = dot < 0 ? t : t.slice(0, dot);
+  const fp = dot < 0 ? '' : t.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  ip = ip.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const out = (neg ? '-' : '') + ip + (dot < 0 ? '' : '.' + fp);
+  if (out !== old) {
+    el.value = out;
+    let k = 0, q = 0;
+    while (q < out.length && k < sig) { if (/[\d.\-]/.test(out[q])) k++; q++; }
+    try { el.setSelectionRange(q, q); } catch (e) {}
   }
-  const status = document.getElementById('saveStatus');
-  status.textContent = 'Saving…';
-
-  // 1. Save Cash Breakdown rows
-  const cashRows = [];
-  document.querySelectorAll('#cash-body tr').forEach(tr => cashRows.push(cashRowData(tr)));
-  const fd1 = new FormData();
-  fd1.append('ajax_save_cash','1');
-  fd1.append('report_date', FDATE);
-  fd1.append('rows', JSON.stringify(cashRows));
-  await fetch('h_carwash_sales_report.php', {method:'POST', body:fd1});
-
-  // 2. Save Transactions
-  const txRows = [];
-  document.querySelectorAll('#tx-body tr').forEach(tr => {
-    txRows.push({
-      plate_no: tr.querySelectorAll('input.di-inp.txt')[0]?.value || '',
-      service:  tr.querySelector('.tx-service')?.value || '',
-      staff:    tr.querySelectorAll('input.di-inp.txt')[1]?.value || '',
-      price:    parseFloat(tr.querySelector('.tx-price')?.value) || 0,
-      discount: parseFloat(tr.querySelector('.tx-discount')?.value) || 0,
-      mop:      tr.querySelector('select')?.value || 'CASH',
-      remarks:  tr.querySelectorAll('input.di-inp.txt')[2]?.value || '',
-    });
-  });
-  const fd2 = new FormData();
-  fd2.append('ajax_save_transactions','1');
-  fd2.append('report_date', FDATE);
-  fd2.append('rows', JSON.stringify(txRows));
-  await fetch('h_carwash_sales_report.php', {method:'POST', body:fd2});
-
-  // 3. Save Expenses / Unpaids
-  for (const sec of ['expenses','unpaids']) {
-    const col = document.querySelector(`.sub-col[data-section="${sec}"]`);
-    if (!col) continue;
-    const rows = [];
-    col.querySelectorAll('.sub-row').forEach(row => {
-      const inps = row.querySelectorAll('input');
-      rows.push({ particular: inps[0]?.value||'', amount: parseFloat(inps[1]?.value)||0 });
-    });
-    const fd3 = new FormData();
-    fd3.append('ajax_save_detail','1');
-    fd3.append('report_date', FDATE);
-    fd3.append('section', sec);
-    fd3.append('rows', JSON.stringify(rows));
-    await fetch('h_carwash_sales_report.php', {method:'POST', body:fd3});
-  }
-
-  // 4. Save Marketing rows
-  const mktRows = [];
-  document.querySelectorAll('#mkt-rows .mkt-row').forEach(row => {
-    const txtInps = row.querySelectorAll('input[type=text]');
-    const numInps = row.querySelectorAll('input[type=number]');
-    mktRows.push({
-      particular: txtInps[0]?.value || '',
-      amount:     parseFloat(numInps[0]?.value) || 0,
-      staff:      txtInps[1]?.value || '',
-      commission: parseFloat(numInps[1]?.value) || 0,
-    });
-  });
-  const fd4 = new FormData();
-  fd4.append('ajax_save_marketing','1');
-  fd4.append('report_date', FDATE);
-  fd4.append('rows', JSON.stringify(mktRows));
-  await fetch('h_carwash_sales_report.php', {method:'POST', body:fd4});
-
-  // 5. Save main summary
-  const fd5 = new FormData();
-  fd5.append('ajax_save','1');
-  fd5.append('report_date', FDATE);
-  fd5.append('opening_cashier', document.getElementById('opening_cashier')?.value || '');
-  fd5.append('closing_cashier', document.getElementById('closing_cashier')?.value || '');
-  fd5.append('sold_gc', gv('sold_gc'));
-  fd5.append('qr_palawan_pay', gv('qr_palawan_pay'));
-  fd5.append('card_payments', gv('card_payments'));
-  fd5.append('remarks', document.getElementById('remarks')?.value || '');
-
-  const res  = await fetch('h_carwash_sales_report.php', {method:'POST', body:fd5});
-  const data = await res.json();
-  if (data.ok) {
-    status.textContent = '✓ Saved'; status.style.color = 'var(--accent)';
-    showToast('✓ Carwash sales report saved', 'success');
-  } else {
-    showToast('❌ ' + data.msg, 'error'); status.textContent = '❌ Error';
-  }
-  setTimeout(() => { status.textContent = ''; }, 4000);
 }
-
-function showToast(msg, type) {
-  const t = document.createElement('div');
-  t.className = 'flash flash-'+(type||'success')+' toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
-}
-
-// ── Lock popover ─────────────────────────────────────────
-function toggleLockPopover(e) {
-  e.stopPropagation();
-  const pop = document.getElementById('lockPopover');
-  if (!pop) return;
-  pop.style.display = (pop.style.display === 'block') ? 'none' : 'block';
-}
-function hideLockPopover() {
-  const pop = document.getElementById('lockPopover');
-  if (pop) pop.style.display = 'none';
-}
-document.addEventListener('click', function(e) {
-  const pop = document.getElementById('lockPopover');
-  const btn = document.getElementById('lockBtn');
-  if (!pop || pop.style.display !== 'block') return;
-  if (!pop.contains(e.target) && e.target !== btn) hideLockPopover();
+// On leaving a cell, tidy it to 2 decimals (1,234.50).
+document.addEventListener('focusout', function(e) {
+  const el = e.target;
+  if (!el.matches || !el.matches('#srt input.sri[data-col]') || el.readOnly) return;
+  const c = el.dataset.col;
+  if (c === 'remarks' || c === 'remarks2' || el.value.trim() === '') return;
+  el.value = fmt2(num(el.value));
 });
 
-async function confirmToggleLock() {
-  const willLock = !REPORT_LOCKED;
-  hideLockPopover();
+function gv(rid, col) {
+  const e = document.querySelector(`#${rid} [data-col="${col}"]`);
+  return e ? num(e.value) : 0;
+}
+
+// ── Auto-calculations ─────────────────────────────────────
+function recalc(rid) {
+  const tr = document.getElementById(rid);
+  // Rows where the Carwash Sales Report has data for this date keep that report's
+  // own Total Swipe / Short-Over figures exactly (readonly mirrors) instead
+  // of recomputing them here — same "preserve" approach Dois/Stella use.
+  const preserveSR = !!(tr && tr.dataset.fromsr === '1');
+
+  // Fields that are auto-calculated (excluded from hasInput detection)
+  const autoCalcCols = ['gross_sales_excl_mktg','store_gross','total_deductions','short_over','total_swipe'];
+  const hasInput = COLS.some(c => !autoCalcCols.includes(c) ? (gv(rid, c) !== 0) : false);
+
+  const zReading    = gv(rid, 'z_reading_gross');
+  const mktgPullOut = gv(rid, 'marketing_pull_out');
+  const disc        = gv(rid, 'discount');
+  const scForDepo   = gv(rid, 'sc_for_depo');
+  const cashForDepo = gv(rid, 'cash_for_depo');
+
+  // GROSS SALES EXCL MKTG = Z Reading Gross − Marketing Pull Out   [B = D − R]
+  const grossSales = zReading - mktgPullOut;
+  const gsEl = document.querySelector(`#${rid} [data-col="gross_sales_excl_mktg"]`);
+  if (gsEl) gsEl.value = hasInput ? fmt2(grossSales) : '';
+
+  // STORE GROSS = Z Reading Gross + Discount − SC for Depo − Marketing Pull Out   [C = D + Q − V − R]
+  const storeGross = zReading + disc - scForDepo - mktgPullOut;
+  const sgEl = document.querySelector(`#${rid} [data-col="store_gross"]`);
+  if (sgEl) sgEl.value = hasInput ? fmt2(storeGross) : '';
+
+  // TOTAL DEDUCTIONS = Sales of Day Swipe + Unpaid + Paid + Advance Payment +
+  //   Grab + Bank Trans + GC Sponsor/Mktg + GC Sold + Discount +
+  //   Expenses + Other Expenses + Personal   [W = F+J+K+L+M+N+O+P+Q+T+U+S]
+  const td = gv(rid, 'sales_of_day_swipe')
+           + gv(rid, 'unpaid')
+           + gv(rid, 'paid')
+           + gv(rid, 'advance_payment')
+           + gv(rid, 'grab')
+           + gv(rid, 'bank_trans')
+           + gv(rid, 'gc_sponsor_marketing')
+           + gv(rid, 'gc_sold')
+           + disc
+           + gv(rid, 'expenses')
+           + gv(rid, 'other_expenses')
+           + gv(rid, 'personal');
+  const tdEl = document.querySelector(`#${rid} [data-col="total_deductions"]`);
+  if (tdEl) tdEl.value = hasInput ? fmt2(td) : '';
+
+  // SHORT / OVER = Total Deductions + Cash for Depo − Store Gross   [X = W + E − C]
+  const so = td + cashForDepo - storeGross;
+  if (!preserveSR) {
+    const soEl = document.querySelector(`#${rid} [data-col="short_over"]`);
+    if (soEl) {
+      soEl.value = hasInput ? fmt2(so) : '';
+      soEl.classList.toggle('neg', hasInput && so < 0);
+    }
+  }
+
+  // TOTAL SWIPE = Sales of Day Swipe + Deposit Swipe + Late Payment + Paid   [Y = F + G + H + K]
+  if (!preserveSR) {
+    const ts = gv(rid, 'sales_of_day_swipe')
+             + gv(rid, 'deposit_swipe')
+             + gv(rid, 'late_payment')
+             + gv(rid, 'paid');
+    const tsEl = document.querySelector(`#${rid} [data-col="total_swipe"]`);
+    if (tsEl) tsEl.value = hasInput ? fmt2(ts) : '';
+  }
+}
+
+// ── Column totals ─────────────────────────────────────────
+function recalcTotals() {
+  COLS.forEach(function(col) {
+    const el = document.getElementById('tot_' + col);
+    if (!el) return;
+    let s = 0;
+    document.querySelectorAll(`[data-col="${col}"]`).forEach(function(i) {
+      s += num(i.value);
+    });
+    el.textContent = s === 0 ? '—' : s.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    el.style.color = (col === 'short_over' && s < 0) ? 'var(--accent2)' : '';
+  });
+  recalcHSummary();
+}
+
+// ── Auto-save: debounced per row ──────────────────────────
+const saveTimers = {};
+const AUTOCOLS = ['gross_sales_excl_mktg','store_gross','total_deductions','short_over','total_swipe'];
+// true when the row has anything typed/linked (blank rows are never saved)
+function rowHasInput(rid) {
+  const tr = document.getElementById(rid);
+  if (!tr) return false;
+  return [...tr.querySelectorAll('input[data-col]')].some(function(el){
+    const c = el.dataset.col;
+    if (AUTOCOLS.indexOf(c) >= 0) return false;
+    if (c === 'remarks' || c === 'remarks2') return el.value.trim() !== '';
+    return num(el.value) !== 0;
+  });
+}
+function setStat(rid, cls, txt) {
+  const b = document.getElementById('btn_' + rid);
+  if (b) { b.className = 'asv ' + cls; b.textContent = txt; }
+}
+function changed(el) {
+  liveFormat(el);
+  const rid = el.dataset.row;
+  recalc(rid);
+  recalcTotals();
+  const tr = document.getElementById(rid);
+  const wasSaved = tr.dataset.saved === '1' || tr.dataset.wasSaved === '1';
+  if (wasSaved) tr.dataset.wasSaved = '1';
+  if (!rowHasInput(rid) && !wasSaved) {          // nothing entered → nothing to save
+    clearTimeout(saveTimers[rid]);
+    setStat(rid, '', '—');
+    return;
+  }
+  tr.dataset.saved = '0';
+  document.getElementById('dot_' + rid).className = 'sdot new';
+  setStat(rid, 'saving', 'Typing…');
+  clearTimeout(saveTimers[rid]);
+  saveTimers[rid] = setTimeout(function(){ saveRow(rid, tr.dataset.date); }, 600);
+}
+
+// ── Save single row ───────────────────────────────────────
+async function saveRow(rid, ds) {
+  clearTimeout(saveTimers[rid]);
+  const trr = document.getElementById(rid);
+  if (!rowHasInput(rid) && trr.dataset.saved !== '1' && trr.dataset.wasSaved !== '1') { setStat(rid, '', '—'); return; }
+  setStat(rid, 'saving', 'Saving…');
 
   const fd = new FormData();
-  fd.append('ajax_toggle_lock', '1');
-  fd.append('report_date', FDATE);
-  fd.append('lock', willLock ? '1' : '0');
+  fd.append('ajax_save', '1');
+  fd.append('report_date', ds);
+
+  COLS.forEach(function(col) {
+    const el = document.querySelector(`#${rid} [data-col="${col}"]`);
+    fd.append(col, el ? (String(el.value || '0').replace(/,/g, '')) : '0');
+  });
+  ['remarks','remarks2'].forEach(function(col) {
+    const el = document.querySelector(`#${rid} [data-col="${col}"]`);
+    fd.append(col, el ? el.value : '');
+  });
 
   try {
-    const res  = await fetch('h_carwash_sales_report.php', {method:'POST', body:fd});
+    const res  = await fetch('h_carwash_summary_report.php', {method:'POST', body:fd});
     const data = await res.json();
     if (data.ok) {
-      showToast(willLock ? ('🔒 Locked ' + FDATE) : ('🔓 Unlocked ' + FDATE), 'success');
-      setTimeout(function(){ location.reload(); }, 700);
+      setStat(rid, 'ok', 'Saved ✓');
+      document.getElementById(rid).dataset.saved = '1';
+      document.getElementById(rid).dataset.wasSaved = '1';
+      document.getElementById('dot_' + rid).className = 'sdot ok';
     } else {
-      showToast('❌ ' + (data.msg || 'Could not update lock.'), 'error');
+      setStat(rid, 'err', 'Error');
+      showToast('❌ ' + data.msg, 'error');
     }
-  } catch (e) {
+  } catch(e) {
+    setStat(rid, 'err', 'Error');
     showToast('❌ Network error', 'error');
   }
 }
 
-// ── Lock the whole page (all fields read-only) ──────────────
-function lockPage() {
-  document.querySelectorAll('input, select, textarea').forEach(function(el) {
-    if (el.name === 'date' && el.closest('.sr-controls')) return;
-    el.disabled = true;
-  });
-  document.querySelectorAll('.btn-add-row, .btn-del-row').forEach(function(el) {
-    el.style.display = 'none';
-  });
-  document.querySelectorAll('.sr-controls button').forEach(function(btn) {
-    if (btn.textContent.includes('Save')) {
-      btn.disabled = true;
-      btn.style.opacity = '.5';
-      btn.style.cursor = 'not-allowed';
-    }
-  });
+// ── Live sync with the Carwash Sales Report ─────────────────────
+// Every few seconds, pull the Sales Report figures and refresh the linked
+// (blue) cells, so edits there show up here with no button pressed.
+const SYNC_NEVER = ['cancelled_transaction'];
+let syncBusy = false;
+async function syncFromSales() {
+  if (syncBusy || document.hidden) return;
+  syncBusy = true;
+  try {
+    const res = await fetch('h_carwash_summary_report.php' + location.search + (location.search ? '&' : '?') + 'ajax_sync=1&_=' + Date.now(), {cache:'no-store'});
+    const data = await res.json();
+    if (!data.ok) return;
+    const fmt = v => v != 0 ? fmt2(v) : '';
+    Object.keys(data.rows).forEach(function(ds) {
+      const rid = 'r' + ds.replace(/-/g, '');
+      const tr = document.getElementById(rid);
+      if (!tr) return;
+      let changedAny = false;
+      const vals = data.rows[ds];
+      Object.keys(vals).forEach(function(col) {
+        const el = tr.querySelector(`[data-col="${col}"]`);
+        if (!el || el === document.activeElement) return;
+        const nv = fmt(vals[col]);
+        if (SYNC_NEVER.indexOf(col) >= 0) {
+          // editable cell: only follow the Sales Report if the user hasn't overridden it
+          const prev = el.dataset.srv;
+          if (prev === undefined) { el.dataset.srv = nv; return; }
+          if (el.value === prev || el.value === '') {
+            if (el.value !== nv) { el.value = nv; changedAny = true; }
+          }
+          el.dataset.srv = nv;
+          return;
+        }
+        if (el.readOnly !== true) { el.readOnly = true; el.tabIndex = -1; el.classList.add('calc'); el.removeAttribute('oninput'); }
+        if (el.value !== nv) { el.value = nv; changedAny = true; }
+      });
+      if (tr.dataset.fromsr !== '1') { tr.dataset.fromsr = '1'; changedAny = true; }
+      if (changedAny) {
+        recalc(rid);
+        clearTimeout(saveTimers[rid]);
+        saveTimers[rid] = setTimeout(function(){ saveRow(rid, ds); }, 300);
+      }
+    });
+    recalcTotals();
+  } catch(e) { /* offline — try again next tick */ }
+  finally { syncBusy = false; }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  renumberTx();
-  cashChanged();
-  txChanged();
-  mktChanged();
-  recalc();
-  if (REPORT_LOCKED) lockPage();
+// ── Save all rows ─────────────────────────────────────────
+async function saveAll() {
+  const rows = [...document.querySelectorAll('#srt tbody tr')];
+  for (const row of rows) {
+    await saveRow(row.id, row.dataset.date);
+    await new Promise(r => setTimeout(r, 50));
+  }
+  showToast('✓ All ' + rows.length + ' rows saved for Hero Carwash', 'success');
+}
+
+// ── CSV download ──────────────────────────────────────────
+function downloadCSV(e) {
+  e.preventDefault();
+  const params = new URLSearchParams(window.location.search);
+  params.set('export_csv', '1');
+  const monthEl = document.querySelector('select[name="month"]');
+  if (monthEl) params.set('month', monthEl.value);
+  const yearEl = document.querySelector('select[name="year"]');
+  if (yearEl) params.set('year', yearEl.value);
+  window.location.href = 'h_carwash_summary_report.php?' + params.toString();
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'flash flash-' + (type || 'success') + ' toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 4000);
+}
+
+// ── Enter key = move down same column ─────────────────────
+document.addEventListener('keydown', function(e) {
+  if (!e.target.classList.contains('sri') || e.key !== 'Enter') return;
+  e.preventDefault();
+  const col = e.target.dataset.col, rid = e.target.dataset.row;
+  const next = document.getElementById(rid)?.nextElementSibling;
+  if (next) { const ni = next.querySelector(`[data-col="${col}"]`); if(ni){ni.focus();ni.select();} }
 });
-</script>
-<style>
-.xl-sel { background-color:rgba(37,99,235,.16) !important; box-shadow:inset 0 0 0 1px rgba(37,99,235,.55) !important; }
-.xl-selhi { box-shadow:inset 0 0 0 2px #2563eb !important; }
-.xl-pv { background-color:rgba(37,99,235,.08) !important; box-shadow:inset 0 0 0 1px dashed #2563eb; outline:1px dashed #2563eb; outline-offset:-1px; }
-#xlFill { position:fixed; width:9px; height:9px; background:#2563eb; border:1px solid #fff; cursor:crosshair; z-index:9999; display:none; box-sizing:content-box; }
-body.xl-dragging, body.xl-dragging * { user-select:none !important; cursor:crosshair !important; }
-</style>
-<div id="xlFill" title="Drag to fill down / up / across"></div>
-<script>
-// ── Excel-style cell selection + fill handle ─────────────────────────────────────
-//  • drag across boxes to select a block (blue)      • Ctrl+C copies it, Ctrl+V pastes at the top-left
-//  • Delete clears the block                         • drag the little blue square to copy/fill cells
-(function () {
-  if (typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED) return;
-  const handle = document.getElementById('xlFill');
-  // Every box in a row, in column order. In the Transactions table the grey (auto-calculated) boxes and the MOP
-  // drop-down count as columns too, so an Excel block lines up with the headings; they are skipped when pasting.
-  const cellsOf = row => { const tx = !!row.closest('#tx-table');
-    return [...row.querySelectorAll('input,select')].filter(i => !['button','hidden','checkbox','radio','date'].includes(i.type) && !i.disabled && (tx || !i.readOnly)); };
-  function gridOf(el) {
-    if (!el || !el.closest) return null;
-    const sub = el.closest('.sub-row');
-    if (sub) { const col = sub.closest('.sub-col'), sec = col.dataset.section;
-      return { key:'sub:'+sec, rows:() => [...col.querySelectorAll('.sub-rows .sub-row')], add:() => addSubRow(sec), after:() => subChanged(sec), rowOf:e => e.closest('.sub-row') }; }
-    const mk = el.closest('.mkt-row');
-    if (mk) return { key:'mkt', rows:() => [...document.querySelectorAll('#mkt-rows .mkt-row')], add:() => addMktRow(), after:() => mktChanged(), rowOf:e => e.closest('.mkt-row') };
-    const table = el.closest('table.di-table'); if (!table || !el.closest('tbody')) return null;
-    const body = table.querySelector('tbody');
-    if (table.id === 'cash-table') return { key:'cash', rows:() => [...body.querySelectorAll('tr')], add:() => addCashRow(), after:() => cashChanged(), rowOf:e => e.closest('tr') };
-    if (table.id === 'tx-table')   return { key:'tx',   rows:() => [...body.querySelectorAll('tr')], add:() => addTxRow(),   after:() => txChanged(),   rowOf:e => e.closest('tr') };
-    return null;
-  }
-  const pos = (g, el) => { const row = g.rowOf(el), rows = g.rows(), r = rows.indexOf(row); return r < 0 ? null : { r, c: cellsOf(row).indexOf(el) }; };
-  const cellAt = (g, r, c) => { const rows = g.rows(); if (r < 0 || r >= rows.length) return null; return cellsOf(rows[r])[c] || null; };
-  function setVal(inp, v) {
-    if (inp.readOnly) return;
-    v = v == null ? '' : String(v).trim();
-    if (inp.tagName === 'SELECT') {
-      const o = [...inp.options].find(o => o.value.toLowerCase() === v.toLowerCase() || o.text.toLowerCase() === v.toLowerCase());
-      if (o) { inp.value = o.value; inp.dispatchEvent(new Event('change', {bubbles:true})); }
-      return;
-    }
-    if (inp.type === 'number') { if (v === '') inp.value = ''; else { const neg = /^\(.*\)$/.test(v) || /^-/.test(v); const n = parseFloat(v.replace(/[^0-9.]/g,'')); if (!isFinite(n)) return; inp.value = neg ? -n : n; } }
-    else inp.value = v;
-    if (inp.classList.contains('tx-service')) { inp.dispatchEvent(new Event('change', {bubbles:true})); return; }   // looks up the price, no pop-up list
-    inp.dispatchEvent(new Event('input', {bubbles:true}));
-  }
-  let sel = null, multi = false, down = null, fill = null, pv = [];
-  const clearMarks = () => document.querySelectorAll('.xl-sel,.xl-selhi,.xl-pv').forEach(e => e.classList.remove('xl-sel','xl-selhi','xl-pv'));
-  function range(a, b) { return { r1:Math.min(a.r,b.r), r2:Math.max(a.r,b.r), c1:Math.min(a.c,b.c), c2:Math.max(a.c,b.c) }; }
-  function paint() {
-    clearMarks(); if (!sel) { handle.style.display = 'none'; return; }
-    const {g, r1, r2, c1, c2} = sel; let last = null;
-    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) { const e = cellAt(g, r, c); if (e) { e.classList.add('xl-sel'); last = e; } }
-    if (!multi) { const f = cellAt(g, r1, c1); if (f) f.classList.add('xl-selhi'); }
-    placeHandle(last);
-  }
-  function placeHandle(last) {
-    if (!last || !last.offsetParent) { handle.style.display = 'none'; return; }
-    const b = last.getBoundingClientRect();
-    handle.style.left = (b.right - 5) + 'px'; handle.style.top = (b.bottom - 5) + 'px'; handle.style.display = 'block';
-  }
-  const refresh = () => { if (sel) { const l = cellAt(sel.g, sel.r2, sel.c2); placeHandle(l); } };
-  window.addEventListener('scroll', refresh, true); window.addEventListener('resize', refresh);
 
-  function hit(x, y, g) {
-    let t = document.elementFromPoint(x, y); if (!t) return null;
-    if (t === handle) return null;
-    let inp = t.matches && t.matches('input,select') ? t : null;
-    if (!inp) { const host = t.closest('td,.sub-row,.mkt-row'); if (host) { const arr = cellsOf(host.matches('td') ? host.parentElement : host); inp = host.matches('td') ? (host.querySelector('input,select') && [...host.querySelectorAll('input,select')].find(i => cellsOf(host.parentElement).includes(i))) : arr[0]; } }
-    if (!inp) return null;
-    const g2 = gridOf(inp); if (!g2 || g2.key !== g.key) return null;
-    return { el: inp, p: pos(g2, inp) };
-  }
+// ── Monthly performance panel ─────────────────────────────
+function recalcHSummary() {
+  const quota = num(document.getElementById('hQuotaInput')?.value);
+  const days  = parseInt(document.getElementById('hDaysInput')?.value)   || 1;
 
-  document.addEventListener('mousedown', function (ev) {
-    if (ev.button !== 0) return;
-    if (ev.target === handle) {
-      if (!sel) return; ev.preventDefault();
-      fill = { g: sel.g, src: {...sel}, to: null }; document.body.classList.add('xl-dragging'); return;
-    }
-    const inp = ev.target.closest && ev.target.closest('input,select'); const g = inp && gridOf(inp);
-    if (!g || !cellsOf(g.rowOf(inp)).includes(inp)) { sel = null; multi = false; paint(); return; }
-    const p = pos(g, inp); if (!p) return;
-    down = { g, p, el: inp, moved: false };
-    sel = { g, r1:p.r, r2:p.r, c1:p.c, c2:p.c }; multi = false; paint();
-  }, true);
-
-  document.addEventListener('mousemove', function (ev) {
-    if (fill) {
-      const g = fill.g, rows = g.rows(), src = fill.src;
-      // find target row / col under pointer; below the last row → extra rows
-      let tr = src.r2, tc = src.c2;
-      const lastCell = cellAt(g, rows.length - 1, 0), lb = lastCell ? lastCell.getBoundingClientRect() : null;
-      let h = hit(ev.clientX, ev.clientY, g);
-      if (h) { tr = h.p.r; tc = h.p.c; }
-      else if (lb && ev.clientY > lb.bottom) { const rh = Math.max(20, lb.height); tr = rows.length - 1 + Math.ceil((ev.clientY - lb.bottom) / rh); tc = src.c2; }
-      // choose the axis with the bigger move
-      const dr = tr > src.r2 ? tr - src.r2 : (tr < src.r1 ? src.r1 - tr : 0), dc = tc > src.c2 ? tc - src.c2 : (tc < src.c1 ? src.c1 - tc : 0);
-      fill.to = (dr >= dc) ? { r: tr, c: null } : { r: null, c: tc };
-      document.querySelectorAll('.xl-pv').forEach(e => e.classList.remove('xl-pv'));
-      const R = fill.to.r != null ? [Math.min(src.r1, tr), Math.max(src.r2, tr)] : [src.r1, src.r2];
-      const C = fill.to.c != null ? [Math.min(src.c1, tc), Math.max(src.c2, tc)] : [src.c1, src.c2];
-      for (let r = R[0]; r <= Math.min(R[1], rows.length - 1); r++) for (let c = C[0]; c <= C[1]; c++) { const e = cellAt(g, r, c); if (e && !e.classList.contains('xl-sel')) e.classList.add('xl-pv'); }
-      fill.R = R; fill.C = C; return;
-    }
-    if (!down || !(ev.buttons & 1)) return;
-    const h = hit(ev.clientX, ev.clientY, down.g);
-    if (!h || (h.p.r === down.p.r && h.p.c === down.p.c && !down.moved)) return;
-    if (!down.moved) { down.moved = true; multi = true; document.body.classList.add('xl-dragging'); try { document.activeElement.blur(); } catch (e) {} }
-    const rg = range(down.p, h.p); sel = { g: down.g, ...rg }; paint(); window.getSelection().removeAllRanges();
-  }, true);
-
-  document.addEventListener('mouseup', function () {
-    if (fill) {
-      const f = fill; fill = null; document.body.classList.remove('xl-dragging'); document.querySelectorAll('.xl-pv').forEach(e => e.classList.remove('xl-pv'));
-      if (f.R && f.C) doFill(f);
-      return;
-    }
-    if (down) { document.body.classList.remove('xl-dragging'); down = null; }
-  }, true);
-
-  function valuesOf(g, r1, r2, c1, c2) { const out = []; for (let r = r1; r <= r2; r++) { const row = []; for (let c = c1; c <= c2; c++) { const e = cellAt(g, r, c); row.push(e ? e.value : ''); } out.push(row); } return out; }
-  function doFill(f) {
-    const g = f.g, s = f.src, [R1, R2] = f.R, [C1, C2] = f.C;
-    const srcVals = valuesOf(g, s.r1, s.r2, s.c1, s.c2), nr = srcVals.length, nc = srcVals[0].length;
-    // make sure the rows exist
-    for (let guard = 0; g.rows().length <= R2 && guard < 200; guard++) { const before = g.rows().length; g.add(); if (g.rows().length === before) break; }
-    // numeric series: 2+ numeric cells in a column continue the step (like Excel)
-    const colSeries = c => { if (nr < 2) return null; const v = srcVals.map(r => parseFloat(String(r[c]).replace(/,/g,''))); if (v.some(x => !isFinite(x))) return null; const st = v[1] - v[0]; for (let i = 2; i < v.length; i++) if (Math.abs(v[i] - v[i-1] - st) > 1e-9) return null; return { v, st }; };
-    for (let r = R1; r <= R2; r++) for (let c = C1; c <= C2; c++) {
-      if (r >= s.r1 && r <= s.r2 && c >= s.c1 && c <= s.c2) continue;
-      const e = cellAt(g, r, c); if (!e) continue;
-      const dr = r - s.r1, dc = c - s.c1; const ri = ((dr % nr) + nr) % nr, ci = ((dc % nc) + nc) % nc;
-      let val = srcVals[ri][ci];
-      if (f.to && f.to.r != null && c >= s.c1 && c <= s.c2) { const ser = colSeries(ci); if (ser) val = ser.v[0] + ser.st * dr; }
-      setVal(e, val);
-    }
-    sel = { g, r1: Math.min(s.r1, R1), r2: Math.max(s.r2, R2), c1: Math.min(s.c1, C1), c2: Math.max(s.c2, C2) }; multi = true; paint(); g.after();
-    if (typeof showToast === 'function') showToast('✓ Filled', 'success');
-  }
-
-  document.addEventListener('focusin', function (ev) {
-    if (down || fill) return;
-    const g = gridOf(ev.target); if (!g) return; const p = pos(g, ev.target); if (!p || p.c < 0) return;
-    if (multi && sel && sel.g.key === g.key && p.r >= sel.r1 && p.r <= sel.r2 && p.c >= sel.c1 && p.c <= sel.c2) return;
-    sel = { g, r1:p.r, r2:p.r, c1:p.c, c2:p.c }; multi = false; paint();
+  let totalGross = 0;
+  document.querySelectorAll('#srt tbody [data-col="store_gross"]').forEach(function(el) {
+    totalGross += num(el.value);
   });
 
-  const tsv = () => valuesOf(sel.g, sel.r1, sel.r2, sel.c1, sel.c2).map(r => r.join('\t')).join('\n');
-  document.addEventListener('keydown', function (ev) {
-    if (!sel || !multi) return;
-    const k = ev.key.toLowerCase();
-    if ((ev.ctrlKey || ev.metaKey) && (k === 'c' || k === 'x')) {
-      ev.preventDefault(); const t = tsv();
-      const done = () => { if (typeof showToast === 'function') showToast('✓ Copied — paste into Excel', 'success'); if (k === 'x') clearSel(); };
-      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => legacy(t, done)); else legacy(t, done);
-    } else if (k === 'delete' || k === 'backspace') { ev.preventDefault(); clearSel(); }
-    else if (k === 'escape') { sel = null; multi = false; paint(); }
-  }, true);
-  function legacy(t, done) { const ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
-  function clearSel() { for (let r = sel.r1; r <= sel.r2; r++) for (let c = sel.c1; c <= sel.c2; c++) { const e = cellAt(sel.g, r, c); if (e) setVal(e, ''); } sel.g.after(); }
+  const pctEl    = document.getElementById('hSalesPct');
+  const neededEl = document.getElementById('hNeeded');
+  const dailyEl  = document.getElementById('hDailyQuota');
 
-  // paste while a block is selected (focus is not inside a box)
-  document.addEventListener('paste', function (ev) {
-    if (!sel || !multi) return;
-    const a = document.activeElement; if (a && a.matches && a.matches('input,textarea') && !a.closest('.xl-sel')) return;
-    const text = (ev.clipboardData || window.clipboardData).getData('text'); if (!text) return;
-    ev.preventDefault(); ev.stopImmediatePropagation();
-    const g = sel.g; let data = text.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l => l.split('\t'));
-    if (data.length === 1 && data[0].length === 1) { for (let r = sel.r1; r <= sel.r2; r++) for (let c = sel.c1; c <= sel.c2; c++) { const e = cellAt(g, r, c); if (e) setVal(e, data[0][0]); } }
-    else data.forEach((line, i) => {
-      for (let guard = 0; g.rows().length <= sel.r1 + i && guard < 5; guard++) { const b = g.rows().length; g.add(); if (g.rows().length === b) break; }
-      line.forEach((v, j) => { const e = cellAt(g, sel.r1 + i, sel.c1 + j); if (e) setVal(e, v); });
-    });
-    g.after(); if (typeof showToast === 'function') showToast('✓ Pasted', 'success'); paint();
-  }, true);
+  if (quota <= 0) {
+    if(pctEl)    pctEl.textContent    = '—';
+    if(neededEl) neededEl.textContent = '—';
+    if(dailyEl)  dailyEl.textContent  = '—';
+    return;
+  }
 
-  // paste straight into a box (focus inside): the block spreads right and down from that box
-  document.addEventListener('paste', function (ev) {
-    const el = ev.target; if (!el || !el.matches || !el.matches('input,textarea') || el.readOnly || el.disabled) return;
-    const g = gridOf(el); if (!g) return;
-    const text = (ev.clipboardData || window.clipboardData).getData('text');
-    if (!text || (text.indexOf('\t') < 0 && !/\r?\n./.test(text))) return;       // single value → normal paste
-    const data = text.replace(/\r/g,'').replace(/\n$/,'').split('\n').map(l => l.split('\t'));
-    ev.preventDefault(); ev.stopImmediatePropagation();
-    const p = pos(g, el); if (!p || p.c < 0) return;
-    data.forEach((line, i) => {
-      for (let guard = 0; g.rows().length <= p.r + i && guard < 5; guard++) { const b = g.rows().length; g.add(); if (g.rows().length === b) break; }
-      line.forEach((v, j) => { const e = cellAt(g, p.r + i, p.c + j); if (e) setVal(e, v); });
-    });
-    g.after(); if (typeof showToast === 'function') showToast('✓ Pasted ' + data.length + ' row' + (data.length > 1 ? 's' : ''), 'success');
-  }, true);
-})();
+  const pct = (totalGross / quota) * 100;
+  if(pctEl) {
+    pctEl.textContent = pct.toFixed(2) + '%';
+    pctEl.style.color = pct >= 100 ? 'var(--accent)' : (pct >= 70 ? 'var(--accent3)' : 'var(--accent2)');
+  }
+
+  const needed = quota - totalGross;
+  if(neededEl) {
+    if (needed <= 0) {
+      neededEl.textContent = '✓ Target Met!';
+      neededEl.style.color = 'var(--accent)';
+    } else {
+      neededEl.textContent = '(' + needed.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ')';
+      neededEl.style.color = 'var(--accent2)';
+    }
+  }
+
+  const daily = needed <= 0 ? 0 : needed / days;
+  if(dailyEl) {
+    dailyEl.textContent = needed <= 0
+      ? '✓ Done!'
+      : '(' + daily.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + ')';
+    dailyEl.style.color = needed <= 0 ? 'var(--accent)' : 'var(--accent2)';
+  }
+}
+
+// ── Save Hero Carwash quota via AJAX ──────────────────────────────────
+let quotaTimer = null;
+function queueQuotaSave() {                       // auto-save shortly after you stop typing
+  clearTimeout(quotaTimer);
+  setQuotaHint('Typing…', '');
+  quotaTimer = setTimeout(saveHQuota, 700);
+}
+function setQuotaHint(msg, color) {
+  const h = document.getElementById('hQuotaHint');
+  if (!h) return;
+  h.textContent = msg; h.style.color = color || '';
+}
+async function saveHQuota() {
+  clearTimeout(quotaTimer);
+  const val = String(document.getElementById('hQuotaInput')?.value || '').replace(/,/g, '') || '0';
+  setQuotaHint('Saving…', '');
+  const monthEl = document.querySelector('select[name="month"]');
+  const yearEl  = document.querySelector('select[name="year"]');
+  const m = monthEl ? monthEl.value.toString().padStart(2,'0') : '<?= date('m') ?>';
+  const y = yearEl  ? yearEl.value  : '<?= $fYear ?>';
+  const fd = new FormData();
+  fd.append('ajax_quota','1');
+  fd.append('report_month', y + '-' + m);
+  fd.append('quota', val);
+  try {
+    const res  = await fetch('h_carwash_summary_report.php', {method:'POST', body:fd});
+    const data = await res.json();
+    if (data.ok) {
+      setQuotaHint('✓ Saved', 'var(--accent)');
+      setTimeout(function(){ setQuotaHint('Input target amount · saves automatically', ''); }, 2500);
+    } else {
+      setQuotaHint('❌ ' + (data.msg || 'Not saved'), 'var(--accent2)');
+    }
+  } catch(e) {
+    console.error('Quota save failed', e);
+    setQuotaHint('❌ Network error — not saved', 'var(--accent2)');
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+// Size the table so it fits the screen: header row + TOTAL row stay pinned
+// and only the daily rows scroll in between.
+function fitTable() {
+  const o = document.querySelector('.sr-outer'), t = document.getElementById('srt');
+  if (!o || !t) return;
+  const g = t.querySelector('thead tr');
+  if (g) t.style.setProperty('--grp-h', g.offsetHeight + 'px');
+  const h = window.innerHeight - o.getBoundingClientRect().top - 14;
+  o.style.maxHeight = Math.max(320, h) + 'px';
+}
+window.addEventListener('resize', fitTable);
+
+document.addEventListener('DOMContentLoaded', function() {
+  fitTable();
+  document.querySelectorAll('#srt tbody tr').forEach(function(r){ recalc(r.id); });
+  recalcTotals();
+  recalcHSummary();
+  setInterval(syncFromSales, 4000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) syncFromSales(); });
+});
 </script>
+<script src="../assets/js/keynav.js"></script>
+</body>
+</html>
