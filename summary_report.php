@@ -620,19 +620,18 @@ include 'layout.php';
           }
       }
       if(!$isText && $raw!=='' && (float)$raw==0) $raw='';
-      elseif(!$isText && $raw!=='') $raw=number_format((float)$raw,2,'.','');
+      elseif(!$isText && $raw!=='') $raw=number_format((float)$raw,2,'.',',');
       $ro = $comp || $isSR;
     ?>
     <td class="g-<?=$grp?> <?=$isText?'col-text':'col-num'?>">
       <input
-        type="<?=$isText?'text':'number'?>"
+        type="text"<?=$isText?'':' inputmode="decimal" autocomplete="off" data-numfmt="1"'?>
         class="sri <?=$ro?'calc':''?> <?=$isText?'txt':''?>"
         data-col="<?=$key?>" data-row="<?=$rid?>"
         value="<?=htmlspecialchars((string)$raw)?>"
         placeholder="<?=$isText?'':'0.00'?>"
         <?=$ro?'readonly tabindex="-1"':''?>
-        <?=!$isText?'step="0.01"':''?>
-        <?=!$isText?"oninput=\"changed(this)\"":""?>>
+        <?=!$isText?"oninput=\"changed(this)\" onblur=\"fmtBlur(this)\"":""?>>
     </td>
     <?php endforeach; ?>
 
@@ -672,13 +671,13 @@ include 'layout.php';
     <div style="padding:16px 20px;border-right:1px solid var(--border)">
       <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--subtext);margin-bottom:8px">Monthly Sales Quota</div>
       <div style="display:flex;align-items:center;gap:6px">
-        <input id="quotaInput" type="number" step="0.01" min="0"
-          value="<?= $savedQuota > 0 ? number_format($savedQuota,2,'.','') : '' ?>"
+        <input id="quotaInput" type="text" inputmode="decimal" autocomplete="off" data-numfmt="1"
+          value="<?= $savedQuota > 0 ? number_format($savedQuota,2,'.',',') : '' ?>"
           placeholder="0.00"
           style="background:#fff;border:1px solid #d1d5db;border-radius:7px;color:#1a1d23;font-family:var(--font-m);font-size:.9rem;font-weight:700;padding:6px 10px;width:100%;outline:none;transition:border-color .15s"
-          oninput="recalcSummary();queueQuotaSave()"
+          oninput="commaLive(this);recalcSummary();queueQuotaSave()"
           onfocus="this.style.borderColor='#0f7b5c';this.style.boxShadow='0 0 0 3px rgba(15,123,92,.1)'"
-          onblur="this.style.borderColor='#d1d5db';this.style.boxShadow='none';saveQuota()">
+          onblur="this.style.borderColor='#d1d5db';this.style.boxShadow='none';fmtBlur(this);saveQuota()">
       </div>
       <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px" id="quotaHint">Input target amount · saves automatically</div>
     </div>
@@ -714,6 +713,23 @@ include 'layout.php';
 const STORE = <?=json_encode($fStore)?>;
 const COLS  = <?=json_encode(array_map(fn($c)=>['key'=>$c[0],'grp'=>$c[2],'comp'=>$c[3]],$COLS))?>;
 
+// ── number helpers: thousands separators (1,234.56) ───────
+const numOf = v => { const x = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(x) ? x : 0; };
+const fmt2  = n => Number(n).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+// live commas while typing (cursor stays where it was)
+function commaLive(el) {
+  const v = el.value, pos = el.selectionStart == null ? v.length : el.selectionStart;
+  const before = v.slice(0, pos).replace(/[^0-9.\-]/g, '').length;
+  let c = v.replace(/[^0-9.\-]/g, ''); const neg = c.charAt(0) === '-'; c = c.replace(/-/g, '');
+  const parts = c.split('.'); let ip = parts[0].replace(/^0+(?=\d)/, '');
+  const dec = parts.length > 1 ? '.' + parts.slice(1).join('').slice(0, 2) : '';
+  ip = ip.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const out = (neg ? '-' : '') + ip + dec;
+  if (out !== v) { el.value = out; let n = 0, i = 0; for (; i < out.length && n < before; i++) if (/[0-9.\-]/.test(out[i])) n++; try { el.setSelectionRange(i, i); } catch (e) {} }
+}
+// on leaving a cell show it as 1,234.00 (empty stays empty)
+function fmtBlur(el) { if (el.readOnly) return; el.value = el.value.trim() === '' ? '' : fmt2(numOf(el.value)); }
+
 // ── Mark dirty + auto-save (debounced per row) ───────────
 const saveTimers = {};
 const AUTOCOLS = ['total_inclusive_sc','store_gross','total_deductions','short_over','total_swipe'];
@@ -723,7 +739,7 @@ function rowHasInput(rid) {
     const c = el.dataset.col;
     if (AUTOCOLS.indexOf(c) >= 0) return false;
     if (c === 'remarks' || c === 'remarks2') return el.value.trim() !== '';
-    return (parseFloat(el.value) || 0) !== 0;
+    return numOf(el.value) !== 0;
   });
 }
 function setStat(rid, cls, txt) {
@@ -731,6 +747,7 @@ function setStat(rid, cls, txt) {
   if (b) { b.className = 'asv ' + cls; b.textContent = txt; }
 }
 function changed(el) {
+  if (el.dataset.numfmt === '1' && !el.readOnly) commaLive(el);
   const rid = el.dataset.row;
   recalc(rid);
   recalcTotals();
@@ -748,8 +765,8 @@ function changed(el) {
 }
 
 // ── Get / Set helpers ─────────────────────────────────────
-function gv(rid, col) { const e = document.querySelector(`#${rid} [data-col="${col}"]`); return e ? (parseFloat(e.value)||0) : 0; }
-function sv(rid, col, v) { const e = document.querySelector(`#${rid} [data-col="${col}"]`); if(e) e.value = v===0?'':v.toFixed(2); }
+function gv(rid, col) { const e = document.querySelector(`#${rid} [data-col="${col}"]`); return e ? numOf(e.value) : 0; }
+function sv(rid, col, v) { const e = document.querySelector(`#${rid} [data-col="${col}"]`); if(e) e.value = v===0?'':fmt2(v); }
 
 // ── Auto-calculations ─────────────────────────────────────────────────────
 // Only 4 fields are auto-calculated:
@@ -799,7 +816,7 @@ function recalc(rid) {
   // SHORT / OVER = TOTAL DEDUCTIONS + CASH FOR DEPO - STORE GROSS - MARKETING          (Excel: =AF+H-F-E)
   const so = td + gv(rid,'cash_for_depo') - sg - mkt;
   const soEl = document.querySelector(`#${rid} [data-col="short_over"]`);
-  if (soEl) { soEl.value = Math.abs(so) < 0.005 ? '' : so.toFixed(2); soEl.classList.toggle('neg', so < 0); }
+  if (soEl) { soEl.value = Math.abs(so) < 0.005 ? '' : fmt2(so); soEl.classList.toggle('neg', so < 0); }
 }
 
 // ── Column totals ─────────────────────────────────────────
@@ -809,7 +826,7 @@ function recalcTotals() {
     const el = document.getElementById('tot_'+c.key);
     if(!el) return;
     let s=0;
-    document.querySelectorAll(`[data-col="${c.key}"]`).forEach(i=>s+=parseFloat(i.value)||0);
+    document.querySelectorAll(`[data-col="${c.key}"]`).forEach(i=>s+=numOf(i.value));
     el.textContent = s===0?'—':s.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
     el.style.color = (c.key==='short_over'&&s<0)?'var(--accent2)':'';
   });
@@ -830,7 +847,7 @@ async function saveRow(rid, ds) {
   fd.append('report_date', ds);
   COLS.forEach(c => {
     const el = document.querySelector(`#${rid} [data-col="${c.key}"]`);
-    fd.append(c.key, el?(el.value||'0'):'0');
+    fd.append(c.key, el ? (String(el.value).replace(/,/g,'') || '0') : '0');
   });
 
   try {
@@ -863,7 +880,7 @@ async function syncFromSales() {
     const res = await fetch('summary_report.php' + location.search + (location.search ? '&' : '?') + 'ajax_sync=1&_=' + Date.now(), {cache:'no-store'});
     const data = await res.json();
     if (!data.ok) return;
-    const f2 = v => v != 0 ? Number(v).toFixed(2) : '';
+    const f2 = v => v != 0 ? fmt2(v) : '';
     Object.keys(data.rows).forEach(function(ds) {
       const rid = 'r' + ds.replace(/-/g, '');
       const tr = document.getElementById(rid); if (!tr) return;
@@ -941,7 +958,7 @@ document.addEventListener('keydown', e=>{
 //   Needed to Reach   = Monthly Quota - Total Store Gross   (=E7-E5)
 //   Daily Target      = Needed / 5                          (=E9/5)
 function recalcSummary() {
-  const quota = parseFloat(document.getElementById('quotaInput')?.value) || 0;
+  const quota = numOf(document.getElementById('quotaInput')?.value);
 
   // Get total store_gross from the footer totals cell
   const sgEl = document.getElementById('tot_store_gross');
@@ -990,7 +1007,7 @@ function setQuotaHint(msg, color) { const h = document.getElementById('quotaHint
 function queueQuotaSave() { clearTimeout(quotaTimer); setQuotaHint('Typing…', ''); quotaTimer = setTimeout(saveQuota, 700); }
 async function saveQuota() {
   clearTimeout(quotaTimer);
-  const quota = parseFloat(document.getElementById('quotaInput')?.value) || 0;
+  const quota = numOf(document.getElementById('quotaInput')?.value);
   setQuotaHint('Saving…', '');
   const fd = new FormData();
   fd.append('ajax_quota','1');
@@ -1023,7 +1040,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#srt tbody tr[data-db]').forEach(function(r){
     let db; try { db = JSON.parse(r.dataset.db); } catch(e) { return; }
     const keys = (r.dataset.dbk || '').split(',');
-    const stale = keys.some(function(k, i){ const el = r.querySelector('[data-col="'+k+'"]'); return el && Math.abs((parseFloat(el.value) || 0) - (db[i] || 0)) > 0.009; });
+    const stale = keys.some(function(k, i){ const el = r.querySelector('[data-col="'+k+'"]'); return el && Math.abs(numOf(el.value) - (db[i] || 0)) > 0.009; });
     if (stale && r.dataset.fromsr === '1' && !saveTimers[r.id]) saveTimers[r.id] = setTimeout(function(){ saveRow(r.id, r.dataset.date); }, 400 + (n++) * 150);
   });
   if (STORE === 'Stella') setInterval(syncFromSales, 5000);
