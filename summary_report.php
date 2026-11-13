@@ -764,8 +764,14 @@ function recalc(rid) {
   const tisc = gv(rid,'total_sales') + gv(rid,'sc_for_depo');
   sv(rid,'total_inclusive_sc', tisc);
 
-  // STORE GROSS = TOTAL SALES - TIPS GIFT CERT - MARKETING - BOOKY FEES INCOME   (Excel: =G-C-E-D)
-  const sg = gv(rid,'total_sales') - gv(rid,'tips_gift_cert') - mkt - gv(rid,'booky_fees_income');
+  // STORE GROSS
+  //   Stella : TOTAL SALES - MARKETING. In the October Excel the Tips and the Booky are never taken off
+  //            the Store Gross (every day they were typed, the formula was edited so they stayed in),
+  //            so they are shown in their columns but not deducted here.
+  //   Others : TOTAL SALES - TIPS GIFT CERT - BOOKY FEES INCOME (unchanged)
+  const sg = STORE === 'Stella'
+    ? gv(rid,'total_sales') - mkt
+    : gv(rid,'total_sales') - gv(rid,'tips_gift_cert') - gv(rid,'booky_fees_income');
   sv(rid,'store_gross', sg);
 
   // TOTAL DEDUCTIONS = SALES OF THE DAY (SWIPE) + UNPAID + PAID + ADVANCE + GRAB + GCASH + BANK TRANS
