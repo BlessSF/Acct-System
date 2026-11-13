@@ -71,6 +71,7 @@
 
   function hasFreeCaret(el) {
     if (el.tagName === 'TEXTAREA') return true;
+    if (el.dataset && el.dataset.numfmt === '1') return false;   // comma-formatted number cells behave like number cells
     if (el.tagName === 'INPUT') return FREE_CARET_TYPES.indexOf((el.type || 'text').toLowerCase()) !== -1;
     return false;
   }
