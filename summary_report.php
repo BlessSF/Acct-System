@@ -236,6 +236,13 @@ if ($fStore === 'Stella') {
             $salesRows[$r['report_date']]['_cancelled_total'] = (float)$r['cancelled_total'];
         }
     } catch (Throwable $ignored) {}
+    // TOTAL SALES in the Excel = the POS Z-reading (Gross Sales + Marketing Pull Out).
+    // Older Sales Report rows may not have the Z-reading saved, so rebuild it when it's empty.
+    foreach ($salesRows as $d => $srr) {
+        $z = (float)($srr['pos_z_reading'] ?? 0);
+        if ($z == 0) $z = (float)($srr['gross_sales'] ?? 0) + (float)($srr['marketing_pull_out'] ?? 0);
+        $salesRows[$d]['_pos_z'] = $z;
+    }
 }
 
 // Map: Summary Report column => Stella Sales Report source column (or a
@@ -245,7 +252,7 @@ if ($fStore === 'Stella') {
 // Deductions) have no Sales Report equivalent and stay manual entries,
 // same as before.
 $SALES_MAP = [
-    'total_sales'           => 'gross_sales',
+    'total_sales'           => '_pos_z',              // Excel TOTAL SALES = POS Z-reading
     'sc_for_depo'            => 'service_charge',
     'deposit_swipe'          => 'deposit_swipe_card',
     'late_payment'           => 'late_payment_card',
@@ -256,22 +263,26 @@ $SALES_MAP = [
     'grab'                   => 'grab_sales',
     'gcash'                  => 'gcash',
     'gc_sold'                => 'gift_card',
-    'tips_gift_cert'         => 'gift_cert_sold_tips',
+    'tips_gift_cert'         => 'gift_cert_sold_tips',   // Tips Gift Cert (Deposit)
+    'booky_fees_income'      => 'cash_out_interest',     // Booky (Cash out Interest) -> Booky Fees Income
     'marketing_pull_out'     => 'marketing_pull_out',
     'discount'               => 'discount',
     'bank_trans'             => 'bank_transfer_cheque',
-    'other_sales'            => 'cash_out_interest',
     'pcf'                    => 'pcf_expenses',
     'other_expenses'         => 'other_expenses',
     'cash_for_depo'          => 'coh',
-    'total_swipe'            => 'total_swipe',
-    'short_over'             => 'short_over',
     'cancelled_transaction'  => '_cancelled_total',
 ];
+// Total Swipe and Short/Over are NOT copied from the Sales Report any more — they are worked out
+// here with the Excel formulas (see recalc() below).
+
 // Fields that stay editable/never lock even when the Sales Report has data
 // for the date — they get the Sales Report figure as a starting default,
 // but a manually-saved value always takes priority.
 $NEVER_LOCK = ['cancelled_transaction'];
+// Tips and Booky follow the Sales Report whenever it has an amount for the day; on days where the
+// Sales Report has nothing for them they stay typeable (like the Excel) instead of being locked at 0.
+$PARTIAL_LOCK = ['tips_gift_cert','booky_fees_income'];
 
 // Live sync: the page asks for the Sales Report figures every few seconds so edits made there
 // show up here without pressing anything.
@@ -585,7 +596,7 @@ include 'layout.php';
     $fromSR= $hasSR && !$saved;     // used only for the status dot
     $rid   = 'r'.str_replace('-','',$ds);
   ?>
-  <tr id="<?=$rid?>" data-date="<?=$ds?>" data-saved="<?=$saved?1:0?>" data-fromsr="<?=$hasSR?1:0?>">
+  <tr id="<?=$rid?>" data-date="<?=$ds?>" data-saved="<?=$saved?1:0?>" data-fromsr="<?=$hasSR?1:0?>"<?php if ($saved): ?> data-db='<?= htmlspecialchars(json_encode(array_map(fn($k) => round((float)($row[$k] ?? 0), 2), ['total_sales','tips_gift_cert','booky_fees_income','store_gross','total_deductions','short_over','total_swipe'])), ENT_QUOTES) ?>' data-dbk='total_sales,tips_gift_cert,booky_fees_income,store_gross,total_deductions,short_over,total_swipe'<?php endif; ?>>
     <td class="td-date">
       <?=$dayN?>-<?=date('M',strtotime($ds))?> <small style="color:var(--subtext);font-size:.6rem"><?=$dayNm?></small>
       <span class="sdot <?=$saved?'ok':($fromSR?'auto':'new')?>" id="dot_<?=$rid?>" title="<?=$fromSR?'Auto-filled from Stella Sales Report — click Save to lock in':''?>"></span>
@@ -599,6 +610,7 @@ include 'layout.php';
       // fields (Cancelled Transaction) stay editable, using the Sales Report
       // figure only as a starting default when nothing's been saved yet.
       $isSR = $hasSR && isset($SALES_MAP[$key]) && !in_array($key, $NEVER_LOCK, true);
+      if ($isSR && in_array($key, $PARTIAL_LOCK, true) && (float)($sr[$SALES_MAP[$key]] ?? 0) == 0) $isSR = false;
       if ($isSR) {
           $raw = $sr[$SALES_MAP[$key]] ?? '';
       } else {
@@ -744,58 +756,44 @@ function sv(rid, col, v) { const e = document.querySelector(`#${rid} [data-col="
 //   STORE GROSS, TOTAL DEDUCTIONS, SHORT/OVER, TOTAL SWIPE
 // All other fields are manual inputs.
 function recalc(rid) {
-  const tr = document.getElementById(rid);
-  // Rows where the Stella Sales Report has data for this date keep that
-  // report's own Total Swipe / Short-Over figures exactly (readonly mirrors)
-  // instead of recomputing them here — same "preserve" approach Dois uses.
-  const preserveSR = !!(tr && tr.dataset.fromsr === '1');
+  // MARKETING deducted from the Z-reading (Excel column E = GC SPONSOR / MARKETING)
+  // (Stella follows its Excel; the other branches keep their previous behaviour)
+  const mkt = STORE === 'Stella' ? gv(rid,'gc_sponsor_marketing') + gv(rid,'marketing_pull_out') : 0;
 
-  // TOTAL INCLUSICE SC = TOTAL SALES + SC FOR DEPO
+  // TOTAL INCLUSIVE SC = TOTAL SALES + SC FOR DEPO            (Excel: =G+AE)
   const tisc = gv(rid,'total_sales') + gv(rid,'sc_for_depo');
   sv(rid,'total_inclusive_sc', tisc);
 
-  // STORE GROSS = TOTAL SALES - TIPS GIFT CERT - BOOKY FEES INCOME
-  // Excel: =E3  (store_gross = total_sales - tips - booky)
-  const sg = gv(rid,'total_sales') - gv(rid,'tips_gift_cert') - gv(rid,'booky_fees_income');
+  // STORE GROSS = TOTAL SALES - TIPS GIFT CERT - MARKETING - BOOKY FEES INCOME   (Excel: =G-C-E-D)
+  const sg = gv(rid,'total_sales') - gv(rid,'tips_gift_cert') - mkt - gv(rid,'booky_fees_income');
   sv(rid,'store_gross', sg);
 
-  // TOTAL DEDUCTIONS = UNPAID + PAID + ADVANCE PAYMENT + GRAB + BANK TRANS
-  //   + GCASH + GC SPONSOR/MARKETING + GC SOLD + DISCOUNT + MARKETING PULL OUT
-  //   + PERSONAL + PCF + OTHER EXPENSES + SALES OF THE DAY (SWIPE)
-  // NOTE: sc_for_depo, cash_deposit, other_sales, cancelled_transaction are NOT included
-  const td = gv(rid,'unpaid')
+  // TOTAL DEDUCTIONS = SALES OF THE DAY (SWIPE) + UNPAID + PAID + ADVANCE + GRAB + GCASH + BANK TRANS
+  //   + GC SPONSOR/MARKETING + GC SOLD + DISCOUNT + MARKETING PULL OUT + PERSONAL + PCF + OTHER EXPENSES
+  //   (Excel: =I+M+N+O+P+Q+R+S+T+U+V+X+Y+Z+AA+AB+W — Payroll / CA / Direct Purchases have no column here)
+  const td = gv(rid,'sales_of_day_swipe')
+           + gv(rid,'unpaid')
            + gv(rid,'paid')
            + gv(rid,'advance_payment')
            + gv(rid,'grab')
-           + gv(rid,'bank_trans')
            + gv(rid,'gcash')
+           + gv(rid,'bank_trans')
            + gv(rid,'gc_sponsor_marketing')
            + gv(rid,'gc_sold')
            + gv(rid,'discount')
            + gv(rid,'marketing_pull_out')
            + gv(rid,'personal')
            + gv(rid,'pcf')
-           + gv(rid,'other_expenses')
-           + gv(rid,'sales_of_day_swipe');
+           + gv(rid,'other_expenses');
   sv(rid,'total_deductions', td);
 
-  // TOTAL SWIPE = SALES OF DAY (SWIPE) + DEPOSIT SWIPE + LATE PAYMENT + PAID
-  // Excel: =H3+I3+J3+M3
-  if (!preserveSR) {
-    const ts = gv(rid,'sales_of_day_swipe')
-             + gv(rid,'deposit_swipe')
-             + gv(rid,'late_payment')
-             + gv(rid,'paid');
-    sv(rid,'total_swipe', ts);
-  }
+  // TOTAL SWIPE = SALES OF THE DAY (SWIPE) + DEPOSIT SWIPE + LATE PAYMENT + PAID      (Excel: =I+J+K+N)
+  sv(rid,'total_swipe', gv(rid,'sales_of_day_swipe') + gv(rid,'deposit_swipe') + gv(rid,'late_payment') + gv(rid,'paid'));
 
-  // SHORT / OVER = TOTAL DEDUCTIONS + CASH FOR DEPO - STORE GROSS
-  // Verified: 68,585.14 + 11,850 - 79,610.27 = 824.87 ✓
-  if (!preserveSR) {
-    const so = td + gv(rid,'cash_for_depo') - sg;
-    const soEl = document.querySelector(`#${rid} [data-col="short_over"]`);
-    if(soEl){ soEl.value = so===0?'':so.toFixed(2); soEl.classList.toggle('neg', so<0); }
-  }
+  // SHORT / OVER = TOTAL DEDUCTIONS + CASH FOR DEPO - STORE GROSS - MARKETING          (Excel: =AF+H-F-E)
+  const so = td + gv(rid,'cash_for_depo') - sg - mkt;
+  const soEl = document.querySelector(`#${rid} [data-col="short_over"]`);
+  if (soEl) { soEl.value = Math.abs(so) < 0.005 ? '' : so.toFixed(2); soEl.classList.toggle('neg', so < 0); }
 }
 
 // ── Column totals ─────────────────────────────────────────
@@ -851,6 +849,7 @@ async function saveRow(rid, ds) {
 // so a change made in the Sales Report also changes here — and gets saved.
 let syncBusy = false;
 const SYNC_NEVER = ['cancelled_transaction'];
+const SYNC_PARTIAL = ['tips_gift_cert','booky_fees_income'];
 async function syncFromSales() {
   if (STORE !== 'Stella' || syncBusy || document.hidden) return;
   syncBusy = true;
@@ -873,6 +872,7 @@ async function syncFromSales() {
           if (el.value === prev || el.value === '') { if (el.value !== nv) { el.value = nv; any = true; } }
           el.dataset.srv = nv; return;
         }
+        if (SYNC_PARTIAL.indexOf(col) >= 0 && Number(vals[col]) === 0 && el.readOnly !== true) return;   // nothing in the Sales Report -> leave it typeable
         if (el.readOnly !== true) { el.readOnly = true; el.tabIndex = -1; el.classList.add('calc'); el.removeAttribute('oninput'); }
         if (el.value !== nv) { el.value = nv; any = true; }
       });
@@ -1011,6 +1011,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     if (r.dataset.saved !== '1' && r.dataset.fromsr === '1' && rowHasInput(r.id)) {
       saveTimers[r.id] = setTimeout(function(){ saveRow(r.id, r.dataset.date); }, 400 + (n++) * 150);
     }
+  });
+  // rows saved earlier whose stored figures no longer match what's shown (e.g. the Sales Report changed
+  // after they were saved) → save the correct figures again so the Income Statement etc. read the right numbers
+  document.querySelectorAll('#srt tbody tr[data-db]').forEach(function(r){
+    let db; try { db = JSON.parse(r.dataset.db); } catch(e) { return; }
+    const keys = (r.dataset.dbk || '').split(',');
+    const stale = keys.some(function(k, i){ const el = r.querySelector('[data-col="'+k+'"]'); return el && Math.abs((parseFloat(el.value) || 0) - (db[i] || 0)) > 0.009; });
+    if (stale && r.dataset.fromsr === '1' && !saveTimers[r.id]) saveTimers[r.id] = setTimeout(function(){ saveRow(r.id, r.dataset.date); }, 400 + (n++) * 150);
   });
   if (STORE === 'Stella') setInterval(syncFromSales, 5000);
 });
