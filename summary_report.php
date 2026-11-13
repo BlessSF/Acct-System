@@ -9,6 +9,13 @@ requireLogin();
 $pdo  = getPDO();
 $user = currentUser();
 
+// Stella's "MARKETING PULL-OUT" column (sits beside Booky, same as the Excel) is stored with the day's row
+try {
+    if (!$pdo->query("SHOW COLUMNS FROM `summary_report_entries` LIKE 'mkt_pullout_total'")->fetch()) {
+        $pdo->exec("ALTER TABLE `summary_report_entries` ADD COLUMN `mkt_pullout_total` decimal(12,2) NOT NULL DEFAULT 0.00");
+    }
+} catch (Throwable $ignored) {}
+
 // ── Handle AJAX save (per-row) ────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     header('Content-Type: application/json');
@@ -21,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     }
 
     $numCols = [
-        'tips_gift_cert','booky_fees_income','store_gross','total_sales',
+        'tips_gift_cert','booky_fees_income','mkt_pullout_total','store_gross','total_sales',
         'cash_for_depo','sales_of_day_swipe','deposit_swipe','late_payment',
         'cancelled_transaction','unpaid','paid','advance_payment',
         'grab','bank_trans','gcash','gc_sponsor_marketing',
@@ -98,6 +105,7 @@ if (isset($_GET['export_csv'])) {
         'report_date'           => 'Date',
         'tips_gift_cert'        => 'Tips Gift Cert (Deposit)',
         'booky_fees_income'     => 'Booky Fees Income',
+        'mkt_pullout_total'     => 'Marketing Pull-Out',
         'store_gross'           => 'Store Gross',
         'total_sales'           => 'Total Sales',
         'cash_for_depo'         => 'Cash for Depo',
@@ -109,8 +117,8 @@ if (isset($_GET['export_csv'])) {
         'paid'                  => 'Paid',
         'advance_payment'       => 'Advance Payment',
         'grab'                  => 'Grab',
-        'bank_trans'            => 'Bank Trans',
         'gcash'                 => 'GCash',
+        'bank_trans'            => 'Bank Trans',
         'gc_sponsor_marketing'  => 'GC Sponsor / Marketing',
         'gc_sold'               => 'GC Sold',
         'discount'              => 'Discount',
@@ -153,6 +161,7 @@ if (isset($_GET['export_csv'])) {
     fputcsv($out, [$csvMonthNames[$csvMonth] . ' ' . $csvYear]);
     fputcsv($out, []);
 
+    if ($csvStore !== 'Stella') unset($csvCols['mkt_pullout_total']);
     // Header row
     fputcsv($out, array_values($csvCols));
 
@@ -321,6 +330,7 @@ $COLS = [
     ['total_inclusive_sc',    'TOTAL INCLUSICE SC',       'calc',   true ],
     ['tips_gift_cert',        'TIPS GIFT CERT (DEPOSIT)',  'income', false],
     ['booky_fees_income',     'BOOKY FEES INCOME',         'income', false],
+    ['mkt_pullout_total',     'MARKETING PULL-OUT',        'calc',   true ],
     ['store_gross',           'STORE GROSS',               'calc',   true ],
     ['total_sales',           'TOTAL SALES',               'income', false],
     ['cash_for_depo',         'CASH FOR DEPO',             'income', false],
@@ -332,8 +342,8 @@ $COLS = [
     ['paid',                  'PAID',                      'income', false],
     ['advance_payment',       'ADVANCE PAYMENT',           'income', false],
     ['grab',                  'GRAB',                      'income', false],
-    ['bank_trans',            'BANK TRANS',                'income', false],
     ['gcash',                 'GCASH',                     'income', false],
+    ['bank_trans',            'BANK TRANS',                'income', false],
     ['gc_sponsor_marketing',  'GC SPONSOR / MARKETING',    'income', false],
     ['gc_sold',               'GC SOLD',                   'deduct', false],
     ['discount',              'DISCOUNT',                  'deduct', false],
@@ -350,6 +360,9 @@ $COLS = [
     ['other_sales',           'OTHER SALES',               'income', false],
     ['remarks2',              'REMARKS (2)',                'text',   false],
 ];
+
+// the Marketing Pull-Out column (Excel column E) is a Stella layout item
+if ($fStore !== 'Stella') $COLS = array_values(array_filter($COLS, fn($c) => $c[0] !== 'mkt_pullout_total'));
 
 $pageTitle  = $fStore . ' Summary Report';
 $activePage = 'summary';
@@ -596,7 +609,7 @@ include 'layout.php';
     $fromSR= $hasSR && !$saved;     // used only for the status dot
     $rid   = 'r'.str_replace('-','',$ds);
   ?>
-  <tr id="<?=$rid?>" data-date="<?=$ds?>" data-saved="<?=$saved?1:0?>" data-fromsr="<?=$hasSR?1:0?>"<?php if ($saved): ?> data-db='<?= htmlspecialchars(json_encode(array_map(fn($k) => round((float)($row[$k] ?? 0), 2), ['total_sales','tips_gift_cert','booky_fees_income','store_gross','total_deductions','short_over','total_swipe'])), ENT_QUOTES) ?>' data-dbk='total_sales,tips_gift_cert,booky_fees_income,store_gross,total_deductions,short_over,total_swipe'<?php endif; ?>>
+  <tr id="<?=$rid?>" data-date="<?=$ds?>" data-saved="<?=$saved?1:0?>" data-fromsr="<?=$hasSR?1:0?>"<?php if ($saved): ?> data-db='<?= htmlspecialchars(json_encode(array_map(fn($k) => round((float)($row[$k] ?? 0), 2), ['total_sales','tips_gift_cert','booky_fees_income','mkt_pullout_total','store_gross','total_deductions','short_over','total_swipe'])), ENT_QUOTES) ?>' data-dbk='total_sales,tips_gift_cert,booky_fees_income,mkt_pullout_total,store_gross,total_deductions,short_over,total_swipe'<?php endif; ?>>
     <td class="td-date">
       <?=$dayN?>-<?=date('M',strtotime($ds))?> <small style="color:var(--subtext);font-size:.6rem"><?=$dayNm?></small>
       <span class="sdot <?=$saved?'ok':($fromSR?'auto':'new')?>" id="dot_<?=$rid?>" title="<?=$fromSR?'Auto-filled from Stella Sales Report — click Save to lock in':''?>"></span>
@@ -732,7 +745,7 @@ function fmtBlur(el) { if (el.readOnly) return; el.value = el.value.trim() === '
 
 // ── Mark dirty + auto-save (debounced per row) ───────────
 const saveTimers = {};
-const AUTOCOLS = ['total_inclusive_sc','store_gross','total_deductions','short_over','total_swipe'];
+const AUTOCOLS = ['total_inclusive_sc','mkt_pullout_total','store_gross','total_deductions','short_over','total_swipe'];
 function rowHasInput(rid) {
   const tr = document.getElementById(rid); if (!tr) return false;
   return [...tr.querySelectorAll('input[data-col]')].some(function(el){
@@ -780,6 +793,8 @@ function recalc(rid) {
   // TOTAL INCLUSIVE SC = TOTAL SALES + SC FOR DEPO            (Excel: =G+AE)
   const tisc = gv(rid,'total_sales') + gv(rid,'sc_for_depo');
   sv(rid,'total_inclusive_sc', tisc);
+
+  sv(rid,'mkt_pullout_total', mkt);   // MARKETING PULL-OUT column (beside Booky)
 
   // STORE GROSS
   //   Stella : TOTAL SALES - MARKETING. In the October Excel the Tips and the Booky are never taken off
