@@ -902,7 +902,7 @@ async function syncFromSales() {
       let any = false; const vals = data.rows[ds];
       Object.keys(vals).forEach(function(col) {
         const el = tr.querySelector(`[data-col="${col}"]`);
-        if (!el || el === document.activeElement) return;
+        if (!el || (el === document.activeElement && !el.readOnly)) return;   // never overwrite a cell someone is typing in; read-only (linked) cells always refresh
         const nv = f2(vals[col]);
         if (SYNC_NEVER.indexOf(col) >= 0) {
           const prev = el.dataset.srv;
@@ -1058,7 +1058,14 @@ document.addEventListener('DOMContentLoaded',()=>{
     const stale = keys.some(function(k, i){ const el = r.querySelector('[data-col="'+k+'"]'); return el && Math.abs(numOf(el.value) - (db[i] || 0)) > 0.009; });
     if (stale && r.dataset.fromsr === '1' && !saveTimers[r.id]) saveTimers[r.id] = setTimeout(function(){ saveRow(r.id, r.dataset.date); }, 400 + (n++) * 150);
   });
-  if (STORE === 'Stella') setInterval(syncFromSales, 5000);
+  if (STORE === 'Stella') {
+    setInterval(syncFromSales, 3000);
+    // refresh the moment the Sales Report (another tab) saves, or when you come back to this tab
+    window.addEventListener('storage', function(e){ if (e.key === 'stella_sales_saved') syncFromSales(); });
+    document.addEventListener('visibilitychange', function(){ if (!document.hidden) syncFromSales(); });
+    window.addEventListener('focus', syncFromSales);
+    syncFromSales();
+  }
 });
 </script>
 <script src="assets/js/keynav.js"></script>

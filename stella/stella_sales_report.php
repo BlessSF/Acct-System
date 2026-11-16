@@ -59,7 +59,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `stella_sales_report` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
 // Migrate new columns safely (ignore if already exists)
-foreach (['paid_med_card','advance_paid_appigo','cash_out_interest','gift_cert_sold_tips','pos_z_reading'] as $col) {
+foreach (['paid_med_card','advance_paid_appigo','cash_out_interest','gift_cert_sold_tips','pos_z_reading','cash_replenishment'] as $col) {
     try { $pdo->exec("ALTER TABLE `stella_sales_report` ADD COLUMN `$col` decimal(12,2) NOT NULL DEFAULT 0.00"); }
     catch (Throwable $ignored) {}
 }
@@ -195,6 +195,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
             'pcf_expenses','other_expenses','coh'];
         $vals = [];
         foreach ($NUM_COLS as $f) $vals[$f] = (float)($_POST[$f] ?? 0);
+        $NUM_COLS[] = 'cash_replenishment';
+        $vals['cash_replenishment'] = max(0, (float)($_POST['cash_replenishment'] ?? 0));
 
         // Authoritative DINE IN sums (Gift Card, PCF/Expenses, Other Expenses excluded here on purpose)
         $diSumStmt = $pdo->prepare("SELECT
@@ -264,7 +266,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
                   - $vals['gift_cert_sold_tips']
                   - $vals['pcf_expenses']
                   - $vals['other_expenses'];
-        $shortOver = $vals['coh'] - $netSales;
+        // Cash replenishment (cash brought from the vault to cover expenses on a day when cash sales
+        // were not enough): Short/Over = COH - (Net Sales + Replenishment). Set automatically when Net Sales is negative.
+        if ($netSales < 0 && $vals['cash_replenishment'] <= 0) $vals['cash_replenishment'] = round(-$netSales, 2);
+        if ($netSales >= 0) $vals['cash_replenishment'] = 0;
+        $shortOver = $vals['coh'] - ($netSales + $vals['cash_replenishment']);
 
         $cashierName = trim((string)($_POST['cashier_name'] ?? ''));
         $remarks     = trim((string)($_POST['remarks'] ?? ''));
@@ -421,6 +427,7 @@ if (isset($_GET['export_csv'])) {
     $xlsx->row(['Other Expenses', $g('other_expenses')]);
     $xlsx->totalRow(['Net Sales', $g('net_sales')]);
     $xlsx->totalRow(['COH (Cash on Hand)', $g('coh')]);
+    $xlsx->row(['Cash Replenishment', $g('cash_replenishment')]);
     $xlsx->totalRow(['Short/Over', $g('short_over')]);
     if (trim((string)($r['remarks'] ?? '')) !== '') $xlsx->row(['Remarks', (string)$r['remarks']]);
     $xlsx->blank();
@@ -1055,6 +1062,13 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
     <div class="sr-note" style="color:#cfd8ea">(cash sales only except SC)</div>
   </div>
 
+  <!-- Cash Replenishment (auto when Net Sales is negative; can be overtyped) -->
+  <div class="sr-row coh" id="replenRow" style="display:none">
+    <div class="sr-label">Cash Replenishment <span style="font-weight:400;font-size:.7em">(auto when Net Sales is negative)</span></div>
+    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="cash_replenishment" value="<?= $v('cash_replenishment') ?: '' ?>" oninput="replenTyped()" placeholder="0.00" data-saved="<?= htmlspecialchars((string)($v('cash_replenishment') ?: 0)) ?>"></div>
+    <div class="sr-note" style="color:#cfd8ea">(cash from the vault used to cover the shortfall)</div>
+  </div>
+
   <!-- Short/Over -->
   <div class="sr-row short">
     <div class="sr-label">Short/Over</div>
@@ -1290,11 +1304,25 @@ function recalc() {
                  - gv('pcf_expenses')
                  - gv('other_expenses');
 
-  const shortOver = gv('coh') - netSales;
+  // Cash replenishment: auto = -Net Sales when negative, unless the user typed a different amount
+  const rEl = document.getElementById('cash_replenishment');
+  if (rEl) {
+    if (netSales >= 0) { rEl.value = ''; rEl.dataset.manual = ''; }
+    else if (rEl.dataset.manual !== '1') { rEl.value = (Math.round(-netSales * 100) / 100).toFixed(2); }
+    document.getElementById('replenRow').style.display = (netSales < 0 || gv('cash_replenishment') > 0) ? '' : 'none';
+  }
+  const replen = rEl ? gv('cash_replenishment') : 0;
+  const shortOver = gv('coh') - (netSales + replen);
   document.getElementById('net_sales').value = fmt(netSales);
   const soEl = document.getElementById('short_over');
   soEl.value = fmt(shortOver);
   soEl.style.color = shortOver < 0 ? '#ffd54f' : '#fff';
+}
+
+function replenTyped() {
+  const el = document.getElementById('cash_replenishment');
+  el.dataset.manual = String(el.value).trim() === '' ? '' : '1';
+  recalc();
 }
 
 // ── Save All ───────────────────────────────────────────────
@@ -1344,12 +1372,13 @@ async function saveAll() {
    'unpaid_med_credit','paid_med_card','advance_paid_appigo',
    'grab_sales','gcash','gift_card','marketing_pull_out','discount',
    'bank_transfer_cheque','cash_out_interest','gift_cert_sold_tips',
-   'pcf_expenses','other_expenses','coh'].forEach(id => fd3.append(id, gv(id)));
+   'pcf_expenses','other_expenses','coh','cash_replenishment'].forEach(id => fd3.append(id, gv(id)));
 
   const res  = await fetch('stella_sales_report.php', {method:'POST',body:fd3});
   const data = await res.json();
   if (data.ok) {
     status.textContent = '✓ Saved'; status.style.color = 'var(--accent)';
+    try { localStorage.setItem('stella_sales_saved', FDATE + '|' + Date.now()); } catch (e) {}   // tells an open Summary Report tab to refresh now
     showToast('✓ Sales report saved', 'success');
   } else {
     showToast('❌ ' + data.msg, 'error'); status.textContent = '❌ Error';
@@ -1424,7 +1453,18 @@ function showToast(msg, type) {
   setTimeout(() => t.remove(), 4000);
 }
 
-document.addEventListener('DOMContentLoaded', () => { diChanged(); recalcDepositSwipe(); recalc(); if (REPORT_LOCKED) lockPage(); });
+document.addEventListener('DOMContentLoaded', () => {
+  const rEl = document.getElementById('cash_replenishment');
+  const savedR = parseFloat(rEl?.dataset.saved) || 0;
+  diChanged(); recalcDepositSwipe();
+  recalc();
+  // a saved replenishment that differs from -Net Sales was typed by hand: keep it
+  if (rEl && savedR > 0 && Math.abs(savedR - gv('cash_replenishment')) > 0.004) { rEl.value = savedR.toFixed(2); rEl.dataset.manual = '1'; }
+  recalc();
+  // older days saved before this field existed: re-save once so Short/Over uses the replenishment
+  if (rEl && !REPORT_LOCKED && savedR === 0 && gv('cash_replenishment') > 0) setTimeout(() => rEl.dispatchEvent(new Event('change', {bubbles:true})), 600);
+  if (REPORT_LOCKED) lockPage();
+});
 </script>
 <script>
 // Excel's Dine In block has merged cells, so copying it gives blank "spacer" cells after Card/Swipe and after
