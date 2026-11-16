@@ -155,6 +155,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['ajax_action'] ?? '') === '
     exit;
 }
 
+// ── AJAX: Clear every row of one month (asked for in the page, after a confirmation) ──
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['ajax_action'] ?? '') === 'clear_month') {
+    header('Content-Type: application/json');
+    try {
+        $cy = (int)($_POST['year'] ?? 0); $cm = (int)($_POST['month'] ?? 0);
+        if ($cy < 2000 || $cm < 1 || $cm > 12) { echo json_encode(['ok'=>false,'msg'=>'Invalid month']); exit; }
+        $cs = sprintf('%04d-%02d-01', $cy, $cm); $ce = date('Y-m-t', strtotime($cs));
+        [$cb, $cbp] = branchFilter('store_name');
+        $del = $pdo->prepare("DELETE FROM stella_cogs_monitoring WHERE entry_date BETWEEN ? AND ? AND $cb");
+        $del->execute(array_merge([$cs, $ce], $cbp));
+        echo json_encode(['ok'=>true,'deleted'=>$del->rowCount()]);
+    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
+    exit;
+}
+
 // ── Filters ───────────────────────────────────────────────
 $months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 $fYear  = (int)($_GET['year']  ?? date('Y'));
@@ -280,7 +295,25 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <button type="button" class="btn btn-ghost" onclick="openImport()">⬆ Import Excel</button>
+    <button type="button" class="btn btn-ghost" style="color:#dc3545;border-color:rgba(220,53,69,.35)" onclick="openClear()">🗑 Clear <?=$months[$fMonth-1]?></button>
     <a class="btn btn-primary" href="?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>">⬇ Download Excel</a>
+  </div>
+</div>
+
+<!-- Clear-month confirmation -->
+<div id="clrOverlay" class="imp-overlay" onclick="if(event.target===this)closeClear()">
+  <div class="imp-box" style="width:min(440px,100%)">
+    <div class="imp-head"><b>Clear all <?=$months[$fMonth-1]?> <?=$fYear?> data?</b><button type="button" class="imp-x" onclick="closeClear()">✕</button></div>
+    <div class="imp-body">
+      <p style="margin:0 0 8px;font-size:.85rem">This permanently deletes <b id="clrCount">0</b> row(s) of <?=$months[$fMonth-1]?> <?=$fYear?> from COGS Monitoring. It cannot be undone.</p>
+      <p style="margin:0;font-size:.74rem;color:var(--subtext)">Type <b>CLEAR</b> to confirm.</p>
+      <input type="text" id="clrWord" autocomplete="off" placeholder="CLEAR" style="margin-top:8px;width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-m)" oninput="document.getElementById('clrGo').disabled = this.value.trim().toUpperCase() !== 'CLEAR'">
+      <div id="clrErr" class="imp-err"></div>
+    </div>
+    <div class="imp-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeClear()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="clrGo" style="background:#dc3545;border-color:#dc3545" onclick="clearMonth()" disabled>Yes, clear all</button>
+    </div>
   </div>
 </div>
 
@@ -312,6 +345,7 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
   </div>
 </div>
 
+<?php if (isset($_GET['cleared'])): ?><div class="card" style="padding:10px 18px;margin-bottom:14px;color:#dc3545;font-family:var(--font-m);font-size:.78rem;font-weight:700">🗑 Cleared <?= (int)$_GET['cleared'] ?> row(s) for <?= $months[$fMonth-1] ?> <?= $fYear ?>.</div><?php endif; ?>
 <?php if (isset($_GET['imported'])): ?><div class="card" style="padding:10px 18px;margin-bottom:14px;color:var(--accent);font-family:var(--font-m);font-size:.78rem;font-weight:700">✓ Imported <?= (int)$_GET['imported'] ?> day(s) from Excel.</div><?php endif; ?>
 
 <!-- Month / Year tabs -->
@@ -614,6 +648,30 @@ async function deleteRow(btn) {
 
 document.querySelectorAll('#cogsTbody tr').forEach(tr => { wire(tr); calc(tr); });
 totals();
+
+/* ============ Clear the whole month (with confirmation) ============ */
+function openClear() {
+  document.getElementById('clrCount').textContent = document.querySelectorAll('#cogsTbody tr').length;
+  document.getElementById('clrWord').value = ''; document.getElementById('clrGo').disabled = true;
+  document.getElementById('clrErr').textContent = '';
+  document.getElementById('clrOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('clrWord').focus(), 50);
+}
+function closeClear() { document.getElementById('clrOverlay').classList.remove('open'); }
+async function clearMonth() {
+  const btn = document.getElementById('clrGo'); btn.disabled = true;
+  // stop pending auto-saves so a row cannot come back after it is cleared
+  document.querySelectorAll('#cogsTbody tr').forEach(tr => { clearTimeout(tr._t); tr._again = false; tr._deleted = true; });
+  const fd = new FormData(); fd.append('ajax_action','clear_month'); fd.append('year', <?= $fYear ?>); fd.append('month', <?= $fMonth ?>);
+  try {
+    const j = await (await fetch('stella_cogs_monitoring.php', {method:'POST', body:fd})).json();
+    if (j.ok) { location.href = 'stella_cogs_monitoring.php?month=<?= $fMonth ?>&year=<?= $fYear ?>&cleared=' + j.deleted; return; }
+    document.getElementById('clrErr').textContent = '❌ ' + (j.msg || 'not cleared');
+  } catch (e) { document.getElementById('clrErr').textContent = '❌ network error'; }
+  document.querySelectorAll('#cogsTbody tr').forEach(tr => { tr._deleted = false; });
+  btn.disabled = false;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeClear(); });
 
 /* ============ Import from Excel ============ */
 let IMP = { sheets: {}, order: [] };
