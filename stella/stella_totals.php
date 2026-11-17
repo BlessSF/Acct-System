@@ -74,25 +74,44 @@ $activePage = 'stella_disbursement';
 include '../layout.php';
 ?>
 <style>
-.tot-box { margin-top:14px; background:#FFC299; border:1px solid #e0a070; border-radius:10px; padding:14px 18px 18px; }
-.tot-box h3 { margin:0 0 4px; text-align:center; font-family:var(--font-h); font-size:.95rem; letter-spacing:.04em; color:#1a1d23; }
-.tot-note { display:flex; gap:10px; justify-content:center; align-items:center; margin:6px 0 12px; flex-wrap:wrap; }
-.tot-note input { font-family:var(--font-m); font-size:.76rem; font-weight:700; padding:6px 10px; border:1px solid #d79a69; border-radius:6px; background:#fff3e8; color:#1a1d23; }
-.tot-tbl { border-collapse:collapse; font-family:Arial,Helvetica,sans-serif; font-size:.82rem; width:100%; }
-.tot-tbl td { padding:1px 10px; white-space:nowrap; border-bottom:1px solid rgba(255,255,255,.55); }
-.tot-tbl td.amt { text-align:right; font-weight:700; color:#e00000; min-width:110px; }
-.tot-tbl td.amt.zero { color:#111; }
-.tot-sum { margin-top:18px; width:100%; }
-.tot-sum td.lbl { color:#2b5fd9; font-weight:700; }
-.tot-sum td.amt { font-size:.9rem; }
-.tot-sum tr.grand td { color:#111; font-weight:800; }
-.tot-sum tr.grand td.amt { color:#111; border-top:2px solid #111; }
+.tt-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:14px 0; }
+.tt-kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; border-top:3px solid var(--accent); }
+.tt-kpi.b { border-top-color:#3b82f6; } .tt-kpi.v { border-top-color:#8b5cf6; } .tt-kpi.g { border-top-color:var(--accent); background:linear-gradient(135deg,#0f3d2e,#1a4a2e); border-color:#0f3d2e; }
+.tt-kpi .l { font-family:var(--font-m); font-size:.6rem; letter-spacing:.09em; text-transform:uppercase; color:var(--subtext); }
+.tt-kpi .f { font-family:var(--font-m); font-size:.58rem; color:var(--muted); margin-top:2px; }
+.tt-kpi .n { font-family:var(--font-m); font-size:1.45rem; font-weight:800; margin-top:6px; letter-spacing:-.02em; }
+.tt-kpi.b .n { color:#2563eb; } .tt-kpi.v .n { color:#7c3aed; }
+.tt-kpi.g .l, .tt-kpi.g .f { color:rgba(255,255,255,.6); } .tt-kpi.g .n { color:#6ee7b7; }
+.tt-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; }
+.tt-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:11px 18px; background:#0f3d2e; color:#fff; }
+.tt-head b { font-family:var(--font-m); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; }
+.tt-head label { font-family:var(--font-m); font-size:.62rem; color:rgba(255,255,255,.75); display:flex; gap:6px; align-items:center; cursor:pointer; }
+.tt-note { display:flex; gap:10px; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; background:#fffbeb; }
+.tt-note .t { font-family:var(--font-m); font-size:.6rem; text-transform:uppercase; letter-spacing:.08em; color:#92400e; font-weight:700; }
+.tt-note input { font-family:var(--font-m); font-size:.78rem; padding:8px 12px; border:1px solid #fde68a; border-radius:8px; background:#fff; color:var(--text); outline:none; }
+.tt-note input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.15); }
+#totLabel { flex:1; min-width:240px; } #totAmt { width:150px; text-align:right; font-weight:700; }
+.tt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); }
+.tt-grid.vert { grid-template-columns:1fr; max-width:680px; margin:0 auto; border-left:1px solid var(--border); border-right:1px solid var(--border); }
+.tt-grid.vert .tt-row { border-right:none; }
+.tt-seg { display:inline-flex; border:1px solid rgba(255,255,255,.35); border-radius:8px; overflow:hidden; }
+.tt-seg button { background:transparent; color:rgba(255,255,255,.8); border:none; padding:4px 12px; font-family:var(--font-m); font-size:.62rem; font-weight:700; cursor:pointer; }
+.tt-seg button.on { background:#fff; color:#0f3d2e; }
+.tt-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 18px; border-bottom:1px solid var(--border); border-right:1px solid var(--border); font-size:.8rem; }
+.tt-row .a { font-family:var(--font-m); font-weight:700; color:var(--text); }
+.tt-row.zero .a { color:var(--muted); font-weight:500; }
+.tt-row.zero .nm { color:var(--subtext); }
+.tt-row.hit { background:#f0fdf4; }
+.tt-row.pur { box-shadow:inset 3px 0 0 #3b82f6; } .tt-row.dff { box-shadow:inset 3px 0 0 #8b5cf6; }
+.tt-tag { font-family:var(--font-m); font-size:.5rem; font-weight:700; letter-spacing:.05em; padding:1px 6px; border-radius:8px; margin-left:6px; vertical-align:middle; }
+.tt-tag.p { background:#dbeafe; color:#1d4ed8; } .tt-tag.d { background:#ede9fe; color:#6d28d9; }
+@media (max-width:760px) { .tt-kpis { grid-template-columns:1fr; } }
 </style>
 
-<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:2px">
   <div>
     <div class="section-title">Stella <span>Totals</span></div>
-    <div class="section-subtitle">Gross per Account Title for the month · PURCHASES TOTAL · DF, FARE, FUEL · TOTAL — read live from the Disbursement</div>
+    <div class="section-subtitle">Gross per Account Title for the month · read live from the Disbursement</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <form method="GET" style="display:flex;gap:6px;align-items:center;margin:0">
@@ -102,26 +121,38 @@ include '../layout.php';
   </div>
 </div>
 
-<div class="tot-box" id="totBox">
-  <h3>TOTAL — <?= strtoupper(date('F Y', strtotime($mStart))) ?></h3>
-  <div class="tot-note">
-    <input type="text" id="totLabel" size="40" placeholder="e.g. LESS EXPENSES BREAKAGE REIMB." value="<?= htmlspecialchars($totalNote['note_label']) ?>" oninput="saveTotNote()">
-    <input type="text" id="totAmt" size="12" style="text-align:right" placeholder="0.00" value="<?= (float)$totalNote['note_amount'] == 0 ? '' : number_format((float)$totalNote['note_amount'], 2) ?>" oninput="saveTotNote()">
-    <span id="totSt" style="font-family:var(--font-m);font-size:.64rem;color:#7a4a25"></span>
+<div class="tt-kpis">
+  <div class="tt-kpi b"><div class="l">Purchases Total</div><div class="f">Purchases - Non-Vat + Purchases - Vatable</div><div class="n" id="totPurch"><?= number_format($S['purch'], 2) ?></div></div>
+  <div class="tt-kpi v"><div class="l">DF, Fare, Fuel</div><div class="f">Delivery Expense + Fare &amp; Transportation + Fuel &amp; Oil</div><div class="n" id="totDF"><?= number_format($S['df'], 2) ?></div></div>
+  <div class="tt-kpi g"><div class="l">Total — <?= htmlspecialchars(date('F Y', strtotime($mStart))) ?></div><div class="f">Purchases Total + DF, Fare, Fuel</div><div class="n" id="totAll"><?= number_format($S['total'], 2) ?></div></div>
+</div>
+
+<div class="tt-card" id="totBox">
+  <div class="tt-head">
+    <b>Account Titles · <?= htmlspecialchars(date('F Y', strtotime($mStart))) ?></b>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <div class="tt-seg" role="group" aria-label="Layout">
+        <button type="button" id="lyV" onclick="setLayout('vert')">☰ Vertical</button>
+        <button type="button" id="lyH" onclick="setLayout('horiz')">▦ Horizontal</button>
+      </div>
+      <label><input type="checkbox" id="hideZero" onchange="applyZero()"> Hide titles with no amount</label>
+    </div>
   </div>
-  <table class="tot-tbl" id="totTbl">
-    <?php foreach ($acctTitles as $t): $k = mb_strtolower(trim($t)); $v = $S['sums'][$k] ?? 0; ?>
-    <tr data-title="<?= htmlspecialchars($k) ?>">
-      <td><?= htmlspecialchars($t) ?></td>
-      <td class="amt <?= abs($v) < 0.005 ? 'zero' : '' ?>"><?= $fmtT($v) ?></td>
-    </tr>
+  <div class="tt-note">
+    <span class="t">Note / less expense</span>
+    <input type="text" id="totLabel" placeholder="e.g. LESS EXPENSES BREAKAGE REIMB." value="<?= htmlspecialchars($totalNote['note_label']) ?>" oninput="saveTotNote()">
+    <input type="text" id="totAmt" placeholder="0.00" value="<?= (float)$totalNote['note_amount'] == 0 ? '' : number_format((float)$totalNote['note_amount'], 2) ?>" oninput="saveTotNote()">
+    <span id="totSt" style="font-family:var(--font-m);font-size:.64rem;color:#92400e"></span>
+  </div>
+  <div class="tt-grid" id="totTbl">
+    <?php foreach ($acctTitles as $t): $k = mb_strtolower(trim($t)); $v = $S['sums'][$k] ?? 0;
+          $tag = in_array($k, $PT, true) ? 'p' : (in_array($k, $DF, true) ? 'd' : ''); ?>
+    <div class="tt-row <?= abs($v) < 0.005 ? 'zero' : '' ?> <?= $tag === 'p' ? 'pur' : ($tag === 'd' ? 'dff' : '') ?>" data-title="<?= htmlspecialchars($k) ?>">
+      <span class="nm"><?= htmlspecialchars($t) ?><?php if ($tag === 'p'): ?><span class="tt-tag p">PURCHASES</span><?php elseif ($tag === 'd'): ?><span class="tt-tag d">DF·FARE·FUEL</span><?php endif; ?></span>
+      <span class="a"><?= $fmtT($v) ?></span>
+    </div>
     <?php endforeach; ?>
-  </table>
-  <table class="tot-tbl tot-sum">
-    <tr><td class="lbl">PURCHASES TOTAL</td><td class="amt" id="totPurch"><?= number_format($S['purch'], 2) ?></td></tr>
-    <tr><td class="lbl">DF, FARE, FUEL</td><td class="amt" id="totDF"><?= number_format($S['df'], 2) ?></td></tr>
-    <tr class="grand"><td class="lbl" style="color:#111" title="PURCHASES TOTAL + DF, FARE, FUEL">TOTAL</td><td class="amt" id="totAll"><?= number_format($S['total'], 2) ?></td></tr>
-  </table>
+  </div>
 </div>
 
 <script>
@@ -134,14 +165,26 @@ async function refreshTotals() {
   try {
     const j = await (await fetch('stella_totals.php?ajax_state=1&month=' + MONTH)).json();
     if (!j.ok) return;
-    document.querySelectorAll('#totTbl tr[data-title]').forEach(tr => {
-      const v = (j.sums && j.sums[tr.dataset.title]) || 0, td = tr.children[1];
-      td.textContent = fm(v); td.classList.toggle('zero', Math.abs(v) < 0.005);
+    document.querySelectorAll('#totTbl .tt-row[data-title]').forEach(r => {
+      const v = (j.sums && j.sums[r.dataset.title]) || 0;
+      r.querySelector('.a').textContent = fm(v); r.classList.toggle('zero', Math.abs(v) < 0.005);
     });
+    applyZero();
     document.getElementById('totPurch').textContent = fm2(j.purch);
     document.getElementById('totDF').textContent    = fm2(j.df);
     document.getElementById('totAll').textContent   = fm2(j.total);
   } catch (e) {}
+}
+function setLayout(m) {
+  document.getElementById('totTbl').classList.toggle('vert', m === 'vert');
+  document.getElementById('lyV').classList.toggle('on', m === 'vert');
+  document.getElementById('lyH').classList.toggle('on', m !== 'vert');
+  try { localStorage.setItem('stella_totals_layout', m); } catch (e) {}
+}
+try { setLayout(localStorage.getItem('stella_totals_layout') === 'horiz' ? 'horiz' : 'vert'); } catch (e) { setLayout('vert'); }
+function applyZero() {
+  const hide = document.getElementById('hideZero').checked;
+  document.querySelectorAll('#totTbl .tt-row').forEach(r => r.style.display = (hide && r.classList.contains('zero')) ? 'none' : '');
 }
 setInterval(refreshTotals, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshTotals(); });
