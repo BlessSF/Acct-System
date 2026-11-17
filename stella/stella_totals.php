@@ -62,7 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_total_note'])) {
     exit;
 }
 
-$acctTitles = $pdo->query("SELECT title FROM `stella_acc_titles` ORDER BY sort_order ASC, title ASC")->fetchAll(PDO::FETCH_COLUMN);
+$acctRows = $pdo->query("SELECT title, section FROM `stella_acc_titles` ORDER BY sort_order ASC, title ASC")->fetchAll(PDO::FETCH_ASSOC);
+$GROUPS = ['assets' => ['Assets & Payables', '🏦'], 'expenses' => ['Expenses', '🧾'], 'other' => ['Other', '📎']];
+$byGroup = ['assets' => [], 'expenses' => [], 'other' => []];
+foreach ($acctRows as $r) $byGroup[isset($byGroup[$r['section']]) ? $r['section'] : 'other'][] = $r['title'];
 $S = totalsState($pdo, $mStart, $mEnd, $PT, $DF);
 $tn = $pdo->prepare("SELECT note_label, note_amount FROM stella_disbursement_total_notes WHERE ym=?");
 $tn->execute([$fMonth]);
@@ -91,20 +94,33 @@ include '../layout.php';
 .tt-note input { font-family:var(--font-m); font-size:.78rem; padding:8px 12px; border:1px solid #fde68a; border-radius:8px; background:#fff; color:var(--text); outline:none; }
 .tt-note input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.15); }
 #totLabel { flex:1; min-width:240px; } #totAmt { width:150px; text-align:right; font-weight:700; }
-.tt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); }
-.tt-grid.vert { grid-template-columns:1fr; max-width:680px; margin:0 auto; border-left:1px solid var(--border); border-right:1px solid var(--border); }
-.tt-grid.vert .tt-row { border-right:none; }
+.tt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); }
+.tt-grid.vert { grid-template-columns:1fr; max-width:860px; margin:0 auto; }
 .tt-seg { display:inline-flex; border:1px solid rgba(255,255,255,.35); border-radius:8px; overflow:hidden; }
 .tt-seg button { background:transparent; color:rgba(255,255,255,.8); border:none; padding:4px 12px; font-family:var(--font-m); font-size:.62rem; font-weight:700; cursor:pointer; }
 .tt-seg button.on { background:#fff; color:#0f3d2e; }
-.tt-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 18px; border-bottom:1px solid var(--border); border-right:1px solid var(--border); font-size:.8rem; }
-.tt-row .a { font-family:var(--font-m); font-weight:700; color:var(--text); }
-.tt-row.zero .a { color:var(--muted); font-weight:500; }
-.tt-row.zero .nm { color:var(--subtext); }
-.tt-row.hit { background:#f0fdf4; }
+.tt-tools { display:flex; gap:10px; align-items:center; padding:10px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; background:var(--bg,#f8fafb); }
+.tt-tools input[type=search] { flex:1; min-width:200px; font-family:var(--font-m); font-size:.76rem; padding:8px 12px; border:1px solid var(--border); border-radius:8px; outline:none; background:#fff; }
+.tt-tools input[type=search]:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.12); }
+.tt-chip { font-family:var(--font-m); font-size:.62rem; font-weight:700; padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:#fff; color:var(--subtext); cursor:pointer; }
+.tt-chip.on { background:#0f3d2e; color:#fff; border-color:#0f3d2e; }
+.tt-grp { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; padding:9px 18px; background:#eef5f1; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-family:var(--font-m); font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0f3d2e; }
+.tt-grp .gs { font-size:.78rem; letter-spacing:0; color:#0f3d2e; }
+.tt-row { position:relative; display:grid; grid-template-columns:28px 1fr auto 56px; align-items:center; gap:10px; padding:10px 18px; border-bottom:1px solid var(--border); font-size:.8rem; transition:background .12s; overflow:hidden; }
+.tt-row:hover { background:#f0fdf4; }
+.tt-row .ix { font-family:var(--font-m); font-size:.58rem; color:var(--muted); text-align:right; }
+.tt-row .nm { color:var(--text); font-weight:600; z-index:1; }
+.tt-row .a { font-family:var(--font-m); font-weight:800; color:var(--text); text-align:right; z-index:1; min-width:120px; }
+.tt-row .pc { font-family:var(--font-m); font-size:.6rem; color:var(--subtext); text-align:right; z-index:1; }
+.tt-row .bar { position:absolute; left:0; bottom:0; height:3px; background:linear-gradient(90deg,#10b981,#34d399); width:0; transition:width .3s; }
+.tt-row.pur .bar { background:linear-gradient(90deg,#3b82f6,#60a5fa); } .tt-row.dff .bar { background:linear-gradient(90deg,#8b5cf6,#a78bfa); }
+.tt-row.zero .nm { color:var(--muted); font-weight:500; } .tt-row.zero .a { color:var(--muted); font-weight:500; } .tt-row.zero .pc { visibility:hidden; }
 .tt-row.pur { box-shadow:inset 3px 0 0 #3b82f6; } .tt-row.dff { box-shadow:inset 3px 0 0 #8b5cf6; }
-.tt-tag { font-family:var(--font-m); font-size:.5rem; font-weight:700; letter-spacing:.05em; padding:1px 6px; border-radius:8px; margin-left:6px; vertical-align:middle; }
+.tt-tag { font-family:var(--font-m); font-size:.5rem; font-weight:700; letter-spacing:.05em; padding:1px 6px; border-radius:8px; margin-left:8px; vertical-align:middle; }
 .tt-tag.p { background:#dbeafe; color:#1d4ed8; } .tt-tag.d { background:#ede9fe; color:#6d28d9; }
+.tt-foot { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#0f3d2e; color:#fff; font-family:var(--font-m); }
+.tt-foot .l { font-size:.66rem; letter-spacing:.09em; text-transform:uppercase; color:rgba(255,255,255,.7); }
+.tt-foot .n { font-size:1.2rem; font-weight:800; color:#6ee7b7; }
 @media (max-width:760px) { .tt-kpis { grid-template-columns:1fr; } }
 </style>
 
@@ -135,7 +151,6 @@ include '../layout.php';
         <button type="button" id="lyV" onclick="setLayout('vert')">☰ Vertical</button>
         <button type="button" id="lyH" onclick="setLayout('horiz')">▦ Horizontal</button>
       </div>
-      <label><input type="checkbox" id="hideZero" onchange="applyZero()"> Hide titles with no amount</label>
     </div>
   </div>
   <div class="tt-note">
@@ -144,15 +159,28 @@ include '../layout.php';
     <input type="text" id="totAmt" placeholder="0.00" value="<?= (float)$totalNote['note_amount'] == 0 ? '' : number_format((float)$totalNote['note_amount'], 2) ?>" oninput="saveTotNote()">
     <span id="totSt" style="font-family:var(--font-m);font-size:.64rem;color:#92400e"></span>
   </div>
-  <div class="tt-grid" id="totTbl">
-    <?php foreach ($acctTitles as $t): $k = mb_strtolower(trim($t)); $v = $S['sums'][$k] ?? 0;
-          $tag = in_array($k, $PT, true) ? 'p' : (in_array($k, $DF, true) ? 'd' : ''); ?>
-    <div class="tt-row <?= abs($v) < 0.005 ? 'zero' : '' ?> <?= $tag === 'p' ? 'pur' : ($tag === 'd' ? 'dff' : '') ?>" data-title="<?= htmlspecialchars($k) ?>">
-      <span class="nm"><?= htmlspecialchars($t) ?><?php if ($tag === 'p'): ?><span class="tt-tag p">PURCHASES</span><?php elseif ($tag === 'd'): ?><span class="tt-tag d">DF·FARE·FUEL</span><?php endif; ?></span>
-      <span class="a"><?= $fmtT($v) ?></span>
-    </div>
-    <?php endforeach; ?>
+  <div class="tt-tools">
+    <input type="search" id="ttSearch" placeholder="Search account title…" oninput="applyFilters()">
+    <button type="button" class="tt-chip" id="chipZero" onclick="toggleChip('chipZero')">Only with amount</button>
+    <button type="button" class="tt-chip" id="chipSort" onclick="toggleChip('chipSort')">Sort by amount ↓</button>
   </div>
+  <div class="tt-grid" id="totTbl">
+    <?php $ix = 0; foreach ($byGroup as $gk => $titles): if (!$titles) continue;
+          $gsum = 0; foreach ($titles as $t) $gsum += $S['sums'][mb_strtolower(trim($t))] ?? 0; ?>
+    <div class="tt-grp" data-grp="<?= $gk ?>"><span><?= $GROUPS[$gk][1] ?> <?= htmlspecialchars($GROUPS[$gk][0]) ?></span><span class="gs"><?= number_format($gsum, 2) ?></span></div>
+    <?php foreach ($titles as $t): $k = mb_strtolower(trim($t)); $v = $S['sums'][$k] ?? 0; $ix++;
+          $tag = in_array($k, $PT, true) ? 'p' : (in_array($k, $DF, true) ? 'd' : ''); ?>
+    <div class="tt-row <?= abs($v) < 0.005 ? 'zero' : '' ?> <?= $tag === 'p' ? 'pur' : ($tag === 'd' ? 'dff' : '') ?>" data-title="<?= htmlspecialchars($k) ?>" data-grp="<?= $gk ?>" data-ix="<?= $ix ?>" data-v="<?= $v ?>">
+      <span class="ix"><?= $ix ?></span>
+      <span class="nm"><?= htmlspecialchars($t) ?><?php if ($tag === 'p'): ?><span class="tt-tag p">PURCHASES</span><?php elseif ($tag === 'd'): ?><span class="tt-tag d">DF · FARE · FUEL</span><?php endif; ?></span>
+      <span class="a"><?= $fmtT($v) ?></span>
+      <span class="pc"></span>
+      <span class="bar"></span>
+    </div>
+    <?php endforeach; endforeach; ?>
+  </div>
+  <div class="tt-foot"><span class="l">All account titles · <?= htmlspecialchars(date('F Y', strtotime($mStart))) ?></span><span class="n" id="totGrand">0.00</span></div>
+</div>
 </div>
 
 <script>
@@ -160,21 +188,6 @@ const MONTH = <?= json_encode($fMonth) ?>;
 const fm = v => Math.abs(v) < 0.005 ? '-' : v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const fm2 = v => v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 // follows the Disbursement live (entries added there show up here within a few seconds)
-async function refreshTotals() {
-  if (document.hidden) return;
-  try {
-    const j = await (await fetch('stella_totals.php?ajax_state=1&month=' + MONTH)).json();
-    if (!j.ok) return;
-    document.querySelectorAll('#totTbl .tt-row[data-title]').forEach(r => {
-      const v = (j.sums && j.sums[r.dataset.title]) || 0;
-      r.querySelector('.a').textContent = fm(v); r.classList.toggle('zero', Math.abs(v) < 0.005);
-    });
-    applyZero();
-    document.getElementById('totPurch').textContent = fm2(j.purch);
-    document.getElementById('totDF').textContent    = fm2(j.df);
-    document.getElementById('totAll').textContent   = fm2(j.total);
-  } catch (e) {}
-}
 function setLayout(m) {
   document.getElementById('totTbl').classList.toggle('vert', m === 'vert');
   document.getElementById('lyV').classList.toggle('on', m === 'vert');
@@ -182,10 +195,51 @@ function setLayout(m) {
   try { localStorage.setItem('stella_totals_layout', m); } catch (e) {}
 }
 try { setLayout(localStorage.getItem('stella_totals_layout') === 'horiz' ? 'horiz' : 'vert'); } catch (e) { setLayout('vert'); }
-function applyZero() {
-  const hide = document.getElementById('hideZero').checked;
-  document.querySelectorAll('#totTbl .tt-row').forEach(r => r.style.display = (hide && r.classList.contains('zero')) ? 'none' : '');
+const chips = { chipZero: false, chipSort: false };
+function toggleChip(id) { chips[id] = !chips[id]; document.getElementById(id).classList.toggle('on', chips[id]); applyFilters(); }
+
+// amounts, % share bars, group subtotals, grand total, filters — all from the row values
+function paint() {
+  const rows = [...document.querySelectorAll('#totTbl .tt-row')];
+  let grand = 0; const gs = {};
+  rows.forEach(r => { const v = +r.dataset.v || 0; grand += v; gs[r.dataset.grp] = (gs[r.dataset.grp] || 0) + v; });
+  rows.forEach(r => {
+    const v = +r.dataset.v || 0, pct = grand > 0 ? Math.max(0, v / grand * 100) : 0;
+    r.querySelector('.a').textContent = fm(v); r.classList.toggle('zero', Math.abs(v) < 0.005);
+    r.querySelector('.pc').textContent = pct >= 0.05 ? pct.toFixed(1) + '%' : '';
+    r.querySelector('.bar').style.width = Math.min(100, pct) + '%';
+  });
+  document.querySelectorAll('#totTbl .tt-grp').forEach(g => g.querySelector('.gs').textContent = fm2(gs[g.dataset.grp] || 0));
+  document.getElementById('totGrand').textContent = fm2(grand);
 }
+function applyFilters() {
+  const q = document.getElementById('ttSearch').value.trim().toLowerCase();
+  const rows = [...document.querySelectorAll('#totTbl .tt-row')];
+  rows.forEach(r => {
+    const hide = (chips.chipZero && r.classList.contains('zero')) || (q && !r.dataset.title.includes(q));
+    r.style.display = hide ? 'none' : '';
+  });
+  // sort: by amount (within each group) or back to the original order
+  document.querySelectorAll('#totTbl .tt-grp').forEach(g => {
+    const mine = rows.filter(r => r.dataset.grp === g.dataset.grp);
+    mine.sort((a, b) => chips.chipSort ? (+b.dataset.v - +a.dataset.v) : (+a.dataset.ix - +b.dataset.ix));
+    let ref = g; mine.forEach(r => { ref.after(r); ref = r; });
+    g.style.display = mine.some(r => r.style.display !== 'none') ? '' : 'none';
+  });
+}
+async function refreshTotals() {
+  if (document.hidden) return;
+  try {
+    const j = await (await fetch('stella_totals.php?ajax_state=1&month=' + MONTH)).json();
+    if (!j.ok) return;
+    document.querySelectorAll('#totTbl .tt-row').forEach(r => { r.dataset.v = (j.sums && j.sums[r.dataset.title]) || 0; });
+    document.getElementById('totPurch').textContent = fm2(j.purch);
+    document.getElementById('totDF').textContent    = fm2(j.df);
+    document.getElementById('totAll').textContent   = fm2(j.total);
+    paint(); applyFilters();
+  } catch (e) {}
+}
+paint();
 setInterval(refreshTotals, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshTotals(); });
 
