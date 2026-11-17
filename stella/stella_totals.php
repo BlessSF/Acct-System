@@ -95,7 +95,7 @@ include '../layout.php';
 .tt-note input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.15); }
 #totLabel { flex:1; min-width:240px; } #totAmt { width:150px; text-align:right; font-weight:700; }
 .tt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); }
-.tt-grid.vert { grid-template-columns:1fr; max-width:860px; margin:0 auto; }
+.tt-grid.vert { grid-template-columns:1fr; max-width:1000px; margin:0 auto; border-left:1px solid #cbd5d0; border-right:1px solid #cbd5d0; }
 .tt-seg { display:inline-flex; border:1px solid rgba(255,255,255,.35); border-radius:8px; overflow:hidden; }
 .tt-seg button { background:transparent; color:rgba(255,255,255,.8); border:none; padding:4px 12px; font-family:var(--font-m); font-size:.62rem; font-weight:700; cursor:pointer; }
 .tt-seg button.on { background:#fff; color:#0f3d2e; }
@@ -104,20 +104,24 @@ include '../layout.php';
 .tt-tools input[type=search]:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.12); }
 .tt-chip { font-family:var(--font-m); font-size:.62rem; font-weight:700; padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:#fff; color:var(--subtext); cursor:pointer; }
 .tt-chip.on { background:#0f3d2e; color:#fff; border-color:#0f3d2e; }
-.tt-grp { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; padding:9px 18px; background:#eef5f1; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-family:var(--font-m); font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0f3d2e; }
+.tt-grp { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; padding:10px 18px; background:#cfe8dc; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-family:var(--font-m); font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0f3d2e; }
 .tt-grp .gs { font-size:.78rem; letter-spacing:0; color:#0f3d2e; }
 .tt-row { position:relative; display:grid; grid-template-columns:28px 1fr auto 56px; align-items:center; gap:10px; padding:10px 18px; border-bottom:1px solid var(--border); font-size:.8rem; transition:background .12s; overflow:hidden; }
-.tt-row:hover { background:#f0fdf4; }
-.tt-row .ix { font-family:var(--font-m); font-size:.58rem; color:var(--muted); text-align:right; }
-.tt-row .nm { color:var(--text); font-weight:600; z-index:1; }
-.tt-row .a { font-family:var(--font-m); font-weight:800; color:var(--text); text-align:right; z-index:1; min-width:120px; }
-.tt-row .pc { font-family:var(--font-m); font-size:.6rem; color:var(--subtext); text-align:right; z-index:1; }
-.tt-row .bar { position:absolute; left:0; bottom:0; height:3px; background:linear-gradient(90deg,#10b981,#34d399); width:0; transition:width .3s; }
+.tt-row:nth-of-type(even) { background:#f6faf8; }
+.tt-row:hover { background:#dcfce7; }
+.tt-row .ix { font-family:var(--font-m); font-size:.62rem; color:#6b7280; text-align:right; }
+.tt-row .nm { color:#111827; font-weight:700; z-index:1; font-size:.84rem; }
+.tt-row .a { font-family:var(--font-m); font-weight:800; color:#111827; font-size:.86rem; text-align:right; z-index:1; min-width:120px; }
+.tt-row .pc { font-family:var(--font-m); font-size:.66rem; font-weight:700; color:#374151; text-align:right; z-index:1; }
+.tt-row .bar { position:absolute; left:0; bottom:0; height:5px; border-radius:0 3px 3px 0; background:linear-gradient(90deg,#10b981,#34d399); width:0; transition:width .3s; }
 .tt-row.pur .bar { background:linear-gradient(90deg,#3b82f6,#60a5fa); } .tt-row.dff .bar { background:linear-gradient(90deg,#8b5cf6,#a78bfa); }
-.tt-row.zero .nm { color:var(--muted); font-weight:500; } .tt-row.zero .a { color:var(--muted); font-weight:500; } .tt-row.zero .pc { visibility:hidden; }
-.tt-row.pur { box-shadow:inset 3px 0 0 #3b82f6; } .tt-row.dff { box-shadow:inset 3px 0 0 #8b5cf6; }
+.tt-row.zero .nm { color:#6b7280; font-weight:500; } .tt-row.zero .a { color:#9ca3af; font-weight:500; } .tt-row.zero .pc { visibility:hidden; }
+.tt-row.pur { background:#eff6ff !important; } .tt-row.dff { background:#f5f3ff !important; }
+.tt-row.pur:hover { background:#dbeafe !important; } .tt-row.dff:hover { background:#ede9fe !important; }
+.tt-legend { display:flex; gap:16px; flex-wrap:wrap; padding:9px 18px; font-family:var(--font-m); font-size:.64rem; color:#374151; border-bottom:1px solid var(--border); background:#fff; }
+.tt-legend i { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:6px; }
 .tt-tag { font-family:var(--font-m); font-size:.5rem; font-weight:700; letter-spacing:.05em; padding:1px 6px; border-radius:8px; margin-left:8px; vertical-align:middle; }
-.tt-tag.p { background:#dbeafe; color:#1d4ed8; } .tt-tag.d { background:#ede9fe; color:#6d28d9; }
+.tt-tag.p { background:#2563eb; color:#fff; } .tt-tag.d { background:#7c3aed; color:#fff; }
 .tt-foot { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#0f3d2e; color:#fff; font-family:var(--font-m); }
 .tt-foot .l { font-size:.66rem; letter-spacing:.09em; text-transform:uppercase; color:rgba(255,255,255,.7); }
 .tt-foot .n { font-size:1.2rem; font-weight:800; color:#6ee7b7; }
@@ -159,6 +163,11 @@ include '../layout.php';
     <input type="text" id="totAmt" placeholder="0.00" value="<?= (float)$totalNote['note_amount'] == 0 ? '' : number_format((float)$totalNote['note_amount'], 2) ?>" oninput="saveTotNote()">
     <span id="totSt" style="font-family:var(--font-m);font-size:.64rem;color:#92400e"></span>
   </div>
+  <div class="tt-legend">
+    <span><i style="background:#2563eb"></i><b>Blue rows</b> = counted in PURCHASES TOTAL</span>
+    <span><i style="background:#7c3aed"></i><b>Purple rows</b> = counted in DF, FARE, FUEL</span>
+    <span><b>%</b> = its share of all titles this month</span>
+  </div>
   <div class="tt-tools">
     <input type="search" id="ttSearch" placeholder="Search account title…" oninput="applyFilters()">
     <button type="button" class="tt-chip" id="chipZero" onclick="toggleChip('chipZero')">Only with amount</button>
@@ -175,7 +184,6 @@ include '../layout.php';
       <span class="nm"><?= htmlspecialchars($t) ?><?php if ($tag === 'p'): ?><span class="tt-tag p">PURCHASES</span><?php elseif ($tag === 'd'): ?><span class="tt-tag d">DF · FARE · FUEL</span><?php endif; ?></span>
       <span class="a"><?= $fmtT($v) ?></span>
       <span class="pc"></span>
-      <span class="bar"></span>
     </div>
     <?php endforeach; endforeach; ?>
   </div>
@@ -207,7 +215,6 @@ function paint() {
     const v = +r.dataset.v || 0, pct = grand > 0 ? Math.max(0, v / grand * 100) : 0;
     r.querySelector('.a').textContent = fm(v); r.classList.toggle('zero', Math.abs(v) < 0.005);
     r.querySelector('.pc').textContent = pct >= 0.05 ? pct.toFixed(1) + '%' : '';
-    r.querySelector('.bar').style.width = Math.min(100, pct) + '%';
   });
   document.querySelectorAll('#totTbl .tt-grp').forEach(g => g.querySelector('.gs').textContent = fm2(gs[g.dataset.grp] || 0));
   document.getElementById('totGrand').textContent = fm2(grand);
