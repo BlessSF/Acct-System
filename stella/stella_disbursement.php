@@ -391,24 +391,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
     exit;
 }
 
-// ── "Total" block under the entries: the free-typed lines (e.g. "LESS EXPENSES BREAKAGE REIMB.") are kept per month ──
-$pdo->exec("CREATE TABLE IF NOT EXISTS `stella_disbursement_total_notes` (
-    `ym` char(7) NOT NULL, `note_label` varchar(255) NOT NULL DEFAULT '', `note_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
-    `saved_by` varchar(100) DEFAULT NULL, `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-    PRIMARY KEY (`ym`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_total_note'])) {
-    header('Content-Type: application/json');
-    $ym = $_POST['month'] ?? '';
-    if (!preg_match('/^\d{4}-\d{2}$/', $ym)) { echo json_encode(['ok'=>false,'msg'=>'Invalid month']); exit; }
-    $lbl = mb_substr(trim((string)($_POST['label'] ?? '')), 0, 255);
-    $amt = (float)str_replace(',', '', (string)($_POST['amount'] ?? 0));
-    try {
-        $pdo->prepare("INSERT INTO stella_disbursement_total_notes (ym,note_label,note_amount,saved_by) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE note_label=VALUES(note_label), note_amount=VALUES(note_amount), saved_by=VALUES(saved_by)")
-            ->execute([$ym, $lbl, $amt, $user['name'] ?? '']);
-        echo json_encode(['ok'=>true]);
-    } catch (Throwable $e) { echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
-    exit;
-}
+
 
 // ── AJAX: Clear all entries of one month (also removes what they posted to Expenses) ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_clear_month'])) {
@@ -494,14 +477,6 @@ $totals = $stmtT->fetch();
 
 $acctTitles = $pdo->query("SELECT title FROM `stella_acc_titles` ORDER BY sort_order ASC, title ASC")->fetchAll(PDO::FETCH_COLUMN);
 
-// "Total" block: gross per Account Title for the month (whole month, not affected by the search box)
-$tsStmt = $pdo->prepare("SELECT account_title, COALESCE(SUM(gross),0) g FROM stella_disbursement WHERE entry_date >= ? AND entry_date < ? GROUP BY account_title");
-$tsStmt->execute([$mStart, $mEnd]);
-$titleSums = [];
-foreach ($tsStmt->fetchAll(PDO::FETCH_ASSOC) as $__r) $titleSums[mb_strtolower(trim((string)$__r['account_title']))] = (float)$__r['g'];
-$tnStmt = $pdo->prepare("SELECT note_label, note_amount FROM stella_disbursement_total_notes WHERE ym=?");
-$tnStmt->execute([substr($mStart, 0, 7)]);
-$totalNote = $tnStmt->fetch(PDO::FETCH_ASSOC) ?: ['note_label' => '', 'note_amount' => 0];
 $acctVatModes = vatModeMap($pdo, 'stella_acc_titles');
 
 $pageTitle  = 'Stella Disbursement';
@@ -692,6 +667,16 @@ include '../layout.php';
     <div class="section-subtitle">MERITONI CORP · Auto-fills vendor details from Vendor Masterlist</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
+  <a href="stella_totals.php?month=<?= urlencode($fMonth) ?>"
+     style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
+            background:#E65100;color:#fff;border-radius:9px;text-decoration:none;
+            font-family:var(--font-h);font-size:.82rem;font-weight:700;
+            box-shadow:0 2px 8px rgba(230,81,0,.3);transition:background .15s,transform .15s;
+            white-space:nowrap"
+     onmouseover="this.style.background='#BF360C';this.style.transform='translateY(-1px)'"
+     onmouseout="this.style.background='#E65100';this.style.transform=''">
+    🧮 Totals
+  </a>
   <a href="stella_acc_title.php"
      style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
             background:#6D4C41;color:#fff;border-radius:9px;text-decoration:none;
@@ -764,6 +749,9 @@ include '../layout.php';
   </a>
   <a href="stella_tb.php?year=<?= date('Y') ?>" class="btn btn-ghost btn-sm" style="color:#37474F;border-color:rgba(55,71,79,.3);background:rgba(55,71,79,.06);font-weight:600">
     🗂 TB
+  </a>
+  <a href="stella_totals.php?month=<?= urlencode($fMonth) ?>" class="btn btn-ghost btn-sm" style="color:#E65100;border-color:rgba(230,81,0,.3);background:rgba(230,81,0,.06);font-weight:600">
+    🧮 Totals
   </a>
   <a href="stella_acc_title.php" class="btn btn-ghost btn-sm" style="color:#6D4C41;border-color:rgba(109,76,65,.3);background:rgba(109,76,65,.06);font-weight:600">
     🏷 Account Titles
@@ -851,50 +839,6 @@ foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($_
 
 <div style="margin-top:10px;font-family:var(--font-m);font-size:.68rem;color:var(--subtext2)">
   ⏎ Fill in the last (blank) row and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd> — the entry is saved and a new blank row opens. To change a saved entry, edit it and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd>.
-</div>
-
-<?php
-  $__pt = ['purchases - non-vat','purchases - vatable'];          // PURCHASES TOTAL
-  $__df = ['fare & transportation','fuel & oil','delivery expense']; // DF, FARE, FUEL
-  $__sumOf = function(array $names) use ($titleSums) { $t = 0; foreach ($names as $n) $t += $titleSums[$n] ?? 0; return $t; };
-  $__fmtT = function($v) { return abs($v) < 0.005 ? '-' : number_format($v, 2); };
-?>
-<style>
-.tot-box { margin-top:18px; background:#FFC299; border:1px solid #e0a070; border-radius:10px; padding:14px 18px 18px; }
-.tot-box h3 { margin:0 0 4px; text-align:center; font-family:var(--font-h); font-size:.95rem; letter-spacing:.04em; color:#1a1d23; }
-.tot-note { display:flex; gap:10px; justify-content:center; align-items:center; margin:6px 0 12px; flex-wrap:wrap; }
-.tot-note input { font-family:var(--font-m); font-size:.76rem; font-weight:700; padding:6px 10px; border:1px solid #d79a69; border-radius:6px; background:#fff3e8; color:#1a1d23; }
-.tot-grid { display:flex; gap:40px; flex-wrap:wrap; align-items:flex-start; }
-.tot-tbl { border-collapse:collapse; font-family:Arial,Helvetica,sans-serif; font-size:.82rem; }
-.tot-tbl td { padding:1px 10px; white-space:nowrap; }
-.tot-tbl td.amt { text-align:right; font-weight:700; color:#e00000; min-width:110px; }
-.tot-tbl td.amt.zero { color:#111; }
-.tot-tbl tr.hl td.amt { color:#111; }
-.tot-side td.lbl { color:#2b5fd9; font-weight:700; }
-.tot-side td.amt { color:#e00000; font-size:.9rem; }
-</style>
-<div class="tot-box" id="totBox">
-  <h3>TOTAL — <?= strtoupper(date('F Y', strtotime($fMonth . '-01'))) ?></h3>
-  <div class="tot-note">
-    <input type="text" id="totLabel" size="40" placeholder="e.g. LESS EXPENSES BREAKAGE REIMB." value="<?= htmlspecialchars($totalNote['note_label']) ?>" oninput="saveTotNote()">
-    <input type="text" id="totAmt" size="12" style="text-align:right" placeholder="0.00" value="<?= (float)$totalNote['note_amount'] == 0 ? '' : number_format((float)$totalNote['note_amount'], 2) ?>" oninput="saveTotNote()">
-    <span id="totSt" style="font-family:var(--font-m);font-size:.64rem;color:#7a4a25"></span>
-  </div>
-  <div class="tot-grid">
-    <table class="tot-tbl" id="totTbl">
-      <?php foreach ($acctTitles as $__t): $__v = $titleSums[mb_strtolower(trim($__t))] ?? 0; ?>
-      <tr data-title="<?= htmlspecialchars(mb_strtolower(trim($__t))) ?>">
-        <td><?= htmlspecialchars($__t) ?></td>
-        <td class="amt <?= abs($__v) < 0.005 ? 'zero' : '' ?>"><?= $__fmtT($__v) ?></td>
-      </tr>
-      <?php endforeach; ?>
-    </table>
-    <table class="tot-tbl tot-side">
-      <tr><td class="lbl">PURCHASES TOTAL</td><td class="amt" id="totPurch"><?= number_format($__sumOf($__pt), 2) ?></td></tr>
-      <tr><td class="lbl">DF, FARE, FUEL</td><td class="amt" id="totDF"><?= number_format($__sumOf($__df), 2) ?></td></tr>
-      <tr><td class="lbl" style="color:#111" title="PURCHASES TOTAL + DF, FARE, FUEL">TOTAL</td><td class="amt" id="totAll" style="color:#111;border-top:2px solid #111"><?= number_format($__sumOf($__pt) + $__sumOf($__df), 2) ?></td></tr>
-    </table>
-  </div>
 </div>
 
 <?php
@@ -1248,40 +1192,6 @@ function updateTotals() {
     document.getElementById('tfoot-nvat').textContent  = n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
     const count = document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').length;
     document.getElementById('dsb-count').textContent = count;
-    updateTotalBlock();
-}
-
-// "Total" block: gross per Account Title, live from the rows on screen (saved rows only)
-function updateTotalBlock() {
-    const box = document.getElementById('totTbl'); if (!box) return;
-    const sums = {};
-    document.querySelectorAll('#dsb-tbody tr[data-id]:not([data-id=""])').forEach(row => {
-        const t = (row.querySelector('[data-col="account_title"]')?.value || '').trim().toLowerCase();
-        const g = parseFloat((row.querySelector('[data-col="gross"]')?.value || '0').replace(/,/g,'')) || 0;
-        if (t) sums[t] = (sums[t] || 0) + g;
-    });
-    const f = v => Math.abs(v) < 0.005 ? '-' : v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    box.querySelectorAll('tr[data-title]').forEach(tr => {
-        const v = sums[tr.dataset.title] || 0, td = tr.children[1];
-        td.textContent = f(v); td.classList.toggle('zero', Math.abs(v) < 0.005);
-    });
-    const S = n => sums[n] || 0;
-    document.getElementById('totPurch').textContent = (S('purchases - non-vat') + S('purchases - vatable')).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    const P = S('purchases - non-vat') + S('purchases - vatable'), D = S('fare & transportation') + S('fuel & oil') + S('delivery expense');
-    document.getElementById('totDF').textContent    = D.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    const ta = document.getElementById('totAll');   // TOTAL = PURCHASES TOTAL + DF, FARE, FUEL
-    if (ta) ta.textContent = (P + D).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-let _totT = null;
-function saveTotNote() {
-    const st = document.getElementById('totSt'); st.textContent = 'typing…';
-    clearTimeout(_totT);
-    _totT = setTimeout(async () => {
-        const fd = new FormData(); fd.append('ajax_total_note', '1'); fd.append('month', <?= json_encode(substr($mStart, 0, 7)) ?>);
-        fd.append('label', document.getElementById('totLabel').value); fd.append('amount', document.getElementById('totAmt').value);
-        try { const j = await (await fetch('stella_disbursement.php', {method:'POST', body:fd})).json(); st.textContent = j.ok ? '✓ saved' : '❌ ' + (j.msg || 'not saved'); }
-        catch (e) { st.textContent = '❌ network'; }
-    }, 600);
 }
 
 // Always keep one blank row at the bottom, ready to type into (no "+ Add Entry" button).
