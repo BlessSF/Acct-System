@@ -1183,6 +1183,50 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
 })();
 </script>
 
+<!-- ── Auto log-out after 20 minutes of inactivity ── -->
+<style>
+#idleBar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99999;display:none;align-items:center;gap:14px;
+  background:#1f2937;color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);font:600 .82rem/1.3 system-ui,sans-serif}
+#idleBar button{background:#10b981;color:#fff;border:0;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer}
+</style>
+<div id="idleBar"><span>⏱ You'll be signed out in <b id="idleSecs">60</b>s because of inactivity.</span><button type="button" onclick="idleStay()">Stay signed in</button></div>
+<script>
+(function () {
+  var LIMIT = <?= (int)IDLE_TIMEOUT ?> * 1000, WARN = 60 * 1000, KEY = 'acct_last_input';
+  var base = <?= json_encode(rtrim(BASE_URL, '/')) ?>, lastPing = 0, bar = document.getElementById('idleBar');
+  function now() { return Date.now(); }
+  function getLast() { try { return parseInt(localStorage.getItem(KEY), 10) || 0; } catch (e) { return 0; } }
+  var mine = now();
+  function touch() {
+    mine = now();
+    try { localStorage.setItem(KEY, String(mine)); } catch (e) {}      // other open tabs see it too
+    if (bar.style.display === 'flex') bar.style.display = 'none';
+    if (mine - lastPing > 60000) ping();
+  }
+  function ping() {
+    lastPing = now();
+    var fd = new FormData(); fd.append('ajax_keepalive', '1');
+    fetch(base + '/keepalive.php', {method: 'POST', body: fd, credentials: 'same-origin'})
+      .then(function (r) { if (r.status === 401) out(); }).catch(function () {});
+  }
+  function out() { window.location.href = base + '/logout.php?timeout=1'; }
+  window.idleStay = function () { touch(); ping(); };
+  var t = 0;
+  ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'wheel', 'click'].forEach(function (ev) {
+    window.addEventListener(ev, function () { if (now() - t > 1500) { t = now(); touch(); } }, {passive: true, capture: true});
+  });
+  touch();
+  setInterval(function () {
+    var idle = now() - Math.max(mine, getLast());
+    if (idle >= LIMIT) { out(); return; }
+    if (idle >= LIMIT - WARN) { bar.style.display = 'flex'; document.getElementById('idleSecs').textContent = Math.max(0, Math.ceil((LIMIT - idle) / 1000)); }
+    else if (bar.style.display === 'flex') bar.style.display = 'none';
+  }, 1000);
+  // a background tab that was asleep: re-check as soon as it wakes
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && now() - Math.max(mine, getLast()) >= LIMIT) out(); });
+})();
+</script>
+
 <!-- ── Main ── -->
 <div class="main-wrapper">
   <div class="topbar">

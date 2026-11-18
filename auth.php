@@ -3,7 +3,12 @@
 //  auth.php — Session & authentication helpers
 // ============================================================
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+// Auto log-out after 20 minutes without any activity from the person (see requireLogin / keepalive.php).
+if (!defined('IDLE_TIMEOUT')) define('IDLE_TIMEOUT', 20 * 60);
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.gc_maxlifetime', (string)(IDLE_TIMEOUT + 3600));   // keep the session file around longer than the idle limit
+    session_start();
+}
 
 // True for a fetch()-driven AJAX call: either it sent the standard
 // XHR header, or — the pattern every ajax_* handler in this codebase
@@ -22,6 +27,34 @@ function isAjaxRequest(): bool {
 }
 
 function requireLogin(): void {
+    // ── Idle time-out ──────────────────────────────────────────
+    // `last_activity` is refreshed by anything the person does: opening a page, submitting a form, or the
+    // page's own "still here" ping (keepalive.php) that fires while they type / click / scroll.
+    // Background calls (auto-refresh polling, auto-save) do NOT refresh it, so a page left open and
+    // untouched is logged out after IDLE_TIMEOUT even though it keeps polling.
+    if (!empty($_SESSION['user_id'])) {
+        $now = time();
+        $last = (int)($_SESSION['last_activity'] ?? $now);
+        if ($now - $last > IDLE_TIMEOUT) {
+            $_SESSION = [];
+            if (ini_get('session.use_cookies')) {
+                $cp = session_get_cookie_params();
+                setcookie(session_name(), '', $now - 42000, $cp['path'], $cp['domain'], $cp['secure'], $cp['httponly']);
+            }
+            session_destroy();
+            if (isAjaxRequest()) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['ok' => false, 'session_expired' => true,
+                    'msg' => 'You were signed out after 20 minutes of inactivity. Please log in again.']);
+                exit;
+            }
+            header('Location: ' . BASE_URL . '/index.php?timeout=1');
+            exit;
+        }
+        $isBackground = isAjaxRequest() && !isset($_POST['ajax_keepalive']);
+        if (!$isBackground) $_SESSION['last_activity'] = $now;
+    }
     if (empty($_SESSION['user_id'])) {
         // A fetch() call that hits an expired/missing session used to get
         // a 302 redirect to the login page here. fetch() silently follows

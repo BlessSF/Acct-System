@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_login'])) {
             $_SESSION['user_email']   = 'manager@multiplierscorp.com';
             $_SESSION['user_branch']  = null;
             $_SESSION['user_subrole'] = null;
+            $_SESSION['last_activity'] = time();
             header('Location: dashboard.php'); exit;
         }
     } elseif ($mode === 'accounting_head') {
@@ -71,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_login'])) {
             $_SESSION['user_email']   = 'accounting@multiplierscorp.com';
             $_SESSION['user_branch']  = null;
             $_SESSION['user_subrole'] = null;
+            $_SESSION['last_activity'] = time();
             header('Location: dashboard.php'); exit;
         }
     } elseif ($mode === 'oic' || $mode === 'cashier') {
@@ -91,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_login'])) {
             $_SESSION['user_email']   = $branchKey . '@multiplierscorp.com';
             $_SESSION['user_branch']  = $b['label'];
             $_SESSION['user_subrole'] = $mode;       // 'oic' = full branch access, 'cashier' = Sales Report only
+            $_SESSION['last_activity'] = time();
             header('Location: dashboard.php'); exit;
         }
     } else {
@@ -399,6 +402,9 @@ input:focus {
     <h1 class="login-title">Welcome <em>back</em></h1>
     <p class="login-sub">Choose how you're signing in</p>
 
+    <?php if (!$error && isset($_GET['timeout'])): ?>
+    <div class="error-box" style="background:#fffbeb;border-color:#fde68a;color:#92400e">⏱ You were signed out after 20 minutes of inactivity. Please sign in again.</div>
+    <?php endif; ?>
     <?php if ($error): ?>
     <div class="error-box">⚠ <?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
