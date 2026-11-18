@@ -284,6 +284,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_month_counts']))
     exit;
 }
 
+// ── Excel IMPORT (month-end inventory workbook → this date) ──────────
+// Step 1  ajax_import_upload   : receive the .xlsx, keep it in a temp file, list its sheets
+// Step 2  ajax_import_preview  : show what would happen for a chosen sheet + month-end date
+// Step 3  ajax_import_commit   : write it.  No classification in the Excel → section "STORAGE".
+//                                A classification (coloured heading row, e.g. FRUITS&VEGETABLES) →
+//                                that section is used if it exists, created if it does not.
+//                                An item already saved on that date (same name) is UPDATED, not duplicated.
+function invImportTmpPath(string $token): string {
+    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'stella_inv_import_' . $token . '.xlsx';
+}
+function invImportBuildPlan(PDO $pdo, array $items, string $date): array {
+    // Work out cost / qty / total exactly as the page does (total = cost x qty), keeping the Excel total
+    // when the Excel typed an amount without a count (e.g. CELANTRO 50.00).
+    $rows = [];
+    foreach ($items as $it) {
+        $cost = (float)($it['cost'] ?? 0);
+        $qty  = $it['qty'];                      // null = Excel left it blank
+        $tot  = $it['total'];
+        if ($qty === null && $tot !== null && $tot > 0) {
+            if ($cost > 0)      { $qty = $tot / $cost; }
+            else                { $cost = (float)$tot; $qty = 1.0; }
+        }
+        $rows[] = ['cat' => $it['cat'], 'name' => mb_substr($it['name'], 0, 200), 'unit' => normalizeInvUnit((string)$it['unit']),
+                   'cost' => round($cost, 2), 'qty' => ($qty === null ? null : round((float)$qty, 4))];
+    }
+    $ex = $pdo->prepare("SELECT id,category,item_desc,sort_order,end_inv_num FROM stella_month_end_inv WHERE store_name='Stella' AND inv_date=? ORDER BY sort_order,id");
+    $ex->execute([$date]);
+    $existing = [];
+    foreach ($ex->fetchAll() as $r) $existing[mb_strtolower(trim($r['item_desc']))][] = $r;
+    $seen = []; $new = 0; $upd = 0; $cats = [];
+    foreach ($rows as $i => $r) {
+        $k = mb_strtolower(trim($r['name'])); $n = $seen[$k] = ($seen[$k] ?? -1) + 1;
+        $rows[$i]['match'] = $existing[$k][$n] ?? null;
+        if ($rows[$i]['match']) $upd++; else $new++;
+        $label = $r['cat'] ?? ($rows[$i]['match']['category'] ?? 'STORAGE');
+        $cats[$label] = ($cats[$label] ?? 0) + 1;
+    }
+    return ['rows' => $rows, 'new' => $new, 'updated' => $upd, 'cats' => $cats];
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import_upload'])) {
+    header('Content-Type: application/json');
+    try {
+        require_once __DIR__ . '/../lib/xlsx_reader.php';
+        if (!class_exists('ZipArchive')) throw new RuntimeException('This server has no ZIP support (ZipArchive), so Excel files cannot be read.');
+        $f = $_FILES['xlsx'] ?? null;
+        if (!$f || $f['error'] !== UPLOAD_ERR_OK) {
+            $why = ['1'=>'The file is bigger than the server upload limit.','2'=>'The file is bigger than the form limit.','4'=>'No file was chosen.'][(string)($f['error'] ?? 4)] ?? 'The upload failed.';
+            throw new RuntimeException($why);
+        }
+        if (strtolower(pathinfo($f['name'], PATHINFO_EXTENSION)) !== 'xlsx') throw new RuntimeException('Please choose an .xlsx Excel file.');
+        foreach (glob(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'stella_inv_import_*.xlsx') ?: [] as $old) {
+            if (filemtime($old) < time() - 7200) @unlink($old);      // tidy up files older than 2 hours
+        }
+        $token = bin2hex(random_bytes(8));
+        if (!move_uploaded_file($f['tmp_name'], invImportTmpPath($token))) throw new RuntimeException('Could not store the uploaded file.');
+        $zip = xlsxOpen(invImportTmpPath($token));
+        $sheets = [];
+        foreach (xlsxSheets($zip) as $i => $sh) {
+            $sheets[] = ['i' => $i, 'name' => $sh['name'], 'date' => guessSheetDate($sh['name'], $fYear)];
+        }
+        $zip->close();
+        echo json_encode(['ok' => true, 'token' => $token, 'file' => $f['name'], 'sheets' => $sheets]);
+    } catch (Throwable $e) { echo json_encode(['ok' => false, 'msg' => $e->getMessage()]); }
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['ajax_import_preview']) || isset($_POST['ajax_import_commit']))) {
+    header('Content-Type: application/json');
+    try {
+        require_once __DIR__ . '/../lib/xlsx_reader.php';
+        $token = (string)($_POST['token'] ?? '');
+        $date  = (string)($_POST['date'] ?? '');
+        $sheetI = (int)($_POST['sheet'] ?? 0);
+        if (!preg_match('/^[a-f0-9]{16}$/', $token) || !is_file(invImportTmpPath($token))) throw new RuntimeException('The uploaded file expired — please choose the Excel file again.');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !strtotime($date)) throw new RuntimeException('Please pick the month-end date.');
+        $zip = xlsxOpen(invImportTmpPath($token));
+        $sheets = xlsxSheets($zip);
+        if (!isset($sheets[$sheetI])) throw new RuntimeException('That sheet was not found.');
+        $parsed = parseMonthEndSheet(xlsxReadSheet($zip, $sheets[$sheetI]['file']));
+        $zip->close();
+        if (!$parsed['items']) throw new RuntimeException('No items were found on that sheet.');
+        $plan = invImportBuildPlan($pdo, $parsed['items'], $date);
+
+        if (isset($_POST['ajax_import_preview'])) {
+            $known = array_map('mb_strtolower', $CATEGORIES);
+            $catInfo = [];
+            foreach ($plan['cats'] as $name => $cnt) $catInfo[] = ['name' => $name, 'count' => $cnt, 'isNew' => !in_array(mb_strtolower($name), $known, true)];
+            $sum = 0.0; foreach ($plan['rows'] as $r) $sum += round($r['cost'] * ($r['qty'] ?? 0), 2);
+            echo json_encode(['ok' => true, 'found' => count($plan['rows']), 'new' => $plan['new'], 'updated' => $plan['updated'],
+                              'cats' => $catInfo, 'total' => round($sum, 2), 'sheet' => $sheets[$sheetI]['name']]);
+            exit;
+        }
+
+        // ── commit ──
+        $yr = (int)date('Y', strtotime($date)); $mo = (int)date('n', strtotime($date));
+        $pdo->beginTransaction();
+        $catMap = [];   // lower => real name
+        foreach ($pdo->query("SELECT name FROM stella_categories WHERE store_name='Stella'")->fetchAll(PDO::FETCH_COLUMN) as $n) $catMap[mb_strtolower($n)] = $n;
+        $maxOrd = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),-1) FROM stella_categories WHERE store_name='Stella'")->fetchColumn();
+        $insCat = $pdo->prepare("INSERT IGNORE INTO stella_categories (store_name,name,sort_order) VALUES ('Stella',?,?)");
+        $ensureCat = function (string $name) use (&$catMap, &$maxOrd, $insCat): string {
+            $k = mb_strtolower($name);
+            if (!isset($catMap[$k])) { $insCat->execute([$name, ++$maxOrd]); $catMap[$k] = $name; }
+            return $catMap[$k];
+        };
+        $base = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),-1) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_date=" . $pdo->quote($date))->fetchColumn() + 1;
+        $upd = $pdo->prepare("UPDATE stella_month_end_inv SET inv_year=?,inv_month=?,category=?,unit=?,supplier_cost=?,end_inv_num=?,total_amount=?,saved_by=? WHERE id=? AND store_name='Stella'");
+        $ins = $pdo->prepare("INSERT INTO stella_month_end_inv (inv_date,inv_year,inv_month,store_name,category,sort_order,item_desc,unit,supplier_cost,end_inv_num,total_amount,saved_by) VALUES (?,?,?,'Stella',?,?,?,?,?,?,?,?)");
+        $nNew = 0; $nUpd = 0; $seq = 0;
+        foreach ($plan['rows'] as $r) {
+            $m = $r['match'];
+            if ($m) {
+                $cat = $ensureCat($r['cat'] ?? $m['category']);            // Excel classification wins; otherwise keep where it already is
+                $qty = $r['qty'] ?? (float)$m['end_inv_num'];               // Excel blank → keep the count already saved
+                $upd->execute([$yr, $mo, $cat, $r['unit'], $r['cost'], $qty, round($r['cost'] * $qty, 2), $user['name'], $m['id']]);
+                $nUpd++;
+            } else {
+                $cat = $ensureCat($r['cat'] ?? 'STORAGE');
+                $qty = $r['qty'] ?? 0.0;
+                $ins->execute([$date, $yr, $mo, $cat, $base + $seq++, $r['name'], $r['unit'], $r['cost'], $qty, round($r['cost'] * $qty, 2), $user['name']]);
+                $nNew++;
+            }
+        }
+        $pdo->commit();
+        @unlink(invImportTmpPath($token));
+        echo json_encode(['ok' => true, 'new' => $nNew, 'updated' => $nUpd, 'year' => $yr, 'month' => $mo, 'day' => (int)date('j', strtotime($date))]);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ── Excel (.xlsx) Export ─────────────────────────────────────
 // Styled export (branch-colored title/header, bordered totals) —
 // replaces the old plain-text CSV export.
@@ -737,6 +871,11 @@ $unitOpts = '';
 foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
 ?>
 
+<?php if (isset($_GET['imported']) && preg_match('/^(\d+)_(\d+)$/', $_GET['imported'], $im)): ?>
+<div id="impDone" style="margin:0 0 12px;padding:10px 14px;border-radius:8px;background:#e7f6ef;border:1px solid #9fd8bd;color:#0a5b42;font-family:var(--font-m);font-size:.75rem;font-weight:700">
+  ✓ Excel imported into <?= htmlspecialchars($displayDate) ?> — <?= (int)$im[1] ?> new item(s), <?= (int)$im[2] ?> updated.
+</div>
+<?php endif; ?>
 <!-- Page Header -->
 <div class="inv-header">
   <div>
@@ -769,6 +908,7 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
       <?php endfor; ?>
     </select>
     <a href="stella_month_end_inv.php?export_csv=1&month=<?=$fMonth?>&day=<?=$fDay?>&year=<?=$fYear?>" class="btn btn-ghost">⬇ Download Excel</a>
+    <button type="button" class="btn btn-ghost" onclick="openImportModal()" title="Import a month-end inventory Excel into a date">⬆ Import Excel</button>
     <button type="button" class="btn btn-ghost" onclick="openDuplicateModal()"
             <?= empty($allRows) ? 'disabled title="No items on this date yet to duplicate"' : '' ?>>
       📋 Duplicate to Other Days
@@ -857,6 +997,9 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
             <?php foreach($UNITS as $u): ?>
             <option value="<?=$u?>" <?= $r['unit']===$u?'selected':'' ?>><?=$u?></option>
             <?php endforeach; ?>
+            <?php if ($r['unit'] !== '' && !in_array($r['unit'], $UNITS, true)): ?>
+            <option value="<?= htmlspecialchars($r['unit']) ?>" selected><?= htmlspecialchars($r['unit']) ?></option>
+            <?php endif; ?>
           </select>
         </div>
         <div class="inv-cell">
@@ -988,6 +1131,38 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
     <div class="modal-footer">
       <button class="modal-btn modal-btn-cancel" onclick="closeModal('duplicateModal')">Cancel</button>
       <button class="modal-btn modal-btn-primary" id="dupConfirmBtn" onclick="confirmDuplicate()">Duplicate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import Excel Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-box wide" style="width:540px;max-width:94vw">
+    <div class="modal-header">⬆ Import Month-End Inventory (Excel)</div>
+    <div class="modal-body">
+      <div style="margin-bottom:10px">Choose your month-end inventory workbook, pick the sheet and the <strong>month-end date</strong> to save it under.</div>
+
+      <input type="file" id="impFile" accept=".xlsx" class="modal-input" style="padding:8px" onchange="impUpload(this)">
+
+      <div id="impStep2" style="display:none;margin-top:12px">
+        <label style="font-weight:700;font-size:.72rem">Sheet</label>
+        <select id="impSheet" class="modal-input" style="margin-top:4px" onchange="impSheetChanged()"></select>
+
+        <label style="font-weight:700;font-size:.72rem;display:block;margin-top:10px">Month-end date <span style="font-weight:400;color:var(--subtext2)">(the date all these items are saved under)</span></label>
+        <input type="date" id="impDate" class="modal-input" style="margin-top:4px" onchange="impPreview()">
+
+        <div id="impPreview" style="margin-top:12px;padding:10px 12px;border:1px solid #d8dde3;border-radius:8px;background:#f7f9fb;font-size:.74rem;line-height:1.7"></div>
+        <div style="font-size:.66rem;color:var(--subtext2);margin-top:8px;line-height:1.5">
+          • Items with <strong>no classification</strong> go into the section <strong>STORAGE</strong> (created automatically).<br>
+          • Items under a classification (like FRUITS&amp;VEGETABLES) go into that section — it is created if it does not exist yet.<br>
+          • An item already saved on that date with the <strong>same name is updated</strong> (unit, cost, count), not duplicated. If the Excel count is blank, the count already in the system is kept.
+        </div>
+      </div>
+      <div class="modal-error" id="impError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal('importModal')">Cancel</button>
+      <button class="modal-btn modal-btn-primary" id="impGoBtn" onclick="impCommit()" disabled>Import</button>
     </div>
   </div>
 </div>
@@ -1299,6 +1474,84 @@ function showConfirm({title, message, btnLabel, btnClass, danger, onConfirm}) {
   btn.className = 'modal-btn ' + (btnClass || 'modal-btn-primary');
   btn.onclick = async () => { closeModal('confirmModal'); await onConfirm(); };
   openModal('confirmModal');
+}
+
+
+// ── Import Excel ───────────────────────────────────────────
+let IMP_TOKEN = '', IMP_SHEETS = [];
+function impErr(msg) { const e = document.getElementById('impError'); e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'; }
+function openImportModal() {
+  IMP_TOKEN = ''; IMP_SHEETS = [];
+  document.getElementById('impFile').value = '';
+  document.getElementById('impStep2').style.display = 'none';
+  document.getElementById('impGoBtn').disabled = true;
+  impErr('');
+  openModal('importModal');
+}
+async function impUpload(inp) {
+  impErr('');
+  if (!inp.files.length) return;
+  const fd = new FormData();
+  fd.append('ajax_import_upload', '1');
+  fd.append('xlsx', inp.files[0]);
+  document.getElementById('impGoBtn').disabled = true;
+  try {
+    const res = await fetch('stella_month_end_inv.php', {method:'POST', body: fd});
+    const j = await res.json();
+    if (!j.ok) { impErr(j.msg || 'Upload failed.'); return; }
+    IMP_TOKEN = j.token; IMP_SHEETS = j.sheets;
+    const sel = document.getElementById('impSheet');
+    sel.innerHTML = j.sheets.map(s => `<option value="${s.i}">${s.name.replace(/</g,'&lt;')}${s.date ? '  →  ' + s.date : ''}</option>`).join('');
+    // pre-select the sheet that matches the date currently shown on the page, if there is one
+    const hit = j.sheets.find(s => s.date === INV_DATE);
+    if (hit) sel.value = hit.i;
+    document.getElementById('impStep2').style.display = 'block';
+    impSheetChanged(true);
+  } catch (e) { impErr('Upload failed: ' + e.message); }
+}
+function impSheetChanged(first) {
+  const i = parseInt(document.getElementById('impSheet').value, 10);
+  const s = IMP_SHEETS.find(x => x.i === i);
+  // date = what the sheet name says (e.g. OCTOBER 31 2026), otherwise the date currently on screen
+  document.getElementById('impDate').value = (s && s.date) ? s.date : INV_DATE;
+  impPreview();
+}
+async function impPreview() {
+  impErr('');
+  const box = document.getElementById('impPreview');
+  const btn = document.getElementById('impGoBtn');
+  btn.disabled = true;
+  const date = document.getElementById('impDate').value;
+  if (!date) { box.textContent = 'Pick the month-end date.'; return; }
+  box.textContent = 'Reading the sheet…';
+  const fd = new FormData();
+  fd.append('ajax_import_preview', '1');
+  fd.append('token', IMP_TOKEN);
+  fd.append('sheet', document.getElementById('impSheet').value);
+  fd.append('date', date);
+  try {
+    const j = await (await fetch('stella_month_end_inv.php', {method:'POST', body: fd})).json();
+    if (!j.ok) { box.textContent = ''; impErr(j.msg || 'Could not read that sheet.'); return; }
+    const money = n => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const cats = j.cats.map(c => `<div>• <strong>${c.name.replace(/</g,'&lt;')}</strong> — ${c.count} item(s) ${c.isNew ? '<span style="color:#b45309">(new section)</span>' : '<span style="color:#0f7b5c">(existing section)</span>'}</div>`).join('');
+    box.innerHTML = `<div><strong>${j.found}</strong> items found in “${j.sheet.replace(/</g,'&lt;')}” → saving under <strong>${date}</strong></div>
+      <div>${j.new} new · ${j.updated} updated &nbsp;|&nbsp; Total ₱${money(j.total)}</div>${cats}`;
+    btn.disabled = false;
+  } catch (e) { box.textContent = ''; impErr('Could not read that sheet: ' + e.message); }
+}
+async function impCommit() {
+  const btn = document.getElementById('impGoBtn');
+  btn.disabled = true; btn.textContent = 'Importing…';
+  const fd = new FormData();
+  fd.append('ajax_import_commit', '1');
+  fd.append('token', IMP_TOKEN);
+  fd.append('sheet', document.getElementById('impSheet').value);
+  fd.append('date', document.getElementById('impDate').value);
+  try {
+    const j = await (await fetch('stella_month_end_inv.php', {method:'POST', body: fd})).json();
+    if (!j.ok) { impErr(j.msg || 'Import failed.'); btn.disabled = false; btn.textContent = 'Import'; return; }
+    window.location.href = `stella_month_end_inv.php?year=${j.year}&month=${j.month}&day=${j.day}&imported=${j.new}_${j.updated}`;
+  } catch (e) { impErr('Import failed: ' + e.message); btn.disabled = false; btn.textContent = 'Import'; }
 }
 
 function addSection() {
