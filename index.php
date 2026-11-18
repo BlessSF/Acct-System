@@ -161,51 +161,6 @@ body {
   to   { opacity:1; transform:translateY(0); }
 }
 
-/* ── Password Guide (side panel) ── */
-.guide-wrap {
-  width: 100%; max-width: 340px; flex: 1 1 300px;
-  animation: slideUp .5s cubic-bezier(.22,1,.36,1) both .08s;
-  animation-fill-mode: both;
-}
-.guide-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 20px; padding: 26px 24px;
-  box-shadow: 0 4px 24px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.05);
-}
-.guide-title {
-  font-family: var(--font-m); font-size: .74rem; color: var(--accent);
-  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px;
-  display: flex; align-items: center; gap: 6px;
-}
-.guide-sub {
-  font-size: .82rem; color: var(--subtext2); margin-bottom: 18px; line-height: 1.5;
-}
-.guide-list { display: flex; flex-direction: column; gap: 8px; }
-.guide-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; background: var(--surf2); border: 1px solid var(--border);
-  border-radius: 9px;
-}
-.guide-row-label {
-  font-size: .82rem; font-weight: 600; color: var(--text);
-}
-.guide-row-pass {
-  font-family: var(--font-m); font-size: .8rem; color: var(--subtext2);
-  letter-spacing: .04em;
-}
-.guide-blur { filter: blur(5px); user-select: none; transition: filter .15s; }
-.guide-toggle {
-  width: 100%; margin-top: 16px; padding: 10px;
-  background: var(--surf2); border: 1px dashed var(--border2);
-  border-radius: 9px; cursor: pointer;
-  font-family: var(--font-m); font-size: .74rem; font-weight: 600;
-  color: var(--subtext2); text-transform: uppercase; letter-spacing: .06em;
-  transition: border-color .15s, background .15s, color .15s;
-}
-.guide-toggle:hover { border-color: var(--accent); color: var(--accent); background: #f0fdf4; }
-.guide-note {
-  font-size: .7rem; color: var(--subtext); margin-top: 14px; line-height: 1.5;
-}
 
 .login-card {
   background: var(--surface);
@@ -379,10 +334,9 @@ input:focus {
     padding: 20px 0 40px;
   }
   .auth-shell { padding: 0 14px; gap: 14px; }
-  .login-wrap, .guide-wrap { max-width: 100%; }
+  .login-wrap { max-width: 100%; }
 
   .login-card { padding: 30px 20px 26px; border-radius: 16px; }
-  .guide-card { padding: 20px 18px; border-radius: 16px; }
 
   .brand { margin-bottom: 26px; gap: 10px; }
   .brand-icon { width: 36px; height: 36px; border-radius: 9px; font-size: .88rem; }
@@ -412,12 +366,10 @@ input:focus {
   .context-badge { font-size: .7rem; padding: 5px 12px; margin-bottom: 16px; }
   .back-link { font-size: .7rem; margin-bottom: 14px; }
 
-  .guide-sub { font-size: .78rem; margin-bottom: 14px; }
-  .guide-row { padding: 9px 10px; flex-wrap: wrap; row-gap: 3px; }
-  .guide-row-label { font-size: .78rem; }
-  .guide-row-pass { font-size: .74rem; }
-  .guide-toggle { font-size: .7rem; padding: 9px; }
-  .guide-note { font-size: .66rem; }
+
+
+
+
 }
 
 /* Very small phones (older/smaller devices) */
@@ -510,42 +462,9 @@ input:focus {
   </div>
 </div>
 
-<!-- Password Guide (side panel, blurred until revealed) -->
-<div class="guide-wrap">
-  <div class="guide-card">
-    <div class="guide-title">🔒 Account Guide</div>
-    <div class="guide-sub">Reference list of sign-in passwords for each account. Hidden by default — click below to reveal.</div>
-    <div class="guide-list" id="guideList">
-      <div class="guide-row">
-        <span class="guide-row-label">Manager</span>
-        <span class="guide-row-pass guide-blur"><?= htmlspecialchars($MANAGER_PASSWORD) ?></span>
-      </div>
-      <div class="guide-row">
-        <span class="guide-row-label">Accounting Head</span>
-        <span class="guide-row-pass guide-blur"><?= htmlspecialchars($ACCOUNTING_HEAD_PASSWORD) ?></span>
-      </div>
-      <?php foreach ($BRANCHES as $b): ?>
-      <div class="guide-row">
-        <span class="guide-row-label"><?= htmlspecialchars($b['label']) ?></span>
-        <span class="guide-row-pass guide-blur"><?= htmlspecialchars($b['password']) ?></span>
-      </div>
-      <?php endforeach; ?>
-    </div>
-    <button type="button" class="guide-toggle" id="guideToggleBtn" onclick="toggleGuide()">👁 Show passwords</button>
-    <div class="guide-note">Anyone with this page open can see this list once revealed — only click "Show" in a private setting, and remember to re-hide it before leaving the screen.</div>
-  </div>
-</div>
 </div>
 
 <script>
-function toggleGuide() {
-  const hidden = document.querySelectorAll('#guideList .guide-blur');
-  const btn = document.getElementById('guideToggleBtn');
-  const isBlurred = hidden.length && hidden[0].classList.contains('guide-blur');
-  hidden.forEach(el => el.classList.toggle('guide-blur', !isBlurred));
-  btn.textContent = isBlurred ? '🙈 Hide passwords' : '👁 Show passwords';
-}
-
 function showPanel(id) {
   document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
