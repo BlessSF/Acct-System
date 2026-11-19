@@ -127,12 +127,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $endInvNum  = (float)($_POST['end_inv_num']   ?? 0);
         $total      = round($suppCost * $endInvNum, 2);
 
+        // The date being edited is sent by the page (this request has no ?year=&month=&day= in its URL, so
+        // without it the server would fall back to the current month's last day and save into the WRONG date).
+        $saveDate = trim($_POST['inv_date'] ?? '');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $saveDate) || !strtotime($saveDate)) $saveDate = $lastDay;
+        $lastDay = $saveDate;
         $yr = (int)date('Y', strtotime($lastDay));
         $mo = (int)date('n', strtotime($lastDay));
 
         if ($rowId > 0) {
-            $pdo->prepare("UPDATE stella_month_end_inv SET inv_date=?, inv_year=?, inv_month=?, category=?, sort_order=?, item_desc=?, unit=?, supplier_cost=?, end_inv_num=?, total_amount=?, saved_by=? WHERE id=? AND store_name='Stella'")
-                ->execute([$lastDay,$yr,$mo,$category,$sortOrder,$itemDesc,$unit,$suppCost,$endInvNum,$total,$user['name'],$rowId]);
+            // an existing item stays on its own date — only its content is updated
+            $pdo->prepare("UPDATE stella_month_end_inv SET category=?, sort_order=?, item_desc=?, unit=?, supplier_cost=?, end_inv_num=?, total_amount=?, saved_by=? WHERE id=? AND store_name='Stella'")
+                ->execute([$category,$sortOrder,$itemDesc,$unit,$suppCost,$endInvNum,$total,$user['name'],$rowId]);
             echo json_encode(['ok'=>true,'id'=>$rowId,'total'=>$total]);
         } else {
             $pdo->prepare("INSERT INTO stella_month_end_inv (inv_date,inv_year,inv_month,store_name,category,sort_order,item_desc,unit,supplier_cost,end_inv_num,total_amount,saved_by) VALUES (?,?,?,'Stella',?,?,?,?,?,?,?,?)")
@@ -517,7 +523,14 @@ include '../layout.php';
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px; margin-bottom: 20px;
+  /* Sticky: the section totals + Grand Total stay in view under the top bar while you scroll / type */
+  position: sticky; top: 0; z-index: 60;
+  padding: 10px 0 10px; margin-top: -4px;
+  background: linear-gradient(to bottom, var(--bg, #f3f5f7) 88%, rgba(243,245,247,0));
 }
+/* the layout's wrapper uses overflow-x:hidden, which would stop "sticky" from working — clip does the same job without that side effect */
+.main-wrapper { overflow-x: clip !important; }
+.inv-kpi .inv-kpi-card { box-shadow: 0 2px 8px rgba(15,23,42,.08); }
 .inv-kpi-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 12px 14px;
@@ -744,8 +757,9 @@ include '../layout.php';
 .row-status {
   font-family: var(--font-m); font-size: .58rem;
   color: var(--accent); display: none;
-  text-align: center; padding: 2px 0;
+  text-align: center; padding: 2px 0; white-space: nowrap;
 }
+.row-status.err { color: #b91c1c; font-weight: 700; }
 
 @media (max-width: 900px) {
   #kpiStrip { grid-template-columns: repeat(3, 1fr) !important; }
@@ -881,7 +895,7 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
   <div>
     <div class="eyebrow">Stella Branch · Inventory</div>
     <div class="title">Month End Inventory</div>
-    <div class="subtitle">DATE: <?= $displayDate ?> &nbsp;·&nbsp; Total auto-calculates from Supplier Cost × End Inv. Num</div>
+    <div class="subtitle">DATE: <?= $displayDate ?> &nbsp;·&nbsp; Total auto-calculates from Supplier Cost × End Inv. Num &nbsp;·&nbsp; ✓ Auto-save on — changes save by themselves</div>
   </div>
   <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 14px;
                border-radius:20px;font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">
@@ -1019,7 +1033,6 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
         <div class="inv-cell inv-action-cell">
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
             <div style="display:flex;gap:3px">
-              <button class="btn-inv-save" onclick="saveRow(this,'<?= htmlspecialchars($cat) ?>',<?= $catIdx ?>)">Save</button>
               <button class="btn-inv-del"  onclick="deleteRow(this,<?= $catIdx ?>)">✕</button>
             </div>
             <div class="row-status"></div>
@@ -1189,6 +1202,16 @@ const DAY_COUNTS    = <?= json_encode($dayCounts, JSON_FORCE_OBJECT) ?>; // day-
 const MONTH_NAMES   = <?= json_encode($months) ?>;
 const UNITS     = <?= json_encode($UNITS) ?>;
 
+// Keep the sticky totals strip just under the top bar when the bar is pinned, or at the very top when it scrolls away
+(function () {
+  const k = document.getElementById('kpiStrip'), tb = document.querySelector('.topbar');
+  if (!k) return;
+  const fix = () => { k.style.top = (tb ? Math.max(0, Math.round(tb.getBoundingClientRect().bottom)) : 0) + 'px'; };
+  document.addEventListener('scroll', fix, true);
+  window.addEventListener('resize', fix);
+  fix();
+})();
+
 // Build unit select options string
 const UNIT_OPTS = UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
 
@@ -1206,7 +1229,9 @@ function calcTotal(el) {
 
 function markChanged(el) {
   // triggers recalc on non-numeric fields
-  refreshCatTotal(parseInt(el.closest('.inv-row').dataset.cat));
+  const row = el.closest('.inv-row');
+  refreshCatTotal(parseInt(row.dataset.cat));
+  scheduleSave(row);            // auto-save: no Save button needed
 }
 
 function refreshCatTotal(catIdx) {
@@ -1358,7 +1383,6 @@ function addRow(catIdx, catName) {
     <div class="inv-cell inv-action-cell">
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <div style="display:flex;gap:3px">
-          <button class="btn-inv-save" onclick="saveRow(this,'${catName.replace(/'/g,"\\'")}',${catIdx})">Save</button>
           <button class="btn-inv-del" onclick="deleteRow(this,${catIdx})">✕</button>
         </div>
         <div class="row-status"></div>
@@ -1369,67 +1393,88 @@ function addRow(catIdx, catName) {
   div.querySelector('.desc-input').focus();
 }
 
-async function saveRow(btn, catName, catIdx) {
-  const row    = btn.closest('.inv-row');
-  const status = row.querySelector('.row-status');
-  const rowId  = parseInt(row.dataset.id) || 0;
+// ── Auto-save ──────────────────────────────────────────────
+// Every change (description, unit, cost, count) is saved by itself ~0.7s after you stop typing.
+// A row with no description yet is not saved (so empty "Add Row" lines never create blank items).
+function setRowStatus(row, text, isErr) {
+  const st = row.querySelector('.row-status');
+  if (!st) return;
+  st.textContent = text;
+  st.classList.toggle('err', !!isErr);
+  st.style.display = text ? 'block' : 'none';
+}
+function scheduleSave(row) {
+  if (!row || row._deleted) return;
+  clearTimeout(row._t);
+  setRowStatus(row, 'Saving…', false);
+  row._t = setTimeout(() => saveRow(row), 700);
+}
+async function saveRow(row) {
+  if (!row || row._deleted) return;
+  clearTimeout(row._t);
+  if (row._busy) { row._again = true; return; }        // one request at a time per row (prevents double-insert of a new row)
+
+  const desc = row.querySelector('.desc-input').value.trim();
+  if (!desc) { setRowStatus(row, '', false); return; }  // nothing to save yet
 
   const inputs  = row.querySelectorAll('.num-input');
-  const desc    = row.querySelector('.desc-input').value.trim();
-  const unit    = row.querySelector('.inv-unit-select').value;
-  const suppCost= gv(inputs[0]);
-  const endInv  = gv(inputs[1]);
-  const total   = gv(row.querySelector('.total-input'));
+  const catIdx  = parseInt(row.dataset.cat);
+  const catName = row.closest('.inv-section').dataset.cat;
+  const rowId   = parseInt(row.dataset.id) || 0;
   const sortOrd = row._sortOrder ?? Array.from(row.parentElement.children).indexOf(row);
 
-  // Warn if another row in this category already has the same description
-  const dupExists = Array.from(row.parentElement.querySelectorAll('.inv-row[data-id] .desc-input'))
-    .some(inp => inp !== row.querySelector('.desc-input') && inp.value.trim().toLowerCase() === desc.toLowerCase() && desc !== '');
-  if (dupExists && !confirm(`"${desc}" already exists in this category. Save it again anyway?`)) {
-    return;
-  }
-
-  btn.textContent = '…'; btn.disabled = true;
-
   const fd = new FormData();
-  fd.append('ajax_save',    '1');
-  fd.append('row_id',       rowId);
-  fd.append('category',     catName);
-  fd.append('sort_order',   sortOrd);
-  fd.append('item_desc',    desc);
-  fd.append('unit',         unit);
-  fd.append('supplier_cost',suppCost);
-  fd.append('end_inv_num',  endInv);
+  fd.append('ajax_save',     '1');
+  fd.append('inv_date',      INV_DATE);
+  fd.append('row_id',        rowId);
+  fd.append('category',      catName);
+  fd.append('sort_order',    sortOrd);
+  fd.append('item_desc',     desc);
+  fd.append('unit',          row.querySelector('.inv-unit-select').value);
+  fd.append('supplier_cost', gv(inputs[0]));
+  fd.append('end_inv_num',   gv(inputs[1]));
 
+  row._busy = true; setRowStatus(row, 'Saving…', false);
   try {
-    const res  = await fetch('stella_month_end_inv.php', {method:'POST', body:fd});
+    const res  = await fetch('stella_month_end_inv.php', {method:'POST', body: fd, keepalive: true});
     const json = await res.json();
+    if (json.session_expired) { alert('You were signed out. Please log in again — your last change was not saved.'); location.reload(); return; }
     if (json.ok) {
       row.dataset.id = json.id;
-      // Update total from server
-      row.querySelector('.total-input').value = parseFloat(json.total).toFixed(2);
-      refreshCatTotal(catIdx);
-      status.textContent = '✓';
-      status.style.color = 'var(--accent)';
-      status.style.display = 'block';
-      setTimeout(() => { status.style.display = 'none'; }, 2500);
+      if (row._deleted) {                                // row was removed while this save was in flight
+        const d = new FormData(); d.append('ajax_delete','1'); d.append('row_id', json.id);
+        fetch('stella_month_end_inv.php', {method:'POST', body:d}).catch(()=>{});
+      } else {
+        row.querySelector('.total-input').value = parseFloat(json.total).toFixed(2);
+        refreshCatTotal(catIdx);
+        if (!row._again) {
+          setRowStatus(row, '✓ Saved', false);
+          clearTimeout(row._hide); row._hide = setTimeout(() => { if (!row._busy) setRowStatus(row, '', false); }, 2000);
+        }
+      }
     } else {
-      status.textContent = '❌';
-      status.style.color = 'var(--accent2)';
-      status.style.display = 'block';
-      alert('Error: ' + json.msg);
+      setRowStatus(row, '⚠ Not saved', true);
+      console.error('Auto-save failed:', json.msg);
     }
-  } catch(e) {
-    alert('Network error');
+  } catch (e) {
+    setRowStatus(row, '⚠ Not saved', true);
   }
-  btn.textContent = 'Save'; btn.disabled = false;
+  row._busy = false;
+  if (row._again) { row._again = false; saveRow(row); }  // something changed during the request → save the newest values
 }
+// Don't lose a change made in the last split second before leaving the page
+function flushPendingSaves() {
+  document.querySelectorAll('.inv-row').forEach(r => { if (r._t) { clearTimeout(r._t); r._t = null; if (r.querySelector('.row-status')?.textContent === 'Saving…') saveRow(r); } });
+}
+window.addEventListener('pagehide', flushPendingSaves);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushPendingSaves(); });
 
 async function deleteRow(btn, catIdx) {
   const row  = btn.closest('.inv-row');
   const id   = parseInt(row.dataset.id) || 0;
 
   if (id > 0 && !confirm('Delete this item?')) return;
+  row._deleted = true; clearTimeout(row._t);
 
   if (id > 0) {
     const fd = new FormData();
