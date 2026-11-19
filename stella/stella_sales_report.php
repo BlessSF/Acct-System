@@ -724,6 +724,17 @@ body.page-stella_sales_report.sr2 .sr2-dine > .btn-add-row { padding:8px 18px !i
 body.page-stella_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr2 .sr2-dine .sr-section-title { background:var(--acc) !important; color:#fff !important; border-bottom:0 !important; }
 body.page-stella_sales_report.sr2 .sr-section .sub-grid .sub-col.sr2-out:nth-child(n) .sub-col-title { background:var(--neg) !important; color:#fff !important; }
 body.page-stella_sales_report.sr2-dark .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr2-dark .sr2-dine .sr-section-title, body.page-stella_sales_report.sr2-dark .sr-section .sub-grid .sub-col.sr2-out:nth-child(n) .sub-col-title { color:#0b1210 !important; }
+/* Gross Sales highlighted */
+body.page-stella_sales_report.sr2 .sr2-g .sr-row:has(#gross_sales) { background:var(--accbg) !important; box-shadow:inset 4px 0 0 var(--acc); }
+body.page-stella_sales_report.sr2 .sr2-g .sr-row:has(#gross_sales) .sr-label { color:var(--acc) !important; font-weight:800 !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-row:has(#gross_sales) .sr-input.readout { color:var(--acc) !important; -webkit-text-fill-color:var(--acc) !important; font-weight:800 !important; font-size:clamp(.82rem,1.8cqh,1rem) !important; }
+/* Summary heading on top, Cash Replenishment hidden (still calculated) */
+body.page-stella_sales_report.sr2 .sr2-sumhead { flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:clamp(5px,1.1cqh,9px) 14px; border-radius:10px; background:linear-gradient(160deg,var(--hero1),var(--hero2)); color:#fff; font:800 clamp(.56rem,1.3cqh,.7rem) var(--f); letter-spacing:.14em; text-transform:uppercase; }
+body.page-stella_sales_report.sr2 .sr2-sumhead span + span::before { content:'·'; margin-right:8px; }
+body.page-stella_sales_report.sr2 #replenRow { display:none !important; }
+/* entry boxes laid out in rows of 4 like the Excel listing (2 per row on smaller screens) */
+body.page-stella_sales_report.sr2 .sub-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+@media (min-width:1750px) { body.page-stella_sales_report.sr2 .sub-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; } }
 </style>
 <script>
 // New design: Light (default) / Dark. Remembered per browser. (design only)
@@ -881,10 +892,10 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     $renderCol('deposit_card', 'DEPOSIT (CARD)');
     $renderCol('late_payment', 'LATE PAYMENT (CARD)');
     $renderCol('cash_out_interest', 'CASH OUT INTEREST (BOOKY)');
+    $renderCol('unpaid_med', 'UNPAID MED/CORP. (CREDIT)');
+    $renderCol('paid_med', 'PAID MED/CORP. (CARD)');
     $renderCol('advance_payment', 'ADVANCE PAID (APPIGO)');
     $renderCol('gift_cert_tips', 'GIFT CERT SOLD (TIPS)');
-    $renderCol('paid_med', 'PAID MED/CORP. (CARD)');
-    $renderCol('unpaid_med', 'UNPAID MED/CORP. (CREDIT)');
     ?>
   </div>
 </div>
@@ -981,6 +992,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
 ════════════════════════════════════════════════════════════ -->
 <div class="sr-wrap">
 <div class="sr-card">
+<div class="sr2-sumhead"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
 <div class="sr2-g" style="--n:5">
   <div class="sr2-gh">Sales build-up<span id="sr2-sum-gross"></span></div>
   <div class="sr-row green">
@@ -1071,7 +1083,6 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
   </div>
 </div>
 <div class="sr2-hero">
-  <div class="sr2-cap"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
   <div class="sr-row net">
     <div class="sr-label">Net Sales</div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_sales" value="<?= $fmt($v('net_sales')) ?>" readonly tabindex="-1"></div>
