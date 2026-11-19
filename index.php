@@ -238,6 +238,24 @@ body { background:#f6f7f9; color:#1c2026; }
 .dc3 { left:9%; bottom:14%; transform:rotate(3deg); width:180px; }
 .dc4 { right:8%; bottom:13%; transform:rotate(-3deg); }
 @media (max-width:1100px) { .deco { display:none; } }
+
+/* ── bigger, better buttons ── */
+.login-card { max-width:480px; }
+.tiles { gap:14px; }
+.tile { min-height:84px; padding:16px 20px; border-radius:18px; border:1.5px solid #e1e5ea; gap:18px; }
+.tile-ic { width:52px; height:52px; border-radius:15px; }
+.tile-ic svg { width:26px; height:26px; }
+.tile-l { font:650 1.12rem var(--f); letter-spacing:-.01em; }
+.tile-chev { width:34px; height:34px; padding:8px; border-radius:50%; background:#f1f3f6; stroke:#6b7280; transition:background .15s, stroke .15s, transform .15s; }
+.tile:hover { border-color:#0f7b5c; background:#fff; box-shadow:0 12px 28px rgba(15,123,92,.16); transform:translateY(-2px); }
+.tile:hover .tile-chev { background:#0f7b5c; stroke:#fff; transform:translateX(2px); }
+.tile:active { transform:translateY(0) scale(.99); }
+#panel-branch .tile-branch { min-height:64px; font-size:1.02rem; border-radius:16px; }
+#panel-branch .tile-branch .tile-l { font-size:1.02rem; text-align:center; }
+.field input { height:54px; font-size:1.05rem; border-radius:14px; }
+.btn-login { height:56px; border-radius:14px; font-size:1.05rem; background:#0f7b5c; box-shadow:0 8px 20px rgba(15,123,92,.28); }
+.btn-login:hover { background:#0c6a50; transform:translateY(-1px); }
+.back-link { font-size:.92rem; }
 @media (max-width:520px) { .auth-shell { padding:16px; } .tile { min-height:116px; } }
 </style>
 </head>
