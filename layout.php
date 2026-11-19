@@ -1119,6 +1119,11 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     <a href="<?= BASE_URL ?>/tracking_monitoring.php" class="nav-item <?= ($activePage==='tracking_monitoring')?'active':'' ?>">
       <span class="ni">🛰️</span> Tracking &amp; Monitoring
     </a>
+    <?php if (in_array($_SESSION['user_role'] ?? '', ['manager', 'accounting'], true)): ?>
+    <a href="<?= BASE_URL ?>/settings.php" class="nav-item <?= ($activePage==='settings')?'active':'' ?>">
+      <span class="ni">⚙️</span> Settings
+    </a>
+    <?php endif; ?>
     <?php endif; ?>
     <?php endif; ?>
   </div>
@@ -1240,6 +1245,22 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
   </div>
 
   <div class="page-content">
+    <?php
+    // ── Backup reminder (Manager / Accounting Head only) ──
+    if (in_array($_SESSION['user_role'] ?? '', ['manager', 'accounting'], true) && ($activePage ?? '') !== 'settings') {
+        try {
+            require_once __DIR__ . '/lib/backup.php';
+            $__bk = backupStatus(getPDO());
+            if ($__bk['due']):
+    ?>
+    <div id="bkReminder" style="display:flex;align-items:center;gap:12px;background:#fff7e6;border:1px solid #f1c27a;color:#7a4a00;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13.5px">
+      <span style="font-size:17px">⏰</span>
+      <span style="flex:1"><b>Backup reminder:</b> <?= $__bk['never'] ? 'no backup has been made yet.' : 'last backup was ' . (int)$__bk['days'] . ' day' . ($__bk['days']==1?'':'s') . ' ago.' ?> Please download a full backup of the system.</span>
+      <a href="<?= BASE_URL ?>/settings.php" style="background:#d97706;color:#fff;text-decoration:none;font-weight:600;padding:6px 14px;border-radius:8px">Back up now</a>
+      <button type="button" onclick="try{sessionStorage.setItem('bkHide','1')}catch(e){};this.parentNode.remove()" title="Hide for this session" style="background:none;border:0;color:#7a4a00;font-size:18px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <script>try{if(sessionStorage.getItem('bkHide')){var e=document.getElementById('bkReminder');if(e)e.remove();}}catch(e){}</script>
+    <?php endif; } catch (Throwable $e) { /* reminder must never break a page */ } } ?>
     <?php if ($flash_success): ?>
     <div class="flash flash-success">✓ <?= htmlspecialchars($flash_success) ?></div>
     <?php endif; ?>
