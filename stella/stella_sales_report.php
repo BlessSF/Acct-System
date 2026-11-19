@@ -735,6 +735,14 @@ body.page-stella_sales_report.sr2 #replenRow { display:none !important; }
 /* entry boxes laid out in rows of 4 like the Excel listing (2 per row on smaller screens) */
 body.page-stella_sales_report.sr2 .sub-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
 @media (min-width:1750px) { body.page-stella_sales_report.sr2 .sub-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; } }
+/* Excel-style placement (wide screens): Marketing Pull Out under Grab; Deposit / Late / Cash-out tall beside it */
+@media (min-width:1750px) {
+  body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=grab] { grid-column:1; grid-row:1; }
+  body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=marketing_pullout] { grid-column:1; grid-row:2; }
+  body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=deposit_card] { grid-column:2; grid-row:1 / span 2; }
+  body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=late_payment] { grid-column:3; grid-row:1 / span 2; }
+  body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=cash_out_interest] { grid-column:4; grid-row:1 / span 2; }
+}
 </style>
 <script>
 // New design: Light (default) / Dark. Remembered per browser. (design only)
@@ -884,11 +892,12 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     </div>
 <?php }; ?>
 
-<div class="sr2-eyebrow">Sales &amp; payments <i>— type each entry; totals feed the Summary</i></div>
+<div class="sr2-eyebrow">Sales &amp; payments <i>— same layout as your Excel; totals feed the Summary</i></div>
 <div class="sr-section">
   <div class="sub-grid" id="subsec-in">
     <?php
     $renderCol('grab', 'GRAB');
+    $renderCol('marketing_pullout', 'MARKETING PULL OUT', 'sr2-out');
     $renderCol('deposit_card', 'DEPOSIT (CARD)');
     $renderCol('late_payment', 'LATE PAYMENT (CARD)');
     $renderCol('cash_out_interest', 'CASH OUT INTEREST (BOOKY)');
@@ -899,12 +908,10 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     ?>
   </div>
 </div>
-
-<div class="sr2-eyebrow">Pull-outs &amp; expenses</div>
-<div class="sr-section">
-  <div class="sub-grid" id="subsec-out">
+<?php /* Not in the Excel listing: kept hidden so old entries still count and save exactly as before */ ?>
+<div class="sr2-hidden-secs" style="display:none" aria-hidden="true">
+  <div class="sub-grid">
     <?php
-    $renderCol('marketing_pullout', 'MARKETING PULL OUT', 'sr2-out');
     $renderCol('expenses', 'EXPENSES', 'sr2-out');
     $renderCol('gc_sponsorship', 'GC SPONSORSHIP', 'sr2-out');
     $renderCol('gc_sold', 'GC SOLD', 'sr2-out');
@@ -922,7 +929,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     <thead>
       <tr>
         <th>Cash</th>
-        <th>Palawan Pay</th>
+        <th>GCASH</th>
         <th>Card/Swipe/QR</th>
         <th>Discount</th>
         <th>Gift Cert.</th>
