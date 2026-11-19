@@ -762,6 +762,26 @@ body.page-h_sales_report.sr2 .sr2-dine > .btn-add-row { padding:8px 18px !import
 body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title, body.page-h_sales_report.sr2 .sr2-dine .sr-section-title { background:var(--acc) !important; color:#fff !important; border-bottom:0 !important; }
 body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col.sr2-out:nth-child(n) .sub-col-title { background:var(--neg) !important; color:#fff !important; }
 body.page-h_sales_report.sr2-dark .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title, body.page-h_sales_report.sr2-dark .sr2-dine .sr-section-title, body.page-h_sales_report.sr2-dark .sr-section .sub-grid .sub-col.sr2-out:nth-child(n) .sub-col-title { color:#0b1210 !important; }
+/* Gross Sales highlighted */
+body.page-h_sales_report.sr2 .sr2-g .sr-row:has(#gross_sales) { background:var(--accbg) !important; box-shadow:inset 4px 0 0 var(--acc); }
+body.page-h_sales_report.sr2 .sr2-g .sr-row:has(#gross_sales) .sr-label { color:var(--acc) !important; font-weight:800 !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-row:has(#gross_sales) .sr-input.readout { color:var(--acc) !important; -webkit-text-fill-color:var(--acc) !important; font-weight:800 !important; font-size:clamp(.82rem,1.8cqh,1rem) !important; }
+/* Summary heading on top, Cash Replenishment hidden (still calculated) */
+body.page-h_sales_report.sr2 .sr2-sumhead { flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:clamp(5px,1.1cqh,9px) 14px; border-radius:10px; background:linear-gradient(160deg,var(--hero1),var(--hero2)); color:#fff; font:800 clamp(.56rem,1.3cqh,.7rem) var(--f); letter-spacing:.14em; text-transform:uppercase; }
+body.page-h_sales_report.sr2 .sr2-sumhead span + span::before { content:'·'; margin-right:8px; }
+body.page-h_sales_report.sr2 #replenRow { display:none !important; }
+/* entry boxes laid out in rows of 4 like the Excel listing (2 per row on smaller screens) */
+body.page-h_sales_report.sr2 .sub-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+@media (min-width:1750px) { body.page-h_sales_report.sr2 .sub-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; } }
+/* Excel-style placement (wide screens): Marketing Pull Out under Grab; Deposit / Late / Cash-out tall beside it */
+@media (min-width:1750px) {
+  body.page-h_sales_report.sr2 #subsec-in .sub-col[data-section=grab] { grid-column:1; grid-row:1; }
+  body.page-h_sales_report.sr2 #subsec-in .sub-col[data-section=marketing_pullout] { grid-column:1; grid-row:2; }
+  body.page-h_sales_report.sr2 #subsec-in .sub-col[data-section=deposit_card] { grid-column:2; grid-row:1 / span 2; }
+  body.page-h_sales_report.sr2 #subsec-in .sub-col[data-section=late_payment] { grid-column:3; grid-row:1 / span 2; }
+  body.page-h_sales_report.sr2 #subsec-in .sub-col[data-section=cash_out_interest] { grid-column:4; grid-row:1 / span 2; }
+}
+body.page-h_sales_report.sr2 #subsec-in { align-items:start !important; }
 
 /* ── H branch: red identity, amber for deductions ── */
 body.page-h_sales_report.sr2-light { --acc:#b91c1c; --accbg:#fee2e2; --neg:#b45309; --negbg:#fef3c7; --hero1:#1f1112; --hero2:#5b1522; --ring:rgba(185,28,28,.2); }
@@ -1101,6 +1121,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
 ════════════════════════════════════════════════════════════ -->
 <div class="sr-wrap">
 <div class="sr-card">
+<div class="sr2-sumhead"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
 <div class="sr2-g" style="--n:7">
   <div class="sr2-gh">Sales build-up<span id="sr2-sum-gross"></span></div>
   <div class="sr-row green">
@@ -1185,7 +1206,6 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
   </div>
 </div>
 <div class="sr2-hero">
-  <div class="sr2-cap"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
   <div class="sr-row net">
     <div class="sr-label">Net Sales</div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_sales" value="<?= $fmt($grossSalesCalc - $v('maya_swipe') - $unpaidMedCalc - $grabCalc - $gcashCalc - $giftCardCalc - $bankTransferCalc - $pcfCalc - $v('other_expenses') - $discountCalc) ?>" readonly tabindex="-1"></div>
