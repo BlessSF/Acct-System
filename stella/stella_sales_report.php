@@ -693,11 +693,15 @@ body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:150p
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap { gap:6px; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { font-size:.62rem; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { font-size:clamp(1.3rem,3.6cqh,1.9rem) !important; }
-/* ── box total: big highlighted bar BELOW the entries ── */
+/* ── box total: just the number, tinted, under the entries ── */
 body.page-stella_sales_report.sr2 .sub-col { grid-template-columns:minmax(0,1fr) !important; grid-template-areas:"title" "hdr" "rows" "total" "add" !important; grid-template-rows:40px auto auto auto auto !important; }
-body.page-stella_sales_report.sr2 .sub-footer span:last-child, body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { grid-area:total; display:flex !important; justify-content:space-between; align-items:center; margin:8px 12px 2px !important; padding:9px 14px !important; border-radius:10px !important; background:var(--acc) !important; color:#fff !important; font:800 1.05rem var(--m) !important; box-shadow:0 2px 8px rgba(0,0,0,.18); }
-body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { background:var(--neg) !important; }
-body.page-stella_sales_report.sr2 .sub-footer span:last-child::before { content:'TOTAL'; font:800 .66rem var(--f); letter-spacing:.16em; opacity:.9; }
+body.page-stella_sales_report.sr2 .sub-footer span:last-child, body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { grid-area:total; display:block !important; text-align:right; margin:6px 12px 0 !important; padding:7px 12px !important; border-radius:8px !important; background:var(--accbg) !important; color:var(--acc) !important; font:800 .95rem var(--m) !important; box-shadow:inset 0 0 0 1.5px var(--acc) !important; }
+body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { background:var(--negbg) !important; color:var(--neg) !important; box-shadow:inset 0 0 0 1.5px var(--neg) !important; }
+body.page-stella_sales_report.sr2 .sub-footer span:last-child::before { content:none !important; }
+/* ── Dine-in / extra tables: same coloured title band + readable column headings ── */
+body.page-stella_sales_report.sr2 .sr2-dine .sr-section-title { display:flex !important; justify-content:center; align-items:center; background:var(--acc) !important; color:#fff !important; padding:0 14px !important; height:40px; font:800 .8rem var(--f) !important; letter-spacing:.08em !important; text-align:center !important; }
+body.page-stella_sales_report.sr2 .sr2-dine.extra-section-col .sr-section-title::before { display:none !important; }
+body.page-stella_sales_report.sr2 .di-table th { font-size:.64rem !important; letter-spacing:.06em !important; color:var(--ink) !important; font-weight:800 !important; padding:10px 6px !important; text-align:center !important; }
 </style>
 <script>
 // New design: Light (default) / Dark. Remembered per browser. (design only)
@@ -875,7 +879,6 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
   </div>
 </div>
 
-<div class="sr2-eyebrow">Dine-in</div>
 <!-- ══════════════════════════════════════════════════════════
      DINE IN SECTION (at the bottom, like the Excel)
 ════════════════════════════════════════════════════════════ -->
