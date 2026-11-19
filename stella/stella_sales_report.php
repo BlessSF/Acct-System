@@ -507,197 +507,203 @@ body.page-stella_sales_report.sr-soft .sr-remarks, body.page-stella_sales_report
 body.page-stella_sales_report.sr-soft .sr-remarks label, body.page-stella_sales_report.sr-dark .sr-remarks label { color:var(--sr-text); }
 body.page-stella_sales_report.sr-soft .sr-remarks textarea, body.page-stella_sales_report.sr-dark .sr-remarks textarea { background:var(--sr-input); color:var(--sr-text); border-color:var(--sr-input-bd); }
 </style>
-<style id="sr-eye-comfort">
-/* ═══ Eye-comfort theme for the Stella Sales Report (Soft = default · Dark · Original) ═══ */
-body.page-stella_sales_report.sr-soft, body.page-stella_sales_report.sr-dark { --sr-radius: 14px; }
-body.page-stella_sales_report.sr-soft {
-  --sr-bg:#c8c7ba; --sr-card:#d6d4c7; --sr-card2:#cecdbf; --sr-input:#e2e0d3; --sr-input-bd:#a8a798; --sr-text:#2b2a22; --sr-sub:#5b5a4c;
-  --sr-head1:#3f5247; --sr-head2:#34463c; --sr-band:#4d6356; --sr-band-text:#e4e1d3; --sr-mint:#cbd1c2; --sr-line:#b6b5a5;
-  --sr-net:#c7b27c; --sr-net-text:#3a2f10; --sr-coh:#35404e; --sr-short:#93515a; --sr-focus:#4d6356;
-}
-body.page-stella_sales_report.sr-dark {
-  --sr-bg:#121a16; --sr-card:#1b2620; --sr-card2:#16201b; --sr-input:#222f28; --sr-input-bd:#33453a; --sr-text:#dbe6de; --sr-sub:#97a89d;
-  --sr-head1:#1f4332; --sr-head2:#173226; --sr-band:#24523e; --sr-band-text:#e6f0e9; --sr-mint:#1f2d25; --sr-line:#2a3a31;
-  --sr-net:#8a7437; --sr-net-text:#fff4d4; --sr-coh:#1a2638; --sr-short:#8f3943; --sr-focus:#58a47f;
-}
-body.page-stella_sales_report.sr-soft, body.page-stella_sales_report.sr-dark { background:var(--sr-bg) !important; color:var(--sr-text); }
-body.page-stella_sales_report.sr-soft .main-wrapper, body.page-stella_sales_report.sr-dark .main-wrapper { background:var(--sr-bg) !important; }
-body.page-stella_sales_report.sr-soft .topbar, body.page-stella_sales_report.sr-dark .topbar { background:var(--sr-card) !important; border-color:var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .topbar *, body.page-stella_sales_report.sr-dark .topbar * { color:var(--sr-text); }
+<style id="sr2-css">
+/* ═══ Sales Report — new design (v2) ═══ light + dark. Design only: no formulas / ids / saving changed. ═══ */
+body.page-stella_sales_report.sr2 { --f:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; --m:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace; font-family:var(--f); }
+body.page-stella_sales_report.sr2-light { --bg:#f3f4f6; --card:#fff; --ink:#0f172a; --mut:#64748b; --line:#e5e7eb; --acc:#0f766e; --accbg:#ccfbf1; --neg:#be123c; --negbg:#ffe4e6; --inp:#f8fafc; --hero1:#0f172a; --hero2:#134e4a; --ring:rgba(15,118,110,.22); }
+body.page-stella_sales_report.sr2-dark  { --bg:#0b1210; --card:#131d1a; --ink:#e6f2ee; --mut:#8ba39b; --line:#22332e; --acc:#34d399; --accbg:#0f2f27; --neg:#fb7185; --negbg:#3a1520; --inp:#0f1815; --hero1:#071311; --hero2:#0f3a31; --ring:rgba(52,211,153,.28); }
+body.page-stella_sales_report.sr2 { background:var(--bg) !important; color:var(--ink); }
+body.page-stella_sales_report.sr2 .main-wrapper { background:var(--bg) !important; }
+body.page-stella_sales_report.sr2 .topbar { background:var(--card) !important; border-color:var(--line) !important; }
+body.page-stella_sales_report.sr2 .topbar * { color:var(--ink); }
+body.page-stella_sales_report.sr2 .sr-main { font-family:var(--f); }
 
-/* cards */
-body.page-stella_sales_report.sr-soft .sr-header-card, body.page-stella_sales_report.sr-dark .sr-header-card { background:linear-gradient(135deg,var(--sr-head1),var(--sr-head2)) !important; border-radius:var(--sr-radius) !important; box-shadow:0 6px 18px rgba(0,0,0,.18); }
-body.page-stella_sales_report.sr-soft .sr-card, body.page-stella_sales_report.sr-soft .sr-section, body.page-stella_sales_report.sr-soft .sr-cashier-bar,
-body.page-stella_sales_report.sr-dark .sr-card, body.page-stella_sales_report.sr-dark .sr-section, body.page-stella_sales_report.sr-dark .sr-cashier-bar {
-  background:var(--sr-card) !important; border:1px solid var(--sr-line) !important; border-radius:var(--sr-radius) !important; box-shadow:0 3px 12px rgba(0,0,0,.10) !important; }
-body.page-stella_sales_report.sr-soft .sr-cashier-bar label, body.page-stella_sales_report.sr-dark .sr-cashier-bar label { color:var(--sr-text) !important; }
-body.page-stella_sales_report.sr-soft .sr-cashier-bar input, body.page-stella_sales_report.sr-dark .sr-cashier-bar input { background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; border-radius:10px !important; }
+/* ── title ── */
+body.page-stella_sales_report.sr2 .sr-header-card { background:none !important; box-shadow:none !important; border:0 !important; padding:0 2px !important; margin:0 0 12px !important; border-radius:0 !important; display:block !important; }
+body.page-stella_sales_report.sr2 .sr-header-card::before { display:none !important; }
+body.page-stella_sales_report.sr2 .sr-header-card > span { display:none !important; }
+body.page-stella_sales_report.sr2 .sr-header-card .eyebrow { color:var(--mut) !important; font-family:var(--f) !important; font-size:.66rem !important; letter-spacing:.14em !important; font-weight:700; }
+body.page-stella_sales_report.sr2 .sr-header-card .title { color:var(--ink) !important; font-size:1.55rem !important; font-weight:800 !important; letter-spacing:-.025em !important; }
+body.page-stella_sales_report.sr2 .sr-header-card .subtitle { color:var(--mut) !important; font-family:var(--f) !important; font-size:.74rem !important; }
 
-/* summary column */
-body.page-stella_sales_report.sr-soft .sr-title-row, body.page-stella_sales_report.sr-dark .sr-title-row { background:var(--sr-head1) !important; }
-body.page-stella_sales_report.sr-soft .sr-row, body.page-stella_sales_report.sr-dark .sr-row { background:transparent; border-bottom:1px solid var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.green, body.page-stella_sales_report.sr-dark .sr-row.green { background:var(--sr-band) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.green .sr-label, body.page-stella_sales_report.sr-dark .sr-row.green .sr-label, body.page-stella_sales_report.sr-soft .sr-row.green .sr-note, body.page-stella_sales_report.sr-dark .sr-row.green .sr-note { color:var(--sr-band-text) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.gray-hdr, body.page-stella_sales_report.sr-dark .sr-row.gray-hdr { background:var(--sr-card2) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.gray-hdr .sr-label, body.page-stella_sales_report.sr-dark .sr-row.gray-hdr .sr-label { color:var(--sr-text) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.net, body.page-stella_sales_report.sr-dark .sr-row.net { background:var(--sr-net) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.net .sr-label, body.page-stella_sales_report.sr-dark .sr-row.net .sr-label { color:var(--sr-net-text) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.coh, body.page-stella_sales_report.sr-dark .sr-row.coh { background:var(--sr-coh) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.short, body.page-stella_sales_report.sr-dark .sr-row.short { background:var(--sr-short) !important; }
-body.page-stella_sales_report.sr-soft .sr-label, body.page-stella_sales_report.sr-dark .sr-label { color:var(--sr-text); }
-body.page-stella_sales_report.sr-soft .sr-row.coh .sr-label, body.page-stella_sales_report.sr-dark .sr-row.coh .sr-label, body.page-stella_sales_report.sr-soft .sr-row.short .sr-label, body.page-stella_sales_report.sr-dark .sr-row.short .sr-label { color:#f1f5f2 !important; }
-body.page-stella_sales_report.sr-soft .sr-note, body.page-stella_sales_report.sr-dark .sr-note { color:var(--sr-sub) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.coh .sr-note, body.page-stella_sales_report.sr-dark .sr-row.coh .sr-note, body.page-stella_sales_report.sr-soft .sr-row.short .sr-note, body.page-stella_sales_report.sr-dark .sr-row.short .sr-note { color:rgba(255,255,255,.75) !important; }
+/* ── top bar: date stepper · cashier · status · lock · theme · excel ── */
+body.page-stella_sales_report.sr2 .sr2-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 18px; }
+body.page-stella_sales_report.sr2 .sr2-bar .sr-controls, body.page-stella_sales_report.sr2 .sr2-bar .sr-controls > form { display:contents !important; }
+body.page-stella_sales_report.sr2 .sr2-step { order:1; width:38px; height:40px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:12px; font-size:1.1rem; font-weight:700; cursor:pointer; line-height:1; }
+body.page-stella_sales_report.sr2 .sr2-step:hover { border-color:var(--acc); color:var(--acc); }
+body.page-stella_sales_report.sr2 .sr2-bar input[type=date] { order:2; height:40px; border:1px solid var(--line) !important; background:var(--card) !important; color:var(--ink) !important; border-radius:12px !important; padding:0 12px !important; font:700 .86rem var(--f) !important; width:auto !important; }
+body.page-stella_sales_report.sr2 .sr2-step.next { order:3; }
+body.page-stella_sales_report.sr2 .sr2-bar .sr-cashier-bar { order:4; flex:1 1 240px; max-width:340px; margin:0 !important; padding:0 12px !important; height:40px; background:var(--card) !important; border:1px solid var(--line) !important; border-radius:12px !important; box-shadow:none !important; gap:8px !important; }
+body.page-stella_sales_report.sr2 .sr-cashier-bar label { font:700 .62rem var(--f) !important; letter-spacing:.12em; text-transform:uppercase; color:var(--mut) !important; }
+body.page-stella_sales_report.sr2 .sr-cashier-bar input { background:transparent !important; border:0 !important; box-shadow:none !important; color:var(--ink) !important; font:600 .88rem var(--f) !important; padding:0 !important; height:100%; }
+body.page-stella_sales_report.sr2 .sr-cashier-bar:focus-within { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-stella_sales_report.sr2 .sr2-bar .sr-controls > form > span:not(#saveStatus), body.page-stella_sales_report.sr2 .sr2-bar .sr-controls span.sr2-chip { order:5; margin-left:auto; font:700 .74rem var(--f) !important; color:var(--acc) !important; background:var(--accbg); padding:8px 12px !important; border-radius:999px; }
+body.page-stella_sales_report.sr2 .sr2-bar #saveStatus { order:6; font:700 .74rem var(--f) !important; color:var(--mut) !important; }
+body.page-stella_sales_report.sr2 .sr2-bar #saveStatus:empty { display:none; }
+body.page-stella_sales_report.sr2 .sr2-bar .lock-wrap, body.page-stella_sales_report.sr2 .sr2-bar .lock-badge-static { order:7; }
+body.page-stella_sales_report.sr2 .sr2-bar #srThemeBtn { order:8; }
+body.page-stella_sales_report.sr2 .sr2-bar a.btn { order:9; }
+body.page-stella_sales_report.sr2 .sr2-bar a.btn, body.page-stella_sales_report.sr2 #srThemeBtn, body.page-stella_sales_report.sr2 .btn-lock { height:40px; display:inline-flex !important; align-items:center; background:var(--card) !important; color:var(--ink) !important; border:1px solid var(--line) !important; border-radius:12px !important; padding:0 14px !important; font:700 .78rem var(--f) !important; box-shadow:none !important; text-decoration:none; cursor:pointer; }
+body.page-stella_sales_report.sr2 .sr2-bar a.btn:hover, body.page-stella_sales_report.sr2 #srThemeBtn:hover { border-color:var(--acc) !important; }
 
-/* inputs: no glaring white */
-body.page-stella_sales_report.sr-soft .sr-input, body.page-stella_sales_report.sr-dark .sr-input,
-body.page-stella_sales_report.sr-soft .sr-row.coh .sr-input, body.page-stella_sales_report.sr-dark .sr-row.coh .sr-input {
-  background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; border-radius:9px !important; box-shadow:none !important; -webkit-text-fill-color:var(--sr-text); }
-body.page-stella_sales_report.sr-soft .sr-input.readout, body.page-stella_sales_report.sr-dark .sr-input.readout { background:var(--sr-mint) !important; border-color:transparent !important; }
-body.page-stella_sales_report.sr-soft .sr-row.net .sr-input.readout, body.page-stella_sales_report.sr-dark .sr-row.net .sr-input.readout { background:rgba(255,255,255,.35) !important; color:var(--sr-net-text) !important; -webkit-text-fill-color:var(--sr-net-text); }
-body.page-stella_sales_report.sr-soft .sr-row.short .sr-input.readout, body.page-stella_sales_report.sr-dark .sr-row.short .sr-input.readout { background:rgba(255,255,255,.88) !important; color:#5c1119 !important; -webkit-text-fill-color:#5c1119; }
-body.page-stella_sales_report.sr-dark .sr-row.short .sr-input.readout { background:rgba(20,10,12,.45) !important; color:#ffd9dd !important; -webkit-text-fill-color:#ffd9dd; }
-body.page-stella_sales_report.sr-soft .sr-input:focus, body.page-stella_sales_report.sr-dark .sr-input:focus, body.page-stella_sales_report.sr-soft .sr-cashier-bar input:focus, body.page-stella_sales_report.sr-dark .sr-cashier-bar input:focus { border-color:var(--sr-focus) !important; box-shadow:0 0 0 3px rgba(47,96,73,.25) !important; outline:none; }
-body.page-stella_sales_report.sr-soft .sr-input::placeholder, body.page-stella_sales_report.sr-dark .sr-input::placeholder, body.page-stella_sales_report.sr-soft .di-inp::placeholder, body.page-stella_sales_report.sr-dark .di-inp::placeholder { color:var(--sr-sub); opacity:.55; }
+/* ── section headings ── */
+body.page-stella_sales_report.sr2 .sr2-eyebrow { display:flex; align-items:center; gap:10px; font:800 .68rem var(--f); letter-spacing:.14em; text-transform:uppercase; color:var(--mut); margin:4px 2px 10px; }
+body.page-stella_sales_report.sr2 .sr2-eyebrow::after { content:''; flex:1; height:1px; background:var(--line); }
+body.page-stella_sales_report.sr2 .sr2-eyebrow i { font-style:normal; font-weight:500; letter-spacing:.02em; text-transform:none; opacity:.8; }
 
-/* tables / sub-sections */
-body.page-stella_sales_report.sr-soft .sr-section-title, body.page-stella_sales_report.sr-dark .sr-section-title { background:var(--sr-sec-bg,var(--sr-head1)) !important; letter-spacing:.1em; }
-body.page-stella_sales_report.sr-soft .di-table th, body.page-stella_sales_report.sr-dark .di-table th { background:var(--sr-band) !important; color:var(--sr-band-text) !important; border-color:rgba(255,255,255,.12) !important; }
-body.page-stella_sales_report.sr-soft .di-table th.sub, body.page-stella_sales_report.sr-dark .di-table th.sub { background:var(--sr-head2) !important; }
-body.page-stella_sales_report.sr-soft .di-table td, body.page-stella_sales_report.sr-dark .di-table td { background:var(--sr-card); border-color:var(--sr-line) !important; color:var(--sr-text); }
-body.page-stella_sales_report.sr-soft .di-table tbody tr:nth-child(odd) td:not([colspan]), body.page-stella_sales_report.sr-dark .di-table tbody tr:nth-child(odd) td:not([colspan]) { background:var(--sr-card); }
-body.page-stella_sales_report.sr-soft .di-table tfoot td, body.page-stella_sales_report.sr-dark .di-table tfoot td { background:var(--sr-mint) !important; border-color:var(--sr-line) !important; color:var(--sr-text) !important; }
-body.page-stella_sales_report.sr-soft .di-table tfoot td.total-label, body.page-stella_sales_report.sr-soft .di-table tfoot td.grand-total, body.page-stella_sales_report.sr-dark .di-table tfoot td.total-label, body.page-stella_sales_report.sr-dark .di-table tfoot td.grand-total { background:var(--sr-head1) !important; color:var(--sr-band-text) !important; }
-body.page-stella_sales_report.sr-soft .di-inp, body.page-stella_sales_report.sr-dark .di-inp { color:var(--sr-text) !important; }
-body.page-stella_sales_report.sr-soft .di-inp:focus, body.page-stella_sales_report.sr-dark .di-inp:focus { background:var(--sr-input) !important; box-shadow:inset 0 0 0 2px var(--sr-focus); }
-body.page-stella_sales_report.sr-soft .sub-col, body.page-stella_sales_report.sr-dark .sub-col { border-color:var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col-title { background:var(--sr-subt-bg,var(--sr-band)) !important; color:var(--sr-subt-fg,var(--sr-band-text)) !important; }
-body.page-stella_sales_report.sr-soft .sub-col-hdr, body.page-stella_sales_report.sr-dark .sub-col-hdr { background:var(--sr-mint) !important; }
-body.page-stella_sales_report.sr-soft .sub-col-hdr span, body.page-stella_sales_report.sr-dark .sub-col-hdr span { color:var(--sr-text) !important; border-color:var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .sub-row, body.page-stella_sales_report.sr-dark .sub-row { border-color:var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .sub-row:hover, body.page-stella_sales_report.sr-dark .sub-row:hover { background:var(--sr-card2) !important; }
-body.page-stella_sales_report.sr-soft .sub-inp, body.page-stella_sales_report.sr-dark .sub-inp { background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; }
-body.page-stella_sales_report.sr-soft .sub-inp:focus, body.page-stella_sales_report.sr-dark .sub-inp:focus { border-color:var(--sr-focus) !important; box-shadow:0 0 0 2px rgba(47,96,73,.25) !important; }
-body.page-stella_sales_report.sr-soft .sub-footer, body.page-stella_sales_report.sr-dark .sub-footer { background:var(--sr-mint) !important; border-color:var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .sub-footer span, body.page-stella_sales_report.sr-dark .sub-footer span { color:var(--sr-text) !important; border-color:var(--sr-line) !important; }
-body.page-stella_sales_report.sr-soft .btn-add-row, body.page-stella_sales_report.sr-dark .btn-add-row { background:var(--sr-band) !important; color:var(--sr-band-text) !important; }
-body.page-stella_sales_report.sr-soft .sr-controls input, body.page-stella_sales_report.sr-dark .sr-controls input, body.page-stella_sales_report.sr-soft #filterForm input, body.page-stella_sales_report.sr-dark #filterForm input { background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; }
-body.page-stella_sales_report.sr-soft .sr-controls .btn, body.page-stella_sales_report.sr-dark .sr-controls .btn, body.page-stella_sales_report.sr-soft .btn-lock, body.page-stella_sales_report.sr-dark .btn-lock { background:var(--sr-card) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; }
-body.page-stella_sales_report.sr-soft .sr-save-status, body.page-stella_sales_report.sr-dark .sr-save-status { color:var(--sr-sub); }
+/* ── entry cards ── */
+body.page-stella_sales_report.sr2 .sr-section { background:transparent !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; margin:0 0 16px !important; padding:0 !important; overflow:visible !important; }
+body.page-stella_sales_report.sr2 .sr-section:hover { box-shadow:none !important; }
+body.page-stella_sales_report.sr2 .sub-grid { display:grid !important; grid-template-columns:repeat(auto-fill,minmax(285px,1fr)) !important; gap:12px !important; border:0 !important; }
+body.page-stella_sales_report.sr2 .sub-col { display:grid !important; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"title total" "rows rows" "add add"; align-content:start; background:var(--card) !important; border:1px solid var(--line) !important; border-radius:14px !important; padding:12px 14px 6px !important; transition:border-color .15s, box-shadow .15s; }
+body.page-stella_sales_report.sr2 .sub-col:focus-within { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring); }
+body.page-stella_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title { grid-area:title; background:none !important; color:var(--ink) !important; padding:0 !important; margin:0 0 8px !important; border:0 !important; font:800 .72rem var(--f) !important; letter-spacing:.05em !important; text-transform:uppercase; display:flex !important; align-items:center; justify-content:flex-start !important; text-align:left !important; gap:8px; align-self:center; box-shadow:none !important; border-radius:0 !important; }
+body.page-stella_sales_report.sr2 .sub-col-title::before { content:''; width:9px; height:9px; border-radius:50%; background:var(--acc); flex:none; }
+body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-col-title::before { background:var(--neg); }
+body.page-stella_sales_report.sr2 .sub-col-hdr { display:none !important; }
+body.page-stella_sales_report.sr2 .sub-rows { grid-area:rows; }
+body.page-stella_sales_report.sr2 .sub-row { display:grid !important; grid-template-columns:minmax(0,1fr) 98px 22px !important; gap:6px; align-items:center; border:0 !important; border-top:1px solid var(--line) !important; background:none !important; padding:3px 0 !important; }
+body.page-stella_sales_report.sr2 .sub-row:hover { background:none !important; }
+body.page-stella_sales_report.sr2 .sub-inp { background:transparent !important; border:1px solid transparent !important; border-radius:8px !important; color:var(--ink) !important; font:600 .8rem var(--f) !important; padding:6px 7px !important; box-shadow:none !important; }
+body.page-stella_sales_report.sr2 .sub-inp.num { text-align:right; font-family:var(--m) !important; }
+body.page-stella_sales_report.sr2 .sub-inp::placeholder { color:var(--mut); opacity:.55; font-weight:500; }
+body.page-stella_sales_report.sr2 .sub-inp:hover { background:var(--inp) !important; }
+body.page-stella_sales_report.sr2 .sub-inp:focus { background:var(--inp) !important; border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-stella_sales_report.sr2 .sub-col .btn-del-row { opacity:0; width:22px; height:22px; padding:0 !important; border-radius:50% !important; background:var(--negbg) !important; color:var(--neg) !important; font-size:.6rem; margin:0 !important; transition:opacity .15s; }
+body.page-stella_sales_report.sr2 .sub-row:hover .btn-del-row, body.page-stella_sales_report.sr2 .sub-row:focus-within .btn-del-row { opacity:1; }
+body.page-stella_sales_report.sr2 .sub-col .btn-add-row { grid-area:add; font-size:0 !important; background:none !important; color:var(--mut) !important; border:0 !important; border-top:1px dashed var(--line) !important; border-radius:0 !important; box-shadow:none !important; margin:2px 0 0 !important; padding:9px 2px 8px !important; text-align:left; width:100%; transform:none !important; }
+body.page-stella_sales_report.sr2 .sub-col .btn-add-row::before { content:'＋ add a line…'; font:600 .74rem var(--f); }
+body.page-stella_sales_report.sr2 .sub-col .btn-add-row:hover { color:var(--acc) !important; }
+body.page-stella_sales_report.sr2 .sub-footer { display:contents !important; }
+body.page-stella_sales_report.sr2 .sub-footer span { border:0 !important; padding:0 !important; background:none !important; }
+body.page-stella_sales_report.sr2 .sub-footer span:first-child { display:none; }
+body.page-stella_sales_report.sr2 .sub-footer span:last-child { grid-area:total; align-self:center; margin:0 0 8px; font:800 .78rem var(--m) !important; color:var(--acc) !important; background:var(--accbg) !important; padding:3px 9px !important; border-radius:8px; }
+body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { color:var(--neg) !important; background:var(--negbg) !important; }
 
-/* theme switch */
-#srThemeBtn { font-family:var(--font-m); font-size:.72rem; font-weight:700; padding:7px 12px; border-radius:9px; cursor:pointer;
-  background:#eef1ee; color:#1d2a22; border:1px solid #bcc8bf; }
-body.page-stella_sales_report.sr-soft .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(n) .sub-col-title,
-body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+2) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+2) .sub-col-title,
-body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+3) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+3) .sub-col-title,
-body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+4) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+4) .sub-col-title,
-body.page-stella_sales_report.sr-soft .sub-col:nth-child(4n+1) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-col:nth-child(4n+1) .sub-col-title { background:var(--sr-subt-bg,var(--sr-band)) !important; color:var(--sr-subt-fg,var(--sr-band-text)) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.green .sr-input:not(.readout), body.page-stella_sales_report.sr-soft .sr-row .sr-input.readout { background:var(--sr-input) !important; }
-body.page-stella_sales_report.sr-soft .sub-grid.three-col .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-grid.three-col .sub-col:nth-child(n) .sub-col-title, body.page-stella_sales_report.sr-soft .sub-grid.three-col .sub-col:nth-child(2n) .sub-col-title, body.page-stella_sales_report.sr-dark .sub-grid.three-col .sub-col:nth-child(2n) .sub-col-title { background:var(--sr-subt-bg,var(--sr-band)) !important; color:var(--sr-subt-fg,var(--sr-band-text)) !important; }
-body.page-stella_sales_report.sr-soft #srThemeBtn { background:#e2e0d3; color:#2b2a22; border-color:#a8a798; }
-body.page-stella_sales_report.sr-soft .sr-row.short .sr-input.readout { background:rgba(226,224,211,.78) !important; }
-body.page-stella_sales_report.sr-soft .sr-header-card, body.page-stella_sales_report.sr-soft .sr-header-card * { color:var(--sr-band-text); }
-body.page-stella_sales_report.sr-soft .sr-title-row, body.page-stella_sales_report.sr-soft .sr-section-title, body.page-stella_sales_report.sr-soft .di-table tfoot td.total-label, body.page-stella_sales_report.sr-soft .di-table tfoot td.grand-total { color:var(--sr-sec-fg,var(--sr-band-text)) !important; }
-body.page-stella_sales_report.sr-soft .sr-input, body.page-stella_sales_report.sr-soft .sub-inp, body.page-stella_sales_report.sr-soft .di-inp { font-weight:600; }
-body.page-stella_sales_report.sr-soft .sr-row.green .sr-label, body.page-stella_sales_report.sr-soft .sr-row.coh .sr-label, body.page-stella_sales_report.sr-soft .sr-row.short .sr-label { color:var(--sr-band-text) !important; }
-body.page-stella_sales_report.sr-dark #srThemeBtn { background:#222f28; color:#dbe6de; border-color:#33453a; }
+/* ── dine-in ── */
+body.page-stella_sales_report.sr2 .sr-section.sr2-dine { background:var(--card) !important; border:1px solid var(--line) !important; border-radius:14px !important; overflow:hidden !important; }
+body.page-stella_sales_report.sr2 .sr2-dine .sr-section-title { display:none !important; background:none !important; color:var(--ink) !important; font:800 .8rem var(--f) !important; letter-spacing:.12em !important; padding:13px 16px !important; }
+body.page-stella_sales_report.sr2 .di-table { border-collapse:separate !important; border-spacing:0; width:100% !important; min-width:0 !important; table-layout:fixed; }
+body.page-stella_sales_report.sr2 .di-table th:last-child, body.page-stella_sales_report.sr2 .di-table td:last-child { width:42px; }
+body.page-stella_sales_report.sr2 .di-table thead tr:nth-child(2) { display:none; }
+body.page-stella_sales_report.sr2 .di-table th { background:var(--inp) !important; color:var(--mut) !important; font:800 .6rem var(--f) !important; letter-spacing:.09em; text-transform:uppercase; padding:9px 6px !important; white-space:normal !important; overflow-wrap:anywhere; line-height:1.25; font-size:.56rem !important; border:0 !important; border-top:1px solid var(--line) !important; border-bottom:1px solid var(--line) !important; text-align:right !important; }
+body.page-stella_sales_report.sr2 .di-table td { background:transparent !important; border:0 !important; border-bottom:1px solid var(--line) !important; padding:3px 6px !important; color:var(--ink) !important; }
+body.page-stella_sales_report.sr2 .di-table tbody tr:hover td { background:var(--inp) !important; }
+body.page-stella_sales_report.sr2 .di-inp { background:var(--inp) !important; border:1px solid var(--line) !important;  color:var(--ink) !important; font:600 .82rem var(--m) !important; text-align:right; border-radius:8px; padding:7px 8px !important; width:100% !important; box-shadow:none !important; }
+body.page-stella_sales_report.sr2 .di-inp:hover { border-color:var(--mut) !important; }
+body.page-stella_sales_report.sr2 .di-inp:focus { background:var(--card) !important; border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-stella_sales_report.sr2 .di-table tfoot td { background:var(--accbg) !important; color:var(--acc) !important; font:800 .82rem var(--m) !important; text-align:right !important; padding:10px 12px !important; border:0 !important; }
+body.page-stella_sales_report.sr2 .di-table tfoot tr:last-child td { background:var(--hero2) !important; background-image:none !important; color:#fff !important; font-size:.95rem !important; }
+body.page-stella_sales_report.sr2 .di-table tfoot td.grand-total { text-align:right !important; }
+body.page-stella_sales_report.sr2 .di-table tfoot td.total-label { text-align:left !important; letter-spacing:.14em; font-family:var(--f) !important; }
+body.page-stella_sales_report.sr2 .di-table .btn-del-row { background:var(--negbg) !important; color:var(--neg) !important; border-radius:50% !important; width:22px; height:22px; padding:0 !important; opacity:.35; }
+body.page-stella_sales_report.sr2 .di-table tr:hover .btn-del-row { opacity:1; }
+body.page-stella_sales_report.sr2 .sr2-dine > .btn-add-row { display:block; width:calc(100% - 24px); margin:10px 12px 12px !important; background:none !important; color:var(--mut) !important; border:1px dashed var(--line) !important; border-radius:10px !important; padding:9px !important; font:700 .74rem var(--f) !important; box-shadow:none !important; }
+body.page-stella_sales_report.sr2 .sr2-dine > .btn-add-row:hover { color:var(--acc) !important; border-color:var(--acc) !important; }
 
-/* plain summary rows + the "For" row (inline pale-mint) */
-body.page-stella_sales_report.sr-soft .sr-row:not(.green):not(.net):not(.coh):not(.short):not(.gray-hdr),
-body.page-stella_sales_report.sr-dark .sr-row:not(.green):not(.net):not(.coh):not(.short):not(.gray-hdr) { background:var(--sr-card) !important; }
-body.page-stella_sales_report.sr-soft .sr-row.pink-val, body.page-stella_sales_report.sr-dark .sr-row.pink-val { background:var(--sr-card2) !important; }
-body.page-stella_sales_report.sr-soft .sr-row[style*="f0fdf4"], body.page-stella_sales_report.sr-dark .sr-row[style*="f0fdf4"] { background:var(--sr-card2) !important; }
-body.page-stella_sales_report.sr-soft .sr-row[style*="f0fdf4"] .sr-label, body.page-stella_sales_report.sr-dark .sr-row[style*="f0fdf4"] .sr-label { color:var(--sr-text) !important; }
-body.page-stella_sales_report.sr-soft .sr-section [style*="background"], body.page-stella_sales_report.sr-dark .sr-section [style*="background"] { filter:none; }
+/* ── layout: main | sticky summary rail ── */
+body.page-stella_sales_report.sr2 .sr-split { display:grid !important; grid-template-columns:minmax(0,1fr) 380px; gap:18px; align-items:start; }
+body.page-stella_sales_report.sr2 .sr-split .sr-main { order:0 !important; min-width:0; }
+body.page-stella_sales_report.sr2 .sr-split .sr-wrap { order:0 !important; flex:none !important; width:auto !important; max-width:none !important; margin:0 !important; position:sticky !important; top:12px !important; height:auto !important; max-height:calc(100vh - 24px) !important; overflow-y:auto !important; overflow-x:hidden; border-radius:18px !important; scrollbar-width:thin; }
+@media (max-width:1180px) { body.page-stella_sales_report.sr2 .sr-split { grid-template-columns:1fr; } body.page-stella_sales_report.sr2 .sr-split .sr-wrap { position:static !important; max-height:none !important; } }
 
-/* ═══ Modern clean layer: calm cards, light table headers, accent bars ═══ */
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) { --sr-sec-fg:var(--sr-band-text); --sr-subt-fg:var(--sr-band-text); --sr-subt-bg:var(--sr-band); --sr-sec-bg:var(--sr-head1); --sr-acc:var(--sr-band); }
-body.page-stella_sales_report.sr-dark { --sr-acc:#3f8f69; }
-body.page-stella_sales_report.sr-soft { --sr-acc:#5a7a68; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-section { border-radius:16px !important; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.07) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-section-title { text-align:left !important; font-size:.74rem !important; letter-spacing:.12em !important; padding:12px 16px !important; border-bottom:1px solid rgba(0,0,0,.12); }
-/* Dine-in table */
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table { border-collapse:separate; border-spacing:0; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th { background:var(--sr-band) !important; color:var(--sr-band-text) !important; font-size:.6rem !important; letter-spacing:.04em; font-weight:800; padding:9px 4px !important; border:0 !important; border-bottom:1px solid rgba(255,255,255,.14) !important; border-right:1px solid rgba(255,255,255,.14) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table th.sub { background:var(--sr-head2) !important; color:var(--sr-band-text) !important; font-size:.6rem !important; padding:5px 8px !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table td { border-right:1px solid var(--sr-line) !important; border-bottom:1px solid var(--sr-line) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tbody tr:hover td { background:var(--sr-card2) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td { font-weight:800; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.total-label, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.grand-total { background:var(--sr-head1) !important; color:var(--sr-band-text) !important; border-top:0 !important; letter-spacing:.06em; }
-/* Sub-section cards */
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-grid { gap:8px !important; padding:8px; background:transparent; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col { border:1px solid var(--sr-line) !important; border-radius:12px; overflow:hidden; background:var(--sr-card); }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-title { text-align:left !important; font-size:.66rem !important; letter-spacing:.08em; padding:9px 10px !important; border-bottom:1px solid rgba(0,0,0,.12); }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr { background:var(--sr-mint) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr span { color:var(--sr-sub) !important; font-size:.62rem !important; letter-spacing:.08em; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-footer { background:var(--sr-card2) !important; border-top:1px solid var(--sr-line) !important; font-weight:800; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-inp, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp { border-radius:8px !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .btn-add-row { border-radius:999px !important; padding:6px 14px !important; font-weight:700; letter-spacing:.02em; }
-/* Summary column: light rows with an accent bar instead of heavy dark bands */
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-wrap, body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-card { border-radius:16px !important; overflow:hidden; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green { background:var(--sr-mint) !important; box-shadow:inset 4px 0 0 var(--sr-acc); }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-label { color:var(--sr-text) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-note { color:var(--sr-sub) !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row:not(.green):not(.net):not(.coh):not(.short):not(.gray-hdr) .sr-label { font-weight:600; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.net { box-shadow:inset 4px 0 0 #a98f4c; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-title-row { letter-spacing:.14em; }
-/* ── "Type here" glow: only fields you can type in light up; auto-filled ones stay flat ── */
-body.page-stella_sales_report.sr-soft { --sr-glow:63,157,114; --sr-glow-bd:#3f9d72; }
-body.page-stella_sales_report.sr-dark { --sr-glow:88,199,149; --sr-glow-bd:#58c795; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input:not([readonly]):not(.readout),
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row .sr-input:not([readonly]):not(.readout),
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh .sr-input:not([readonly]),
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-cashier-bar input,
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]),
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-inp:not([readonly]),
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-remarks textarea:not([readonly]) {
-  border:1px solid var(--sr-glow-bd) !important;
-  box-shadow:0 0 0 2px rgba(var(--sr-glow),.22), 0 0 12px rgba(var(--sr-glow),.35) !important;
-  transition:box-shadow .15s, border-color .15s;
-}
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]), body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-table td:has(.di-inp:not([readonly])) { background:rgba(var(--sr-glow),.07); }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]) { border:1px solid rgba(var(--sr-glow),.55) !important; box-shadow:inset 0 0 8px rgba(var(--sr-glow),.22) !important; border-radius:6px !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input:not([readonly]):focus,
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-cashier-bar input:focus,
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:focus,
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sub-inp:focus,
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-remarks textarea:focus {
-  border-color:var(--sr-glow-bd) !important; box-shadow:0 0 0 3px rgba(var(--sr-glow),.45), 0 0 20px rgba(var(--sr-glow),.6) !important; outline:none; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .di-inp:not([readonly]) { width:100% !important; box-sizing:border-box; min-height:28px; padding:4px 8px !important; }
-/* auto-calculated fields: flat, no border, clearly "just a value" */
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input[readonly], body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input.readout {
-  border:1px dashed transparent !important; box-shadow:none !important; cursor:default; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-input[readonly], body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-row:not(.net):not(.short) .sr-input.readout { background:transparent !important; }
-body.page-stella_sales_report:is(.sr-soft,.sr-dark) .sr-input[readonly]:not(#net_sales):not(#short_over) { background:transparent !important; border:1px solid transparent !important; }
+/* ── summary rail ── */
+body.page-stella_sales_report.sr2 .sr-split .sr-card { height:auto !important; display:block !important; background:transparent !important; border:0 !important; box-shadow:none !important; overflow:visible !important; border-radius:0 !important; }
+body.page-stella_sales_report.sr2 .sr-title-row { display:none !important; }
+body.page-stella_sales_report.sr2 .sr2-hero { position:sticky; top:0; z-index:5; background:linear-gradient(160deg,var(--hero1),var(--hero2)); color:#e2e8f0; border-radius:16px; padding:14px 16px 14px; box-shadow:0 14px 34px rgba(15,23,42,.22); }
+body.page-stella_sales_report.sr2 .sr2-hero .sr2-cap { margin-bottom:8px; display:flex; justify-content:space-between; font:800 .62rem var(--f); letter-spacing:.14em; text-transform:uppercase; color:#7dd3c8; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row { min-height:0 !important; flex:none !important; background:none !important; border:0 !important; padding:0 !important; overflow:visible !important; gap:8px; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-label { text-align:left !important; padding:0 !important; color:#cbd5e1 !important; font:600 .76rem var(--f) !important; font-style:normal !important; flex:1; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-label span { display:inline !important; font-size:.62rem !important; opacity:.7; color:#cbd5e1 !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-value-wrap { width:auto !important; flex:none; display:block !important; align-self:auto !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-note { display:none; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net { display:block !important; margin:2px 0 10px !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-label { display:block; flex:none; font:700 .72rem var(--f) !important; color:#94a3b8 !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-value-wrap { width:100% !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { width:100%; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:left !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 2.05rem var(--m) !important; letter-spacing:-.02em; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh { display:flex !important; align-items:center; margin:0 0 8px !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input { width:128px; height:34px !important; max-height:none !important; background:rgba(255,255,255,.1) !important; border:1px solid rgba(255,255,255,.22) !important; border-radius:9px !important; color:#fff !important; -webkit-text-fill-color:#fff !important; text-align:right !important; padding:0 10px !important; font:700 .9rem var(--m) !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input:focus { border-color:#7dd3c8 !important; box-shadow:0 0 0 3px rgba(125,211,200,.25) !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input::placeholder { color:rgba(255,255,255,.4); }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short { display:flex !important; align-items:center; padding:10px 12px !important; border-radius:12px !important; background:#065f46 !important; margin-top:2px; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=short] { background:#9f1239 !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=over] { background:#92400e !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-label { color:#fff !important; font:800 .66rem var(--f) !important; letter-spacing:.12em; text-transform:uppercase; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap { display:flex !important; align-items:center; gap:10px; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:110px; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; text-align:right !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 1.15rem var(--m) !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { content:'✓ Tally'; font:800 .74rem var(--f); color:#d1fae5; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=short] .sr-value-wrap::after { content:'Short'; color:#ffe4e6; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=over] .sr-value-wrap::after { content:'Over'; color:#fef3c7; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-hint { margin:6px 2px 0; font:500 .62rem var(--f); color:#94a3b8; }
 
-body.page-stella_sales_report.sr-dark .sr-row.green .sr-input.readout { background:#2b3b32 !important; border:1px solid #3a4e42 !important; }
-body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b3b32 !important; }
+body.page-stella_sales_report.sr2 .sr2-g { background:var(--card); border:1px solid var(--line); border-radius:14px; margin-top:10px; overflow:hidden; }
+body.page-stella_sales_report.sr2 .sr2-gh { display:flex; align-items:center; gap:8px; padding:9px 13px; background:var(--inp); border-bottom:1px solid var(--line); font:800 .62rem var(--f); letter-spacing:.12em; text-transform:uppercase; color:var(--mut); }
+body.page-stella_sales_report.sr2 .sr2-gh span { margin-left:auto; font:800 .74rem var(--m); letter-spacing:0; text-transform:none; color:var(--acc); }
+body.page-stella_sales_report.sr2 .sr2-gh.neg span { color:var(--neg); }
+body.page-stella_sales_report.sr2 .sr2-g .sr-row { display:flex !important; align-items:center !important; min-height:0 !important; flex:none !important; padding:7px 13px !important; gap:10px !important; background:transparent !important; border:0 !important; border-bottom:1px solid var(--line) !important; overflow:visible !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-row:last-child { border-bottom:0 !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-label { text-align:left !important; padding:0 !important; color:var(--ink) !important; font:600 .8rem/1.25 var(--f) !important; font-style:normal !important; flex:1; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-label span { display:block !important; font:500 .64rem/1.3 var(--f) !important; color:var(--mut) !important; opacity:1 !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-value-wrap { width:auto !important; flex:none; display:block !important; align-self:auto !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-input.readout { width:118px; background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 .85rem var(--m) !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-row.pink-val .sr-input.readout { color:var(--neg) !important; -webkit-text-fill-color:var(--neg) !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-input:not(.readout) { width:116px; height:32px !important; max-height:none !important; background:var(--inp) !important; border:1.5px solid var(--acc) !important; border-radius:9px !important; padding:0 10px !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 .85rem var(--m) !important; box-shadow:none !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-input:not(.readout):focus { box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-note { display:none; }
+
+body.page-stella_sales_report.sr2 .sr-remarks { margin-top:10px; background:var(--card) !important; border:1px solid var(--line) !important; border-radius:14px; padding:11px 13px 13px !important; }
+body.page-stella_sales_report.sr2 .sr-remarks label { color:var(--mut) !important; font:800 .62rem var(--f) !important; letter-spacing:.12em; }
+body.page-stella_sales_report.sr2 .sr-remarks textarea { background:var(--inp) !important; color:var(--ink) !important; border:1px solid var(--line) !important; border-radius:10px !important; font:500 .82rem/1.4 var(--f) !important; }
+body.page-stella_sales_report.sr2 .sr-remarks textarea:focus { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-stella_sales_report.sr2 .locked-banner { border-radius:12px; }
+body.page-stella_sales_report.sr2 #replenRow[style*="display: none"], body.page-stella_sales_report.sr2 #replenRow[style*="display:none"] { display:none !important; }
 </style>
 <script>
-// Eye-comfort theme: Soft (default) → Dark → Original. Remembered per browser.
+// New design: Light (default) / Dark. Remembered per browser. (design only)
 (function () {
-  var order = ['sr-soft', 'sr-dark', 'sr-orig'], names = {'sr-soft': '🌿 Soft', 'sr-dark': '🌙 Dark', 'sr-orig': '☀ Original'};
-  var cur = 'sr-soft';
-  try { var sv = localStorage.getItem('stellaSrTheme'); if (order.indexOf(sv) >= 0) cur = sv; } catch (e) {}
+  var cur = 'sr2-light';
+  try { var sv = localStorage.getItem('stellaSr2Theme'); if (sv === 'sr2-light' || sv === 'sr2-dark') cur = sv; } catch (e) {}
   function apply() {
-    order.forEach(function (c) { document.body.classList.remove(c); });
-    document.body.classList.add(cur);
-    var b = document.getElementById('srThemeBtn'); if (b) b.textContent = names[cur];
+    document.body.classList.remove('sr-soft', 'sr-dark', 'sr-orig', 'sr2-light', 'sr2-dark');
+    document.body.classList.add('sr2', cur);
+    var b = document.getElementById('srThemeBtn'); if (b) b.textContent = cur === 'sr2-dark' ? '☀ Light' : '🌙 Dark';
   }
   window.srCycleTheme = function () {
-    cur = order[(order.indexOf(cur) + 1) % order.length];
-    try { localStorage.setItem('stellaSrTheme', cur); } catch (e) {}
+    cur = cur === 'sr2-dark' ? 'sr2-light' : 'sr2-dark';
+    try { localStorage.setItem('stellaSr2Theme', cur); } catch (e) {}
     apply();
+  };
+  // ‹ › buttons next to the date
+  window.srStepDate = function (d) {
+    var f = document.querySelector('.sr-controls form'), i = f && f.querySelector('input[type=date]');
+    if (!i || !i.value) return;
+    var t = new Date(i.value + 'T00:00:00'); t.setDate(t.getDate() + d);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    i.value = t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate());
+    i.dispatchEvent(new Event('change', {bubbles: true}));
   };
   document.addEventListener('DOMContentLoaded', function () {
     var ctl = document.querySelector('.sr-controls');
-    var btn = document.createElement('button'); btn.type = 'button'; btn.id = 'srThemeBtn'; btn.title = 'Change screen brightness / colours';
+    var btn = document.createElement('button'); btn.type = 'button'; btn.id = 'srThemeBtn'; btn.title = 'Switch Light / Dark';
     btn.onclick = window.srCycleTheme;
     if (ctl) ctl.appendChild(btn); else document.body.appendChild(btn);
     apply();
   });
-  document.body && document.body.classList.add(cur);
+  document.body && document.body.classList.add('sr2', cur);
+  apply();
+
+  // live group subtotals + Short/Over colour (reads the figures the page already calculates)
+  function num(id) { var e = document.getElementById(id); if (!e) return 0; var v = parseFloat(String(e.value != null && e.value !== '' ? e.value : e.textContent).replace(/,/g, '')); return isNaN(v) ? 0 : v; }
+  function fmt(n) { return '₱' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+  var LESS = ['maya_swipe','unpaid_med_credit','paid_med_card','advance_paid_appigo','grab_sales','gcash','gift_card','discount','bank_transfer_cheque','cash_out_interest','gift_cert_sold_tips','pcf_expenses','other_expenses'];
+  function tick() {
+    var a = document.getElementById('sr2-sum-gross'); if (a) a.textContent = 'Gross ' + fmt(num('gross_sales'));
+    var b = document.getElementById('sr2-sum-swipe'); if (b) b.textContent = fmt(num('total_swipe'));
+    var c = document.getElementById('sr2-sum-less');  if (c) c.textContent = '− ' + fmt(LESS.reduce(function (s, id) { return s + num(id); }, 0));
+    var r = document.querySelector('.sr-row.short');
+    if (r) { var so = num('short_over'); r.setAttribute('data-state', Math.abs(so) < 0.005 ? 'ok' : (so < 0 ? 'short' : 'over')); }
+  }
+  setInterval(tick, 300); document.addEventListener('DOMContentLoaded', tick);
 })();
 </script>
 <div class="sr-split">
@@ -712,11 +718,6 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
   <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 14px;border-radius:20px;font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">📌 Stella</span>
 </div>
 
-<!-- Cashier -->
-<div class="sr-cashier-bar">
-  <label for="cashier_name">Cashier:</label>
-  <input type="text" id="cashier_name" style="text-transform:uppercase" value="<?= htmlspecialchars($vs('cashier_name')) ?>" placeholder="e.g. CHRISTINE AND JUSTINE">
-</div>
 
 <?php if ($restrictEdit): ?>
 <div class="locked-banner">
@@ -728,10 +729,18 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
 </div>
 <?php endif; ?>
 
+<div class="sr2-bar">
+<!-- Cashier -->
+<div class="sr-cashier-bar">
+  <label for="cashier_name">Cashier:</label>
+  <input type="text" id="cashier_name" style="text-transform:uppercase" value="<?= htmlspecialchars($vs('cashier_name')) ?>" placeholder="e.g. CHRISTINE AND JUSTINE">
+</div>
 <!-- Controls -->
 <div class="sr-controls">
   <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button type="button" class="sr2-step prev" onclick="srStepDate(-1)" title="Previous day">‹</button>
     <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($fDate) ?>" onchange="this.form.submit()">
+    <button type="button" class="sr2-step next" onclick="srStepDate(1)" title="Next day">›</button>
     <button type="button" class="btn btn-primary" onclick="saveAll()">💾 Save All</button>
     <a href="stella_sales_report.php?export_csv=1&date=<?= htmlspecialchars($fDate) ?>" class="btn btn-ghost">⬇ Download Excel</a>
     <span id="saveStatus" class="sr-save-status"></span>
@@ -761,17 +770,13 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
   <span class="lock-badge-static" title="Locked by accounting">🔒 Locked</span>
   <?php endif; ?>
 </div>
+</div>
 
-<style>.sub-stack{display:flex;flex-direction:column;gap:14px;min-width:0}.sub-stack .sub-col{width:100%}</style>
-<!-- ROW 1 (same order as the Excel): Grab (+ Marketing Pull out under it) | Deposit (Card) | Late Payment (Card) | Cash out Interest (Booky) -->
-<div class="sr-section">
-  <div class="sub-grid four-col" id="subsec-row1">
-
-    <?php
-    $renderCol = function ($sec, $label) use ($details) {
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
-    ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
+<?php
+$renderCol = function ($sec, $label, $cls = '') use ($details) {
+    $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+?>
+    <div class="sub-col <?= $cls ?>" data-section="<?= $sec ?>">
       <div class="sub-col-title"><?= $label ?></div>
       <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
       <div class="sub-rows">
@@ -789,95 +794,41 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
         <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
       </div>
     </div>
-    <?php
-    };
-    ?>
+<?php }; ?>
 
-    <div class="sub-stack">
-      <?php $renderCol('grab', 'GRAB'); $renderCol('marketing_pullout', 'MARKETING PULL OUT'); ?>
-    </div>
-    <?php $renderCol('deposit_card', 'DEPOSIT (CARD)'); $renderCol('late_payment', 'LATE PAYMENT (CARD)'); $renderCol('cash_out_interest', 'CASH OUT INTEREST (BOOKY)'); ?>
-
-  </div>
-</div>
-
-<!-- ROW 2: Unpaid Med/Corp. (Credit) | Paid Med/Corp. (Card) | Advance Paid (Appigo) | Gift Cert Sold (Tips) -->
+<div class="sr2-eyebrow">Sales &amp; payments <i>— type each entry; totals feed the Summary</i></div>
 <div class="sr-section">
-  <div class="sub-grid four-col" id="subsec-row2">
-
+  <div class="sub-grid" id="subsec-in">
     <?php
-    $subsec = [
-        'unpaid_med'        => 'UNPAID MED/CORP. (CREDIT)',
-        'paid_med'          => 'PAID MED/CORP. (CARD)',
-        'advance_payment'   => 'ADVANCE PAID (APPIGO)',
-        'gift_cert_tips'    => 'GIFT CERT SOLD (TIPS)',
-    ];
-    foreach ($subsec as $sec => $label):
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+    $renderCol('grab', 'GRAB');
+    $renderCol('deposit_card', 'DEPOSIT (CARD)');
+    $renderCol('late_payment', 'LATE PAYMENT (CARD)');
+    $renderCol('cash_out_interest', 'CASH OUT INTEREST (BOOKY)');
+    $renderCol('advance_payment', 'ADVANCE PAID (APPIGO)');
+    $renderCol('gift_cert_tips', 'GIFT CERT SOLD (TIPS)');
+    $renderCol('paid_med', 'PAID MED/CORP. (CARD)');
+    $renderCol('unpaid_med', 'UNPAID MED/CORP. (CREDIT)');
     ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
-      <div class="sub-col-title"><?= $label ?></div>
-      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
-      <div class="sub-rows">
-        <?php foreach ($secRows as $sr): ?>
-        <div class="sub-row">
-          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-      <div class="sub-footer">
-        <span>Total</span>
-        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-      </div>
-    </div>
-    <?php endforeach; ?>
-
   </div>
 </div>
 
-<!-- ROW 3: Expenses | GC Sponsorship | GC Sold -->
+<div class="sr2-eyebrow">Pull-outs &amp; expenses</div>
 <div class="sr-section">
-  <div class="sub-grid three-col" id="subsec-row3">
-
+  <div class="sub-grid" id="subsec-out">
     <?php
-    $subsec = [
-        'expenses'          => 'EXPENSES',
-        'gc_sponsorship'    => 'GC SPONSORSHIP',
-        'gc_sold'           => 'GC SOLD',
-    ];
-    foreach ($subsec as $sec => $label):
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+    $renderCol('marketing_pullout', 'MARKETING PULL OUT', 'sr2-out');
+    $renderCol('expenses', 'EXPENSES', 'sr2-out');
+    $renderCol('gc_sponsorship', 'GC SPONSORSHIP', 'sr2-out');
+    $renderCol('gc_sold', 'GC SOLD', 'sr2-out');
     ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
-      <div class="sub-col-title"><?= $label ?></div>
-      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
-      <div class="sub-rows">
-        <?php foreach ($secRows as $sr): ?>
-        <div class="sub-row">
-          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-      <div class="sub-footer">
-        <span>Total</span>
-        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-      </div>
-    </div>
-    <?php endforeach; ?>
-
   </div>
 </div>
 
+<div class="sr2-eyebrow">Dine-in</div>
 <!-- ══════════════════════════════════════════════════════════
      DINE IN SECTION (at the bottom, like the Excel)
 ════════════════════════════════════════════════════════════ -->
-<div class="sr-section">
+<div class="sr-section sr2-dine">
   <div class="sr-section-title dark-red">DINE IN</div>
   <div style="overflow-x:auto">
   <table class="di-table" id="di-table">
@@ -936,7 +887,7 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
       </tr>
       <tr>
         <td class="total-label" colspan="3">TOTAL</td>
-        <td class="grand-total" colspan="6" id="di-grand-total">0.00</td>
+        <td class="grand-total" colspan="5" id="di-grand-total">0.00</td>
       </tr>
     </tfoot>
   </table>
@@ -954,14 +905,32 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
 ════════════════════════════════════════════════════════════ -->
 <div class="sr-wrap">
 <div class="sr-card">
-  <div class="sr-title-row"><div class="sr-main-title">Summary Report</div></div>
-
-  <div class="sr-row" style="background:#f0fdf4">
-    <div class="sr-label" style="text-align:left;flex:1">For</div>
-    <div class="sr-value-wrap"><span class="sr-input readout" style="font-size:.8rem"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
+<div class="sr2-hero">
+  <div class="sr2-cap"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
+  <div class="sr-row net">
+    <div class="sr-label">Net Sales</div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_sales" value="<?= $fmt($v('net_sales')) ?>" readonly tabindex="-1"></div>
+  </div>
+  <div class="sr-row coh">
+    <div class="sr-label">COH(Cash on Hand)</div>
+    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="coh" value="<?= $v('coh') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
+    <div class="sr-note" style="color:#cfd8ea">(cash sales only except SC)</div>
+  </div>
+  <div class="sr-row coh" id="replenRow" style="display:none">
+    <div class="sr-label">Cash Replenishment <span style="font-weight:400;font-size:.7em">(auto when Net Sales is negative)</span></div>
+    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="cash_replenishment" value="<?= $v('cash_replenishment') ?: '' ?>" oninput="replenTyped()" placeholder="0.00" data-saved="<?= htmlspecialchars((string)($v('cash_replenishment') ?: 0)) ?>"></div>
+    <div class="sr-note" style="color:#cfd8ea">(cash from the vault used to cover the shortfall)</div>
+  </div>
+  <div class="sr-row short">
+    <div class="sr-label">Short/Over</div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="short_over" value="<?= $fmt($v('short_over')) ?>" readonly tabindex="-1"></div>
+    <div class="sr-note" style="color:#ffd8d8">(if "-" sign means short)</div>
   </div>
 
-  <!-- Green rows -->
+  
+</div>
+<div class="sr2-g">
+  <div class="sr2-gh">Sales build-up<span id="sr2-sum-gross"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Gross Sales <span style="font-size:.65rem;opacity:.8">(auto: Grab + Cash out Interest + Gift Cert Sold + Advance Paid + Paid Med + Unpaid Med + Total Dine In − Service Charge)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="gross_sales" value="<?= $fmt($grossSalesCalc) ?>" readonly tabindex="-1"></div>
@@ -974,12 +943,17 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
     <div class="sr-label">POS Z reading <span style="font-size:.65rem;opacity:.8">(auto: Gross Sales + Marketing Pull Out)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="pos_z_reading" value="<?= $fmt($posZReadingCalc) ?>" readonly tabindex="-1"></div>
   </div>
+  <div class="sr-row pink-val">
+    <div class="sr-label">Marketing Pull Out <span style="font-size:.65rem;opacity:.7">(auto from Marketing Pullout)</span></div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="marketing_pull_out" value="<?= $fmt($marketingCalc) ?>" readonly tabindex="-1"></div>
+  </div>
+</div>
+<div class="sr2-g">
+  <div class="sr2-gh">Swipe breakdown<span id="sr2-sum-swipe"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Total Swipe: <span style="font-size:.65rem;opacity:.8">(auto: Deposit + Late Payment + Maya + Paid Med)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="total_swipe" value="<?= $fmt($v('deposit_swipe_card')+$v('late_payment_card')+$v('maya_swipe')+$paidMedCalc) ?>" readonly tabindex="-1"></div>
   </div>
-
-  <!-- Gray sub-rows under Total Swipe -->
   <div class="sr-row gray-hdr">
     <div class="sr-label">DEPOSIT SWIPE (CARD) <span style="font-size:.65rem;opacity:.7">(auto: Deposit (Card) + Gift Cert Sold (TIPS))</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="deposit_swipe_card" value="<?= $fmt($v('deposit_swipe_card')) ?>" readonly tabindex="-1"></div>
@@ -988,14 +962,13 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
     <div class="sr-label">LATE PAYMENT (CARD) <span style="font-size:.65rem;opacity:.7">(auto from Late Payment sub-section)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="late_payment_card" value="<?= $fmt($v('late_payment_card')) ?>" readonly tabindex="-1"></div>
   </div>
-
-  <!-- Green Maya row -->
+</div>
+<div class="sr2-g">
+  <div class="sr2-gh neg">Less from Gross Sales → Net Sales<span id="sr2-sum-less"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Sales of the day Swipe: (MAYA) <span style="font-size:.65rem;opacity:.7">(auto from Card/Swipe/QR total)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="maya_swipe" value="<?= $fmt($v('maya_swipe')) ?>" readonly tabindex="-1" style="font-weight:800"></div>
   </div>
-
-  <!-- Pink deduction rows -->
   <div class="sr-row pink-val">
     <div class="sr-label">Unpaid Med (CREDIT) <span style="font-size:.65rem;opacity:.7">(auto from Unpaid/Credit)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="unpaid_med_credit" value="<?= $fmt($unpaidMedCalc) ?>" readonly tabindex="-1"></div>
@@ -1021,10 +994,6 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="gift_card" value="<?= $fmt($giftCardCalc) ?>" readonly tabindex="-1"></div>
   </div>
   <div class="sr-row pink-val">
-    <div class="sr-label">Marketing Pull Out <span style="font-size:.65rem;opacity:.7">(auto from Marketing Pullout)</span></div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="marketing_pull_out" value="<?= $fmt($marketingCalc) ?>" readonly tabindex="-1"></div>
-  </div>
-  <div class="sr-row pink-val">
     <div class="sr-label">Discount <span style="font-size:.65rem;opacity:.7">(auto from DINE IN Discount)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="discount" value="<?= $fmt($discountCalc) ?>" readonly tabindex="-1"></div>
   </div>
@@ -1048,33 +1017,7 @@ body.page-stella_sales_report.sr-dark .sr-row .sr-input.readout { background:#2b
     <div class="sr-label">Other Expenses</div>
     <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="other_expenses" value="<?= $v('other_expenses') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
   </div>
-
-  <!-- Net Sales -->
-  <div class="sr-row net">
-    <div class="sr-label">Net Sales</div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_sales" value="<?= $fmt($v('net_sales')) ?>" readonly tabindex="-1"></div>
-  </div>
-
-  <!-- COH -->
-  <div class="sr-row coh">
-    <div class="sr-label">COH(Cash on Hand)</div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="coh" value="<?= $v('coh') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
-    <div class="sr-note" style="color:#cfd8ea">(cash sales only except SC)</div>
-  </div>
-
-  <!-- Cash Replenishment (auto when Net Sales is negative; can be overtyped) -->
-  <div class="sr-row coh" id="replenRow" style="display:none">
-    <div class="sr-label">Cash Replenishment <span style="font-weight:400;font-size:.7em">(auto when Net Sales is negative)</span></div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="cash_replenishment" value="<?= $v('cash_replenishment') ?: '' ?>" oninput="replenTyped()" placeholder="0.00" data-saved="<?= htmlspecialchars((string)($v('cash_replenishment') ?: 0)) ?>"></div>
-    <div class="sr-note" style="color:#cfd8ea">(cash from the vault used to cover the shortfall)</div>
-  </div>
-
-  <!-- Short/Over -->
-  <div class="sr-row short">
-    <div class="sr-label">Short/Over</div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="short_over" value="<?= $fmt($v('short_over')) ?>" readonly tabindex="-1"></div>
-    <div class="sr-note" style="color:#ffd8d8">(if "-" sign means short)</div>
-  </div>
+</div>
 
   <!-- Remarks -->
   <div class="sr-remarks">
