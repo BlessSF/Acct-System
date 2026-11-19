@@ -117,290 +117,100 @@ $branchLabel = $BRANCHES[$branchKey]['label'] ?? '';
 <title>Sign In — SalesHub</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root { --ink:#111418; --text:#1c2026; --mut:#6b7280; --line:#e4e7eb; --soft:#f6f7f9; --acc:#0f7b5c; --accbg:#e8f5f0; --bad:#b42318; --badbg:#fef3f2; --f:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif; --m:'Geist Mono',ui-monospace,Menlo,monospace; }
+html,body { height:100%; }
+body { font-family:var(--f); color:var(--text); background:#fff; -webkit-font-smoothing:antialiased; }
+.auth-shell { min-height:100vh; display:grid; grid-template-columns:minmax(320px,44%) 1fr; }
 
-:root {
-  --bg:      #f4f5f7;
-  --surface: #ffffff;
-  --surf2:   #f8f9fb;
-  --border:  #e3e6ea;
-  --border2: #c8cdd5;
-  --accent:  #0f7b5c;
-  --accent2: #dc3545;
-  --text:    #1a1d23;
-  --subtext: #6b7280;
-  --subtext2:#4b5563;
-  --font-h:  'Geist', sans-serif;
-  --font-m:  'Geist Mono', monospace;
-  --font-s:  'Instrument Serif', serif;
-}
+/* left: brand */
+.login-side { background:var(--ink); color:#e8eaed; padding:44px 48px; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden; }
+.login-side::after { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px); background-size:44px 44px; mask-image:linear-gradient(180deg,transparent,#000 40%,#000); pointer-events:none; }
+.brand { display:flex; align-items:center; gap:12px; position:relative; z-index:1; }
+.brand-icon { width:36px; height:36px; border-radius:9px; background:var(--acc); color:#fff; display:grid; place-items:center; font:700 1rem var(--f); }
+.brand-name { font:600 .95rem var(--f); letter-spacing:-.01em; }
+.brand-tag { font:400 .72rem var(--m); color:#8b929c; margin-top:1px; }
+.side-copy { position:relative; z-index:1; max-width:360px; }
+.side-copy h2 { font:600 1.7rem/1.2 var(--f); letter-spacing:-.025em; color:#fff; }
+.side-copy p { margin-top:12px; font:400 .9rem/1.6 var(--f); color:#9aa1ab; }
+.side-foot { position:relative; z-index:1; font:400 .72rem var(--m); color:#6b727d; }
 
-body {
-  font-family: var(--font-h);
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;   /* safety net: never allow sideways scroll/blowout */
-}
+/* right: form */
+.login-wrap { display:flex; align-items:center; justify-content:center; padding:40px 24px; background:#fff; }
+.login-card { width:100%; max-width:400px; }
+.login-eyebrow { font:600 .72rem var(--f); letter-spacing:.1em; text-transform:uppercase; color:var(--acc); margin-bottom:10px; }
+.login-title { font:600 1.65rem/1.2 var(--f); letter-spacing:-.025em; color:var(--ink); }
+.login-title em { font-style:normal; }
+.login-sub { margin:8px 0 26px; font:400 .92rem/1.5 var(--f); color:var(--mut); }
+.error-box { display:flex; gap:8px; padding:11px 13px; margin:0 0 18px; border:1px solid #fecdca; background:var(--badbg); color:var(--bad); border-radius:10px; font:500 .84rem/1.45 var(--f); }
+.step-panel { display:none; }
+.step-panel.active { display:block; animation:rise .22s ease both; }
+@keyframes rise { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 
-.auth-shell {
-  display: flex; align-items: flex-start; justify-content: center;
-  gap: 20px; width: 100%; max-width: 940px; padding: 20px;
-  flex-wrap: wrap;
-}
+/* role list */
+.role-icons { display:flex; flex-direction:column; gap:10px; }
+.role-icon-btn { display:grid; grid-template-columns:40px 1fr 16px; align-items:center; gap:14px; padding:13px 14px; border:1px solid var(--line); border-radius:12px; background:#fff; cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
+.role-icon-btn:hover { border-color:var(--ink); background:var(--soft); }
+.role-icon-btn:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+.role-icon-glyph { width:40px; height:40px; border-radius:10px; background:var(--soft); color:var(--ink); display:grid; place-items:center; }
+.role-icon-btn:hover .role-icon-glyph { background:#fff; }
+.role-icon-glyph svg { width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.role-icon-label { font:600 .95rem var(--f); color:var(--ink); }
+.role-icon-sub { font:400 .8rem var(--f); color:var(--mut); margin-top:2px; }
+.role-chev { width:16px; height:16px; stroke:#9aa1ab; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .15s, stroke .15s; }
+.role-icon-btn:hover .role-chev { stroke:var(--ink); transform:translateX(2px); }
 
-.login-wrap {
-  position: relative; z-index: 10;
-  width: 100%; max-width: 500px;
-  padding: 0;
-  animation: slideUp .5s cubic-bezier(.22,1,.36,1) both;
-}
-@keyframes slideUp {
-  from { opacity:0; transform:translateY(20px); }
-  to   { opacity:1; transform:translateY(0); }
-}
+/* branch list */
+.branch-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.branch-btn { padding:14px 14px; border:1px solid var(--line); border-radius:12px; font:600 .92rem var(--f); color:var(--ink); cursor:pointer; transition:border-color .15s, background .15s; }
+.branch-btn:hover { border-color:var(--ink); background:var(--soft); }
 
+/* back / badge / password */
+.back-link { display:inline-flex; align-items:center; gap:6px; margin:0 0 18px; padding:6px 10px 6px 6px; border:0; background:none; color:var(--mut); font:500 .84rem var(--f); border-radius:8px; cursor:pointer; }
+.back-link:hover { color:var(--ink); background:var(--soft); }
+.context-badge { display:inline-block; margin-bottom:18px; padding:6px 12px; border-radius:999px; background:var(--accbg); color:var(--acc); font:600 .8rem var(--f); }
+.field { margin-bottom:16px; }
+.field label { display:block; margin-bottom:7px; font:600 .82rem var(--f); color:var(--ink); }
+.field input { width:100%; height:46px; padding:0 14px; border:1px solid #cfd4db; border-radius:10px; background:#fff; color:var(--ink); font:500 1rem var(--f); outline:none; transition:border-color .15s, box-shadow .15s; }
+.field input::placeholder { color:#b3b9c2; letter-spacing:.2em; }
+.field input:focus { border-color:var(--acc); box-shadow:0 0 0 3px rgba(15,123,92,.15); }
+.btn-login { width:100%; height:46px; border:0; border-radius:10px; background:var(--ink); color:#fff; font:600 .95rem var(--f); cursor:pointer; transition:background .15s, transform .05s; }
+.btn-login:hover { background:#000; }
+.btn-login:active { transform:translateY(1px); }
+.login-foot { margin-top:26px; font:400 .76rem var(--m); color:#9aa1ab; text-align:center; }
 
-.login-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 48px 44px 44px;
-  box-shadow: 0 4px 24px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.05);
-}
-
-.brand {
-  display: flex; align-items: center; gap: 12px;
-  margin-bottom: 38px;
-}
-.brand-icon {
-  width: 42px; height: 42px; border-radius: 11px;
-  background: linear-gradient(145deg, #0f7b5c 0%, #0a5c44 100%);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; color: #fff; font-size: 1rem;
-  box-shadow: 0 2px 10px rgba(15,123,92,.3);
-}
-.brand-name { font-size: 1.08rem; font-weight: 600; letter-spacing: -.02em; color: var(--text); }
-.brand-tag {
-  font-family: var(--font-m); font-size: .66rem;
-  color: var(--subtext); text-transform: uppercase; letter-spacing: .08em;
-  margin-top: 2px;
-}
-
-.login-eyebrow {
-  font-family: var(--font-m); font-size: .74rem; color: var(--accent);
-  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 10px;
-}
-.login-title {
-  font-family: var(--font-s);
-  font-size: 2.15rem; font-weight: 400; line-height: 1.2;
-  letter-spacing: -.01em; margin-bottom: 8px;
-  color: var(--text);
-}
-.login-title em { color: var(--accent); font-style: italic; }
-.login-sub {
-  font-size: .92rem; color: var(--subtext2); margin-bottom: 30px;
-  line-height: 1.5;
-}
-
-.field { margin-bottom: 18px; }
-label {
-  display: block;
-  font-size: .72rem; font-weight: 500; text-transform: uppercase;
-  letter-spacing: .08em; color: var(--subtext);
-  font-family: var(--font-m); margin-bottom: 8px;
-}
-input[type=password] {
-  width: 100%; padding: 13px 16px;
-  background: #fff; border: 1px solid var(--border);
-  border-radius: 10px; color: var(--text);
-  font-family: var(--font-m); font-size: .92rem;
-  transition: border-color .15s, box-shadow .15s;
-  outline: none;
-  -webkit-font-smoothing: antialiased;
-}
-input[type=password]::placeholder { color: var(--subtext); opacity: .5; }
-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(15,123,92,.1);
-  background: #fff;
-}
-
-.btn-login {
-  width: 100%; padding: 14px;
-  background: var(--accent); color: #fff;
-  border: none; border-radius: 10px;
-  font-family: var(--font-h); font-size: .92rem; font-weight: 600;
-  cursor: pointer; margin-top: 10px;
-  transition: background .15s, transform .15s, box-shadow .15s;
-  letter-spacing: -.01em;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-}
-.btn-login:hover {
-  background: #0a6649;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(15,123,92,.28);
-}
-.btn-login:active { transform: translateY(0); }
-
-.error-box {
-  background: #fff1f2;
-  border: 1px solid #fecdd3;
-  border-radius: 9px; padding: 12px 15px;
-  font-family: var(--font-m); font-size: .82rem;
-  color: #be123c; margin-bottom: 20px;
-  display: flex; align-items: center; gap: 8px;
-}
-
-/* ── Step panels ── */
-.step-panel { display: none; }
-.step-panel.active { display: block; animation: fadeIn .25s ease both; }
-@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-
-/* ── Icon choice (Manager / OIC / Cashier) ── */
-.role-icons {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;
-}
-.role-icon-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-  padding: 26px 12px;
-  min-width: 0;   /* let grid track shrink below content's natural width */
-  background: var(--surf2); border: 1px solid var(--border);
-  border-radius: 14px; cursor: pointer;
-  font-family: var(--font-h);
-  transition: border-color .15s, background .15s, transform .15s;
-}
-.role-icon-btn:hover {
-  border-color: var(--accent); background: #f0fdf4;
-  transform: translateY(-2px);
-}
-.role-icon-glyph {
-  width: 52px; height: 52px; border-radius: 13px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem; flex-shrink: 0;
-  background: linear-gradient(145deg, #0f7b5c 0%, #0a5c44 100%);
-  color: #fff;
-}
-.role-icon-btn:nth-child(2) .role-icon-glyph { background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 100%); }
-.role-icon-btn:nth-child(3) .role-icon-glyph { background: linear-gradient(145deg, #d97706 0%, #b45309 100%); }
-.role-icon-label {
-  font-size: .92rem; font-weight: 600; color: var(--text);
-  text-align: center; overflow-wrap: break-word; word-break: break-word; max-width: 100%;
-}
-.role-icon-sub {
-  font-size: .7rem; color: var(--subtext); font-family: var(--font-m); text-align: center;
-  overflow-wrap: break-word; word-break: break-word; max-width: 100%;
-}
-
-/* ── Branch grid ── */
-.branch-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
-  margin-bottom: 6px;
-}
-.branch-btn {
-  padding: 16px 12px;
-  min-width: 0; overflow-wrap: break-word; word-break: break-word;
-  background: var(--surf2); border: 1px solid var(--border);
-  border-radius: 11px; cursor: pointer;
-  font-family: var(--font-h); font-size: .86rem; font-weight: 600;
-  color: var(--text); text-align: center;
-  transition: border-color .15s, background .15s;
-}
-.branch-btn:hover { border-color: var(--accent); background: #f0fdf4; }
-
-.back-link {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-family: var(--font-m); font-size: .74rem; color: var(--subtext);
-  text-transform: uppercase; letter-spacing: .06em;
-  cursor: pointer; margin-bottom: 18px; background: none; border: none;
-}
-.back-link:hover { color: var(--accent); }
-
-.context-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: #f0fdf4; border: 1px solid #bbf7d0;
-  border-radius: 20px; padding: 6px 14px;
-  font-family: var(--font-m); font-size: .74rem; color: var(--accent);
-  margin-bottom: 20px; font-weight: 600;
-}
-
-/* ══════════════════════════════════════════════════════════
-   MOBILE RESPONSIVE
-   ══════════════════════════════════════════════════════════ */
-@media (max-width: 640px) {
-  body {
-    align-items: flex-start;   /* avoid clipping tall content on short viewports */
-    padding: 20px 0 40px;
-  }
-  .auth-shell { padding: 0 14px; gap: 14px; }
-  .login-wrap { max-width: 100%; }
-
-  .login-card { padding: 30px 20px 26px; border-radius: 16px; }
-
-  .brand { margin-bottom: 26px; gap: 10px; }
-  .brand-icon { width: 36px; height: 36px; border-radius: 9px; font-size: .88rem; }
-  .brand-name { font-size: .98rem; }
-  .brand-tag { font-size: .6rem; }
-
-  .login-eyebrow { font-size: .68rem; margin-bottom: 8px; }
-  .login-title { font-size: 1.65rem; margin-bottom: 6px; }
-  .login-sub { font-size: .84rem; margin-bottom: 22px; }
-
-  /* Role icons: keep 3 across but tighten everything so it doesn't feel cramped */
-  .role-icons { gap: 8px; }
-  .role-icon-btn { padding: 16px 6px; gap: 8px; border-radius: 12px; }
-  .role-icon-glyph { width: 42px; height: 42px; font-size: 1.2rem; border-radius: 10px; }
-  .role-icon-label { font-size: .76rem; }
-  .role-icon-sub { font-size: .6rem; line-height: 1.3; }
-
-  .branch-grid { gap: 9px; }
-  .branch-btn { padding: 14px 8px; font-size: .82rem; }
-
-  .field { margin-bottom: 15px; }
-  /* font-size 16px prevents iOS Safari from auto-zooming in on focus */
-  input[type=password] { padding: 12px 14px; font-size: 16px; }
-  .btn-login { padding: 13px; font-size: .88rem; }
-
-  .error-box { font-size: .78rem; padding: 11px 13px; }
-  .context-badge { font-size: .7rem; padding: 5px 12px; margin-bottom: 16px; }
-  .back-link { font-size: .7rem; margin-bottom: 14px; }
-
-
-
-
-
-}
-
-/* Very small phones (older/smaller devices) */
-@media (max-width: 360px) {
-  .login-title { font-size: 1.45rem; }
-  .role-icon-glyph { width: 36px; height: 36px; font-size: 1.05rem; }
-  .role-icon-label { font-size: .7rem; }
-  .role-icon-sub { display: none; }  /* trim to fit 3 columns comfortably */
-  .branch-grid { grid-template-columns: 1fr; }  /* stack branch buttons on very narrow screens */
+@media (max-width:860px) {
+  .auth-shell { grid-template-columns:1fr; }
+  .login-side { padding:22px 24px; flex-direction:row; align-items:center; }
+  .side-copy, .side-foot { display:none; }
+  .login-side::after { display:none; }
+  .login-wrap { align-items:flex-start; padding:32px 20px; }
 }
 </style>
 </head>
 <body>
 <div class="auth-shell">
-<div class="login-wrap">
+<aside class="login-side">
+  <div class="brand">
+    <div class="brand-icon">M</div>
+    <div>
+      <div class="brand-name">Multipliers Corp</div>
+      <div class="brand-tag">Meritoni</div>
+    </div>
+  </div>
+  <div class="side-copy">
+    <h2>Sales, inventory and books for every branch.</h2>
+    <p>Sign in with your role to continue to the daily reports.</p>
+  </div>
+  <div class="side-foot">SalesHub</div>
+</aside>
+
+<main class="login-wrap">
   <div class="login-card">
 
-    <div class="brand">
-      <div class="brand-icon">M</div>
-      <div>
-        <div class="brand-name">Multipliers Corp</div>
-        <div class="brand-tag">Meritoni</div>
-      </div>
-    </div>
-
-    <div class="login-eyebrow">Secure Access</div>
-    <h1 class="login-title">Welcome <em>back</em></h1>
-    <p class="login-sub">Choose how you're signing in</p>
+    <div class="login-eyebrow">Sign in</div>
+    <h1 class="login-title">Choose your role</h1>
+    <p class="login-sub">Select how you're signing in to continue.</p>
 
     <?php if (!$error && isset($_GET['timeout'])): ?>
     <div class="error-box" style="background:#fffbeb;border-color:#fde68a;color:#92400e">⏱ You were signed out after 20 minutes of inactivity. Please sign in again.</div>
@@ -413,33 +223,33 @@ input:focus {
       <input type="hidden" name="mode"   id="modeInput"   value="<?= htmlspecialchars($mode) ?>">
       <input type="hidden" name="branch" id="branchInput" value="<?= htmlspecialchars($branchKey) ?>">
 
-      <!-- STEP 1: Manager / OIC / Cashier -->
+      <!-- STEP 1: role -->
       <div class="step-panel" id="panel-icons">
         <div class="role-icons">
-          <div class="role-icon-btn" onclick="chooseMode('manager')">
-            <div class="role-icon-glyph">👔</div>
-            <div class="role-icon-label">Manager</div>
-            <div class="role-icon-sub">Full access</div>
+          <div class="role-icon-btn" role="button" tabindex="0" onclick="chooseMode('manager')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseMode('manager')}">
+            <div class="role-icon-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg></div>
+            <div><div class="role-icon-label">Manager</div><div class="role-icon-sub">Full access</div></div>
+            <svg class="role-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </div>
-          <div class="role-icon-btn" onclick="chooseMode('accounting_head')">
-            <div class="role-icon-glyph">📊</div>
-            <div class="role-icon-label">Accounting Head</div>
-            <div class="role-icon-sub">All branches, financial oversight</div>
+          <div class="role-icon-btn" role="button" tabindex="0" onclick="chooseMode('accounting_head')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseMode('accounting_head')}">
+            <div class="role-icon-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+            <div><div class="role-icon-label">Accounting Head</div><div class="role-icon-sub">All branches, financial oversight</div></div>
+            <svg class="role-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </div>
-          <div class="role-icon-btn" onclick="chooseMode('oic')">
-            <div class="role-icon-glyph">🗝️</div>
-            <div class="role-icon-label">Accounting</div>
-            <div class="role-icon-sub">Pick a branch</div>
+          <div class="role-icon-btn" role="button" tabindex="0" onclick="chooseMode('oic')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseMode('oic')}">
+            <div class="role-icon-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l2 2"/></svg></div>
+            <div><div class="role-icon-label">Accounting</div><div class="role-icon-sub">Pick a branch</div></div>
+            <svg class="role-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </div>
-          <div class="role-icon-btn" onclick="chooseMode('cashier')">
-            <div class="role-icon-glyph">🧾</div>
-            <div class="role-icon-label">OIC/Cashier</div>
-            <div class="role-icon-sub">Dashboard &amp; Sales Report</div>
+          <div class="role-icon-btn" role="button" tabindex="0" onclick="chooseMode('cashier')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseMode('cashier')}">
+            <div class="role-icon-glyph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></div>
+            <div><div class="role-icon-label">OIC/Cashier</div><div class="role-icon-sub">Dashboard &amp; Sales Report</div></div>
+            <svg class="role-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </div>
         </div>
       </div>
 
-      <!-- STEP 2 (OIC / Cashier only): pick a branch -->
+      <!-- STEP 2 (Accounting / OIC-Cashier): pick a branch -->
       <div class="step-panel" id="panel-branch">
         <button type="button" class="back-link" onclick="goToIcons()">← Back</button>
         <div class="branch-grid">
@@ -454,26 +264,27 @@ input:focus {
       <!-- STEP 3: password -->
       <div class="step-panel" id="panel-password">
         <button type="button" class="back-link" id="passwordBackBtn" onclick="goBackFromPassword()">← Back</button>
-        <div class="context-badge" id="contextBadge">Manager</div>
+        <div><span class="context-badge" id="contextBadge">Manager</span></div>
         <div class="field">
           <label for="password">Password</label>
           <input type="password" id="password" name="password"
                  placeholder="••••••••"
                  autocomplete="current-password">
         </div>
-        <button type="submit" name="submit_login" value="1" class="btn-login">Sign In →</button>
+        <button type="submit" name="submit_login" value="1" class="btn-login">Sign in</button>
       </div>
     </form>
 
   </div>
-</div>
-
+</main>
 </div>
 
 <script>
 function showPanel(id) {
   document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  var T = {'panel-icons':['Choose your role',"Select how you're signing in to continue."],'panel-branch':['Select a branch','Pick the branch you work in.'],'panel-password':['Enter your password','Confirm your identity to continue.']}[id];
+  if (T) { document.querySelector('.login-title').textContent = T[0]; document.querySelector('.login-sub').textContent = T[1]; }
 }
 
 function chooseMode(mode) {
