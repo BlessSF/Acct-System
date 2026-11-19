@@ -601,60 +601,64 @@ body.page-stella_sales_report.sr2 .di-table tr:hover .btn-del-row { opacity:1; }
 body.page-stella_sales_report.sr2 .sr2-dine > .btn-add-row { display:block; width:calc(100% - 24px); margin:10px 12px 12px !important; background:none !important; color:var(--mut) !important; border:1px dashed var(--line) !important; border-radius:10px !important; padding:9px !important; font:700 .74rem var(--f) !important; box-shadow:none !important; }
 body.page-stella_sales_report.sr2 .sr2-dine > .btn-add-row:hover { color:var(--acc) !important; border-color:var(--acc) !important; }
 
-/* ── layout: main | sticky summary rail ── */
-body.page-stella_sales_report.sr2 .sr-split { display:grid !important; grid-template-columns:minmax(0,1fr) 380px; gap:18px; align-items:start; }
-body.page-stella_sales_report.sr2 .sr-split .sr-main { order:0 !important; min-width:0; }
-body.page-stella_sales_report.sr2 .sr-split .sr-wrap { order:0 !important; flex:none !important; width:auto !important; max-width:none !important; margin:0 !important; position:sticky !important; top:12px !important; height:auto !important; max-height:calc(100vh - 24px) !important; overflow-y:auto !important; overflow-x:hidden; border-radius:18px !important; scrollbar-width:thin; }
-@media (max-width:1180px) { body.page-stella_sales_report.sr2 .sr-split { grid-template-columns:1fr; } body.page-stella_sales_report.sr2 .sr-split .sr-wrap { position:static !important; max-height:none !important; } }
+/* ── layout: summary rail on the LEFT, always fits the screen (no scrolling) | main ── */
+body.page-stella_sales_report.sr2 .sr-split { display:grid !important; grid-template-columns:392px minmax(0,1fr); gap:18px; align-items:start; }
+body.page-stella_sales_report.sr2 .sr-split .sr-main { order:1 !important; min-width:0; }
+body.page-stella_sales_report.sr2 .sr-split .sr-wrap { order:-1 !important; flex:none !important; width:auto !important; max-width:none !important; margin:0 !important; position:sticky !important; top:12px !important; height:calc(100vh - 104px); max-height:none !important; overflow:hidden !important; border-radius:18px !important; container-type:size; }
+@media (max-width:1180px) { body.page-stella_sales_report.sr2 .sr-split { grid-template-columns:1fr; } body.page-stella_sales_report.sr2 .sr-split .sr-wrap { order:0 !important; position:static !important; height:auto !important; container-type:normal; overflow:visible !important; } }
 
-/* ── summary rail ── */
-body.page-stella_sales_report.sr2 .sr-split .sr-card { height:auto !important; display:block !important; background:transparent !important; border:0 !important; box-shadow:none !important; overflow:visible !important; border-radius:0 !important; }
+/* ── summary rail (sizes scale with the rail's height so every row is visible at once) ── */
+body.page-stella_sales_report.sr2 .sr-split .sr-card { height:100% !important; display:flex !important; flex-direction:column; gap:.8cqh; background:transparent !important; border:0 !important; box-shadow:none !important; overflow:hidden !important; border-radius:0 !important; }
 body.page-stella_sales_report.sr2 .sr-title-row { display:none !important; }
-body.page-stella_sales_report.sr2 .sr2-hero { position:sticky; top:0; z-index:5; background:linear-gradient(160deg,var(--hero1),var(--hero2)); color:#e2e8f0; border-radius:16px; padding:14px 16px 14px; box-shadow:0 14px 34px rgba(15,23,42,.22); }
-body.page-stella_sales_report.sr2 .sr2-hero .sr2-cap { margin-bottom:8px; display:flex; justify-content:space-between; font:800 .62rem var(--f); letter-spacing:.14em; text-transform:uppercase; color:#7dd3c8; }
+body.page-stella_sales_report.sr2 .sr2-hero { flex:0 0 auto; background:linear-gradient(160deg,var(--hero1),var(--hero2)); color:#e2e8f0; border-radius:14px; padding:1.5cqh 14px 1.6cqh; box-shadow:0 10px 26px rgba(15,23,42,.2); }
+body.page-stella_sales_report.sr2 .sr2-hero .sr2-cap { display:flex; justify-content:space-between; font:800 clamp(.5rem,1.2cqh,.62rem) var(--f); letter-spacing:.14em; text-transform:uppercase; color:#7dd3c8; margin-bottom:.4cqh; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row { min-height:0 !important; flex:none !important; background:none !important; border:0 !important; padding:0 !important; overflow:visible !important; gap:8px; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-label { text-align:left !important; padding:0 !important; color:#cbd5e1 !important; font:600 .76rem var(--f) !important; font-style:normal !important; flex:1; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-label span { display:inline !important; font-size:.62rem !important; opacity:.7; color:#cbd5e1 !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-label { text-align:left !important; padding:0 !important; color:#cbd5e1 !important; font:600 clamp(.62rem,1.55cqh,.78rem) var(--f) !important; font-style:normal !important; flex:1; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-label span { display:inline !important; font-size:.6rem !important; opacity:.7; color:#cbd5e1 !important; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-value-wrap { width:auto !important; flex:none; display:block !important; align-self:auto !important; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-note { display:none; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net { display:block !important; margin:2px 0 10px !important; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-label { display:block; flex:none; font:700 .72rem var(--f) !important; color:#94a3b8 !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net { display:block !important; margin:0 0 .8cqh !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-label { display:block; flex:none; font:700 clamp(.56rem,1.3cqh,.7rem) var(--f) !important; color:#94a3b8 !important; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-value-wrap { width:100% !important; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { width:100%; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:left !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 2.05rem var(--m) !important; letter-spacing:-.02em; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh { display:flex !important; align-items:center; margin:0 0 8px !important; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input { width:128px; height:34px !important; max-height:none !important; background:rgba(255,255,255,.1) !important; border:1px solid rgba(255,255,255,.22) !important; border-radius:9px !important; color:#fff !important; -webkit-text-fill-color:#fff !important; text-align:right !important; padding:0 10px !important; font:700 .9rem var(--m) !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { width:100%; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:left !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 clamp(1.3rem,4.6cqh,2.05rem) var(--m) !important; letter-spacing:-.02em; line-height:1.1; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh { display:flex !important; align-items:center; margin:0 0 .7cqh !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input { width:128px; height:clamp(24px,3.7cqh,34px) !important; max-height:none !important; background:rgba(255,255,255,.1) !important; border:1px solid rgba(255,255,255,.22) !important; border-radius:9px !important; color:#fff !important; -webkit-text-fill-color:#fff !important; text-align:right !important; padding:0 10px !important; font:700 clamp(.7rem,1.8cqh,.9rem) var(--m) !important; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input:focus { border-color:#7dd3c8 !important; box-shadow:0 0 0 3px rgba(125,211,200,.25) !important; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input::placeholder { color:rgba(255,255,255,.4); }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short { display:flex !important; align-items:center; padding:10px 12px !important; border-radius:12px !important; background:#065f46 !important; margin-top:2px; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short { display:flex !important; align-items:center; padding:clamp(5px,1.1cqh,10px) 12px !important; border-radius:11px !important; background:#065f46 !important; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=short] { background:#9f1239 !important; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=over] { background:#92400e !important; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-label { color:#fff !important; font:800 .66rem var(--f) !important; letter-spacing:.12em; text-transform:uppercase; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-label { color:#fff !important; font:800 clamp(.54rem,1.3cqh,.66rem) var(--f) !important; letter-spacing:.12em; text-transform:uppercase; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap { display:flex !important; align-items:center; gap:10px; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:110px; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; text-align:right !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 1.15rem var(--m) !important; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { content:'✓ Tally'; font:800 .74rem var(--f); color:#d1fae5; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:110px; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; text-align:right !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 clamp(.85rem,2.4cqh,1.15rem) var(--m) !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { content:'✓ Tally'; font:800 .72rem var(--f); color:#d1fae5; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=short] .sr-value-wrap::after { content:'Short'; color:#ffe4e6; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short[data-state=over] .sr-value-wrap::after { content:'Over'; color:#fef3c7; }
-body.page-stella_sales_report.sr2 .sr2-hero .sr-hint { margin:6px 2px 0; font:500 .62rem var(--f); color:#94a3b8; }
 
-body.page-stella_sales_report.sr2 .sr2-g { background:var(--card); border:1px solid var(--line); border-radius:14px; margin-top:10px; overflow:hidden; }
-body.page-stella_sales_report.sr2 .sr2-gh { display:flex; align-items:center; gap:8px; padding:9px 13px; background:var(--inp); border-bottom:1px solid var(--line); font:800 .62rem var(--f); letter-spacing:.12em; text-transform:uppercase; color:var(--mut); }
-body.page-stella_sales_report.sr2 .sr2-gh span { margin-left:auto; font:800 .74rem var(--m); letter-spacing:0; text-transform:none; color:var(--acc); }
+body.page-stella_sales_report.sr2 .sr2-g { flex:var(--n,4) 1 0; min-height:0; display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:12px; margin:0; overflow:hidden; }
+body.page-stella_sales_report.sr2 .sr2-gh { flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:clamp(3px,.8cqh,8px) 12px; background:var(--inp); border-bottom:1px solid var(--line); font:800 clamp(.5rem,1.15cqh,.62rem) var(--f); letter-spacing:.12em; text-transform:uppercase; color:var(--mut); }
+body.page-stella_sales_report.sr2 .sr2-gh span { margin-left:auto; font:800 clamp(.58rem,1.4cqh,.74rem) var(--m); letter-spacing:0; text-transform:none; color:var(--acc); }
 body.page-stella_sales_report.sr2 .sr2-gh.neg span { color:var(--neg); }
-body.page-stella_sales_report.sr2 .sr2-g .sr-row { display:flex !important; align-items:center !important; min-height:0 !important; flex:none !important; padding:7px 13px !important; gap:10px !important; background:transparent !important; border:0 !important; border-bottom:1px solid var(--line) !important; overflow:visible !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-row { display:flex !important; align-items:center !important; flex:1 1 0 !important; min-height:0 !important; padding:0 12px !important; gap:10px !important; background:transparent !important; border:0 !important; border-bottom:1px solid var(--line) !important; overflow:hidden !important; }
 body.page-stella_sales_report.sr2 .sr2-g .sr-row:last-child { border-bottom:0 !important; }
-body.page-stella_sales_report.sr2 .sr2-g .sr-label { text-align:left !important; padding:0 !important; color:var(--ink) !important; font:600 .8rem/1.25 var(--f) !important; font-style:normal !important; flex:1; }
-body.page-stella_sales_report.sr2 .sr2-g .sr-label span { display:block !important; font:500 .64rem/1.3 var(--f) !important; color:var(--mut) !important; opacity:1 !important; }
-body.page-stella_sales_report.sr2 .sr2-g .sr-value-wrap { width:auto !important; flex:none; display:block !important; align-self:auto !important; }
-body.page-stella_sales_report.sr2 .sr2-g .sr-input.readout { width:118px; background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 .85rem var(--m) !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-label { text-align:left !important; padding:0 !important; color:var(--ink) !important; font:600 clamp(.58rem,1.55cqh,.8rem)/1.1 var(--f) !important; font-style:normal !important; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-label span { display:none !important; }
+@container (min-height: 900px) { body.page-stella_sales_report.sr2 .sr2-g .sr-label span { display:inline !important; font:500 .62rem var(--f) !important; color:var(--mut) !important; margin-left:4px; } }
+body.page-stella_sales_report.sr2 .sr2-g .sr-value-wrap { width:auto !important; flex:none; display:flex !important; align-items:center; align-self:stretch !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-input.readout { width:118px; background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 clamp(.6rem,1.6cqh,.85rem) var(--m) !important; }
 body.page-stella_sales_report.sr2 .sr2-g .sr-row.pink-val .sr-input.readout { color:var(--neg) !important; -webkit-text-fill-color:var(--neg) !important; }
-body.page-stella_sales_report.sr2 .sr2-g .sr-input:not(.readout) { width:116px; height:32px !important; max-height:none !important; background:var(--inp) !important; border:1.5px solid var(--acc) !important; border-radius:9px !important; padding:0 10px !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 .85rem var(--m) !important; box-shadow:none !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-input:not(.readout) { width:116px; height:min(82%,30px) !important; max-height:none !important; min-height:16px !important; background:var(--inp) !important; border:1.5px solid var(--acc) !important; border-radius:8px !important; padding:0 10px !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 clamp(.62rem,1.6cqh,.85rem) var(--m) !important; box-shadow:none !important; }
 body.page-stella_sales_report.sr2 .sr2-g .sr-input:not(.readout):focus { box-shadow:0 0 0 3px var(--ring) !important; }
 body.page-stella_sales_report.sr2 .sr2-g .sr-note { display:none; }
-
-body.page-stella_sales_report.sr2 .sr-remarks { margin-top:10px; background:var(--card) !important; border:1px solid var(--line) !important; border-radius:14px; padding:11px 13px 13px !important; }
-body.page-stella_sales_report.sr2 .sr-remarks label { color:var(--mut) !important; font:800 .62rem var(--f) !important; letter-spacing:.12em; }
-body.page-stella_sales_report.sr2 .sr-remarks textarea { background:var(--inp) !important; color:var(--ink) !important; border:1px solid var(--line) !important; border-radius:10px !important; font:500 .82rem/1.4 var(--f) !important; }
-body.page-stella_sales_report.sr2 .sr-remarks textarea:focus { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-stella_sales_report.sr2 .sr-split .sr-wrap .sr2-rem { flex:2.2 1 0; min-height:44px; display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.8cqh 12px 1cqh; margin:0; }
+body.page-stella_sales_report.sr2 .sr2-rem label { flex:none; color:var(--mut) !important; font:800 clamp(.5rem,1.15cqh,.62rem) var(--f) !important; letter-spacing:.12em; text-transform:uppercase; margin:0 0 .5cqh !important; }
+body.page-stella_sales_report.sr2 .sr2-rem textarea { flex:1; min-height:0; resize:none !important; background:var(--inp) !important; color:var(--ink) !important; border:1px solid var(--line) !important; border-radius:9px !important; font:500 clamp(.6rem,1.5cqh,.8rem)/1.35 var(--f) !important; padding:6px 9px !important; width:100%; box-sizing:border-box; }
+body.page-stella_sales_report.sr2 .sr2-rem textarea:focus { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+@media (max-width:1180px) {
+  body.page-stella_sales_report.sr2 .sr-split .sr-card { height:auto !important; }
+  body.page-stella_sales_report.sr2 .sr2-g { flex:none; } body.page-stella_sales_report.sr2 .sr2-g .sr-row { flex:none !important; min-height:34px !important; }
+  body.page-stella_sales_report.sr2 .sr2-rem { min-height:110px; }
+}
 body.page-stella_sales_report.sr2 .locked-banner { border-radius:12px; }
 body.page-stella_sales_report.sr2 #replenRow[style*="display: none"], body.page-stella_sales_report.sr2 #replenRow[style*="display:none"] { display:none !important; }
 </style>
@@ -703,6 +707,16 @@ body.page-stella_sales_report.sr2 #replenRow[style*="display: none"], body.page-
     var r = document.querySelector('.sr-row.short');
     if (r) { var so = num('short_over'); r.setAttribute('data-state', Math.abs(so) < 0.005 ? 'ok' : (so < 0 ? 'short' : 'over')); }
   }
+  // size the summary rail to exactly the visible screen height (no inner scrolling)
+  function fit() {
+    var w = document.querySelector('.sr-split .sr-wrap'), sp = document.querySelector('.sr-split');
+    if (!w || !sp) return;
+    if (window.innerWidth <= 1180) { w.style.height = ''; return; }
+    var t = Math.max(12, sp.getBoundingClientRect().top);
+    w.style.height = Math.max(430, window.innerHeight - t - 12) + 'px';
+  }
+  document.addEventListener('scroll', fit, true); window.addEventListener('resize', fit);
+  document.addEventListener('DOMContentLoaded', fit); window.addEventListener('load', fit); setTimeout(fit, 250);
   setInterval(tick, 300); document.addEventListener('DOMContentLoaded', tick);
 })();
 </script>
@@ -929,7 +943,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
 
   
 </div>
-<div class="sr2-g">
+<div class="sr2-g" style="--n:5">
   <div class="sr2-gh">Sales build-up<span id="sr2-sum-gross"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Gross Sales <span style="font-size:.65rem;opacity:.8">(auto: Grab + Cash out Interest + Gift Cert Sold + Advance Paid + Paid Med + Unpaid Med + Total Dine In − Service Charge)</span></div>
@@ -948,7 +962,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="marketing_pull_out" value="<?= $fmt($marketingCalc) ?>" readonly tabindex="-1"></div>
   </div>
 </div>
-<div class="sr2-g">
+<div class="sr2-g" style="--n:4">
   <div class="sr2-gh">Swipe breakdown<span id="sr2-sum-swipe"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Total Swipe: <span style="font-size:.65rem;opacity:.8">(auto: Deposit + Late Payment + Maya + Paid Med)</span></div>
@@ -963,7 +977,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="late_payment_card" value="<?= $fmt($v('late_payment_card')) ?>" readonly tabindex="-1"></div>
   </div>
 </div>
-<div class="sr2-g">
+<div class="sr2-g" style="--n:14">
   <div class="sr2-gh neg">Less from Gross Sales → Net Sales<span id="sr2-sum-less"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Sales of the day Swipe: (MAYA) <span style="font-size:.65rem;opacity:.7">(auto from Card/Swipe/QR total)</span></div>
@@ -1020,7 +1034,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
 </div>
 
   <!-- Remarks -->
-  <div class="sr-remarks">
+  <div class="sr-remarks sr2-rem">
     <label for="remarks">Remarks</label>
     <textarea id="remarks" rows="3" maxlength="5000" placeholder="Type any notes for this day here… (saves automatically)" <?= $restrictEdit ? 'readonly' : '' ?>><?= htmlspecialchars($vs('remarks')) ?></textarea>
   </div>
@@ -1637,4 +1651,4 @@ body.xl-dragging, body.xl-dragging * { user-select:none !important; cursor:cross
 })();
 </script>
 </body>
-</html>
+</html>s
