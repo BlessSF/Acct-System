@@ -693,6 +693,11 @@ body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:150p
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap { gap:6px; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { font-size:.62rem; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { font-size:clamp(1.3rem,3.6cqh,1.9rem) !important; }
+/* ── box total: big highlighted bar BELOW the entries ── */
+body.page-stella_sales_report.sr2 .sub-col { grid-template-columns:minmax(0,1fr) !important; grid-template-areas:"title" "hdr" "rows" "total" "add" !important; grid-template-rows:40px auto auto auto auto !important; }
+body.page-stella_sales_report.sr2 .sub-footer span:last-child, body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { grid-area:total; display:flex !important; justify-content:space-between; align-items:center; margin:8px 12px 2px !important; padding:9px 14px !important; border-radius:10px !important; background:var(--acc) !important; color:#fff !important; font:800 1.05rem var(--m) !important; box-shadow:0 2px 8px rgba(0,0,0,.18); }
+body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { background:var(--neg) !important; }
+body.page-stella_sales_report.sr2 .sub-footer span:last-child::before { content:'TOTAL'; font:800 .66rem var(--f); letter-spacing:.16em; opacity:.9; }
 </style>
 <script>
 // New design: Light (default) / Dark. Remembered per browser. (design only)
