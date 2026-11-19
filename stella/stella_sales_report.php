@@ -743,6 +743,7 @@ body.page-stella_sales_report.sr2 .sub-grid { grid-template-columns:repeat(2,min
   body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=late_payment] { grid-column:3; grid-row:1 / span 2; }
   body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=cash_out_interest] { grid-column:4; grid-row:1 / span 2; }
 }
+body.page-stella_sales_report.sr2 #subsec-in { align-items:start !important; }
 </style>
 <script>
 // New design: Light (default) / Dark. Remembered per browser. (design only)
