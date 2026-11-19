@@ -545,116 +545,306 @@ include '../layout.php';
 
 <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
 
-<style id="sr-eye-comfort">
-/* ═══ Eye-comfort theme for the H Sales Report (Original = default · Soft · Dark) ═══ */
-body.page-h_sales_report.sr-soft {
-  --h-main:#8a4a47; --h-dark:#723c3a; --h-mid:#9a5a56; --h-tint:#dccbc2; --h-tint2:#d2bdb1; --h-pale:#e3d8cf; --h-line:#bfab9f; --h-ink:#4a2724;
-  --sr-bg:#cdc8bf; --sr-card:#dcd7cd; --sr-card2:#d3cdc2; --sr-input:#e8e4d9; --sr-input-bd:#a9a396; --sr-text:#2b2522; --sr-sub:#5c524c; --sr-band-text:#f1e6e0; --sr-glow:58,112,170; --sr-glow-bd:#4a7fb5;
+<style id="sr2-css">
+/* ═══ Sales Report — new design (v2) ═══ light + dark. Design only: no formulas / ids / saving changed. ═══ */
+body.page-h_sales_report.sr2 { --f:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; --m:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace; font-family:var(--f); }
+body.page-h_sales_report.sr2-light { --bg:#f3f4f6; --card:#fff; --ink:#0f172a; --mut:#64748b; --line:#e5e7eb; --acc:#0f766e; --accbg:#ccfbf1; --neg:#be123c; --negbg:#ffe4e6; --inp:#f8fafc; --hero1:#0f172a; --hero2:#134e4a; --ring:rgba(15,118,110,.22); }
+body.page-h_sales_report.sr2-dark  { --bg:#0b1210; --card:#131d1a; --ink:#e6f2ee; --mut:#8ba39b; --line:#22332e; --acc:#34d399; --accbg:#0f2f27; --neg:#fb7185; --negbg:#3a1520; --inp:#0f1815; --hero1:#071311; --hero2:#0f3a31; --ring:rgba(52,211,153,.28); }
+body.page-h_sales_report.sr2 { background:var(--bg) !important; color:var(--ink); }
+body.page-h_sales_report.sr2 .main-wrapper { background:var(--bg) !important; }
+body.page-h_sales_report.sr2 .topbar { background:var(--card) !important; border-color:var(--line) !important; }
+body.page-h_sales_report.sr2 .topbar * { color:var(--ink); }
+body.page-h_sales_report.sr2 .sr-main { font-family:var(--f); }
+
+/* ── title ── */
+body.page-h_sales_report.sr2 .sr-header-card { background:none !important; box-shadow:none !important; border:0 !important; padding:0 2px !important; margin:0 0 12px !important; border-radius:0 !important; display:block !important; }
+body.page-h_sales_report.sr2 .sr-header-card::before { display:none !important; }
+body.page-h_sales_report.sr2 .sr-header-card > span { display:none !important; }
+body.page-h_sales_report.sr2 .sr-header-card .eyebrow { color:var(--mut) !important; font-family:var(--f) !important; font-size:.66rem !important; letter-spacing:.14em !important; font-weight:700; }
+body.page-h_sales_report.sr2 .sr-header-card .title { color:var(--ink) !important; font-size:1.55rem !important; font-weight:800 !important; letter-spacing:-.025em !important; }
+body.page-h_sales_report.sr2 .sr-header-card .subtitle { color:var(--mut) !important; font-family:var(--f) !important; font-size:.74rem !important; }
+
+/* ── top bar: date stepper · cashier · status · lock · theme · excel ── */
+body.page-h_sales_report.sr2 .sr2-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 18px; }
+body.page-h_sales_report.sr2 .sr2-bar .sr-controls, body.page-h_sales_report.sr2 .sr2-bar .sr-controls > form { display:contents !important; }
+body.page-h_sales_report.sr2 .sr2-step { order:1; width:38px; height:40px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:12px; font-size:1.1rem; font-weight:700; cursor:pointer; line-height:1; }
+body.page-h_sales_report.sr2 .sr2-step:hover { border-color:var(--acc); color:var(--acc); }
+body.page-h_sales_report.sr2 .sr2-bar input[type=date] { order:2; height:40px; border:1px solid var(--line) !important; background:var(--card) !important; color:var(--ink) !important; border-radius:12px !important; padding:0 12px !important; font:700 .86rem var(--f) !important; width:auto !important; }
+body.page-h_sales_report.sr2 .sr2-step.next { order:3; }
+body.page-h_sales_report.sr2 .sr2-bar .sr-cashier-bar { order:4; flex:1 1 240px; max-width:340px; margin:0 !important; padding:0 12px !important; height:40px; background:var(--card) !important; border:1px solid var(--line) !important; border-radius:12px !important; box-shadow:none !important; gap:8px !important; }
+body.page-h_sales_report.sr2 .sr-cashier-bar label { font:700 .62rem var(--f) !important; letter-spacing:.12em; text-transform:uppercase; color:var(--mut) !important; }
+body.page-h_sales_report.sr2 .sr-cashier-bar input { background:transparent !important; border:0 !important; box-shadow:none !important; color:var(--ink) !important; font:600 .88rem var(--f) !important; padding:0 !important; height:100%; }
+body.page-h_sales_report.sr2 .sr-cashier-bar:focus-within { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-h_sales_report.sr2 .sr2-bar .sr-controls > form > span:not(#saveStatus), body.page-h_sales_report.sr2 .sr2-bar .sr-controls span.sr2-chip { order:5; margin-left:auto; font:700 .74rem var(--f) !important; color:var(--acc) !important; background:var(--accbg); padding:8px 12px !important; border-radius:999px; }
+body.page-h_sales_report.sr2 .sr2-bar #saveStatus { order:6; font:700 .74rem var(--f) !important; color:var(--mut) !important; }
+body.page-h_sales_report.sr2 .sr2-bar #saveStatus:empty { display:none; }
+body.page-h_sales_report.sr2 .sr2-bar .lock-wrap, body.page-h_sales_report.sr2 .sr2-bar .lock-badge-static { order:7; }
+body.page-h_sales_report.sr2 .sr2-bar #srThemeBtn { order:8; }
+body.page-h_sales_report.sr2 .sr2-bar a.btn { order:9; }
+body.page-h_sales_report.sr2 .sr2-bar a.btn, body.page-h_sales_report.sr2 #srThemeBtn, body.page-h_sales_report.sr2 .btn-lock { height:40px; display:inline-flex !important; align-items:center; background:var(--card) !important; color:var(--ink) !important; border:1px solid var(--line) !important; border-radius:12px !important; padding:0 14px !important; font:700 .78rem var(--f) !important; box-shadow:none !important; text-decoration:none; cursor:pointer; }
+body.page-h_sales_report.sr2 .sr2-bar a.btn:hover, body.page-h_sales_report.sr2 #srThemeBtn:hover { border-color:var(--acc) !important; }
+
+/* ── section headings ── */
+body.page-h_sales_report.sr2 .sr2-eyebrow { display:flex; align-items:center; gap:10px; font:800 .68rem var(--f); letter-spacing:.14em; text-transform:uppercase; color:var(--mut); margin:4px 2px 10px; }
+body.page-h_sales_report.sr2 .sr2-eyebrow::after { content:''; flex:1; height:1px; background:var(--line); }
+body.page-h_sales_report.sr2 .sr2-eyebrow i { font-style:normal; font-weight:500; letter-spacing:.02em; text-transform:none; opacity:.8; }
+
+/* ── entry cards ── */
+body.page-h_sales_report.sr2 .sr-section { background:transparent !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; margin:0 0 16px !important; padding:0 !important; overflow:visible !important; }
+body.page-h_sales_report.sr2 .sr-section:hover { box-shadow:none !important; }
+body.page-h_sales_report.sr2 .sub-grid { display:grid !important; grid-template-columns:repeat(auto-fill,minmax(285px,1fr)) !important; gap:12px !important; border:0 !important; }
+body.page-h_sales_report.sr2 .sub-col { display:grid !important; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"title total" "rows rows" "add add"; align-content:start; background:var(--card) !important; border:1px solid var(--line) !important; border-radius:14px !important; padding:12px 14px 6px !important; transition:border-color .15s, box-shadow .15s; }
+body.page-h_sales_report.sr2 .sub-col:focus-within { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring); }
+body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title { grid-area:title; background:none !important; color:var(--ink) !important; padding:0 !important; margin:0 0 8px !important; border:0 !important; font:800 .72rem var(--f) !important; letter-spacing:.05em !important; text-transform:uppercase; display:flex !important; align-items:center; justify-content:flex-start !important; text-align:left !important; gap:8px; align-self:center; box-shadow:none !important; border-radius:0 !important; }
+body.page-h_sales_report.sr2 .sub-col-title::before { content:''; width:9px; height:9px; border-radius:50%; background:var(--acc); flex:none; }
+body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-col-title::before { background:var(--neg); }
+body.page-h_sales_report.sr2 .sub-col-hdr { display:none !important; }
+body.page-h_sales_report.sr2 .sub-rows { grid-area:rows; }
+body.page-h_sales_report.sr2 .sub-row { display:grid !important; grid-template-columns:minmax(0,1fr) 98px 22px !important; gap:6px; align-items:center; border:0 !important; border-top:1px solid var(--line) !important; background:none !important; padding:3px 0 !important; }
+body.page-h_sales_report.sr2 .sub-row:hover { background:none !important; }
+body.page-h_sales_report.sr2 .sub-inp { background:transparent !important; border:1px solid transparent !important; border-radius:8px !important; color:var(--ink) !important; font:600 .8rem var(--f) !important; padding:6px 7px !important; box-shadow:none !important; }
+body.page-h_sales_report.sr2 .sub-inp.num { text-align:right; font-family:var(--m) !important; }
+body.page-h_sales_report.sr2 .sub-inp::placeholder { color:var(--mut); opacity:.55; font-weight:500; }
+body.page-h_sales_report.sr2 .sub-inp:hover { background:var(--inp) !important; }
+body.page-h_sales_report.sr2 .sub-inp:focus { background:var(--inp) !important; border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-h_sales_report.sr2 .sub-col .btn-del-row { opacity:0; width:22px; height:22px; padding:0 !important; border-radius:50% !important; background:var(--negbg) !important; color:var(--neg) !important; font-size:.6rem; margin:0 !important; transition:opacity .15s; }
+body.page-h_sales_report.sr2 .sub-row:hover .btn-del-row, body.page-h_sales_report.sr2 .sub-row:focus-within .btn-del-row { opacity:1; }
+body.page-h_sales_report.sr2 .sub-col .btn-add-row { grid-area:add; font-size:0 !important; background:none !important; color:var(--mut) !important; border:0 !important; border-top:1px dashed var(--line) !important; border-radius:0 !important; box-shadow:none !important; margin:2px 0 0 !important; padding:9px 2px 8px !important; text-align:left; width:100%; transform:none !important; }
+body.page-h_sales_report.sr2 .sub-col .btn-add-row::before { content:'＋ add a line…'; font:600 .74rem var(--f); }
+body.page-h_sales_report.sr2 .sub-col .btn-add-row:hover { color:var(--acc) !important; }
+body.page-h_sales_report.sr2 .sub-footer { display:contents !important; }
+body.page-h_sales_report.sr2 .sub-footer span { border:0 !important; padding:0 !important; background:none !important; }
+body.page-h_sales_report.sr2 .sub-footer span:first-child { display:none; }
+body.page-h_sales_report.sr2 .sub-footer span:last-child { grid-area:total; align-self:center; margin:0 0 8px; font:800 .78rem var(--m) !important; color:var(--acc) !important; background:var(--accbg) !important; padding:3px 9px !important; border-radius:8px; }
+body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { color:var(--neg) !important; background:var(--negbg) !important; }
+
+/* ── dine-in ── */
+body.page-h_sales_report.sr2 .sr-section.sr2-dine { background:var(--card) !important; border:1px solid var(--line) !important; border-radius:14px !important; overflow:hidden !important; }
+body.page-h_sales_report.sr2 .sr2-dine .sr-section-title { display:none !important; background:none !important; color:var(--ink) !important; font:800 .8rem var(--f) !important; letter-spacing:.12em !important; padding:13px 16px !important; }
+body.page-h_sales_report.sr2 .di-table { border-collapse:separate !important; border-spacing:0; width:100% !important; min-width:0 !important; table-layout:fixed; }
+body.page-h_sales_report.sr2 .di-table th:last-child, body.page-h_sales_report.sr2 .di-table td:last-child { width:42px; }
+body.page-h_sales_report.sr2 .di-table thead tr:nth-child(2) { display:none; }
+body.page-h_sales_report.sr2 .di-table th { background:var(--inp) !important; color:var(--mut) !important; font:800 .6rem var(--f) !important; letter-spacing:.09em; text-transform:uppercase; padding:9px 6px !important; white-space:normal !important; overflow-wrap:anywhere; line-height:1.25; font-size:.56rem !important; border:0 !important; border-top:1px solid var(--line) !important; border-bottom:1px solid var(--line) !important; text-align:right !important; }
+body.page-h_sales_report.sr2 .di-table td { background:transparent !important; border:0 !important; border-bottom:1px solid var(--line) !important; padding:3px 6px !important; color:var(--ink) !important; }
+body.page-h_sales_report.sr2 .di-table tbody tr:hover td { background:var(--inp) !important; }
+body.page-h_sales_report.sr2 .di-inp { background:var(--inp) !important; border:1px solid var(--line) !important;  color:var(--ink) !important; font:600 .82rem var(--m) !important; text-align:right; border-radius:8px; padding:7px 8px !important; width:100% !important; box-shadow:none !important; }
+body.page-h_sales_report.sr2 .di-inp:hover { border-color:var(--mut) !important; }
+body.page-h_sales_report.sr2 .di-inp:focus { background:var(--card) !important; border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-h_sales_report.sr2 .di-table tfoot td { background:var(--accbg) !important; color:var(--acc) !important; font:800 .82rem var(--m) !important; text-align:right !important; padding:10px 12px !important; border:0 !important; }
+body.page-h_sales_report.sr2 .di-table tfoot tr:last-child td { background:var(--hero2) !important; background-image:none !important; color:#fff !important; font-size:.95rem !important; }
+body.page-h_sales_report.sr2 .di-table tfoot td.grand-total { text-align:right !important; }
+body.page-h_sales_report.sr2 .di-table tfoot td.total-label { text-align:left !important; letter-spacing:.14em; font-family:var(--f) !important; }
+body.page-h_sales_report.sr2 .di-table .btn-del-row { background:var(--negbg) !important; color:var(--neg) !important; border-radius:50% !important; width:22px; height:22px; padding:0 !important; opacity:.35; }
+body.page-h_sales_report.sr2 .di-table tr:hover .btn-del-row { opacity:1; }
+body.page-h_sales_report.sr2 .sr2-dine > .btn-add-row { display:block; width:calc(100% - 24px); margin:10px 12px 12px !important; background:none !important; color:var(--mut) !important; border:1px dashed var(--line) !important; border-radius:10px !important; padding:9px !important; font:700 .74rem var(--f) !important; box-shadow:none !important; }
+body.page-h_sales_report.sr2 .sr2-dine > .btn-add-row:hover { color:var(--acc) !important; border-color:var(--acc) !important; }
+
+/* ── layout: summary rail on the LEFT, always fits the screen (no scrolling) | main ── */
+body.page-h_sales_report.sr2 .sr-split { display:grid !important; grid-template-columns:392px minmax(0,1fr); gap:18px; align-items:start; }
+body.page-h_sales_report.sr2 .sr-split .sr-main { order:1 !important; min-width:0; }
+body.page-h_sales_report.sr2 .sr-split .sr-wrap { order:-1 !important; flex:none !important; width:auto !important; max-width:none !important; margin:0 !important; position:sticky !important; top:12px !important; height:calc(100vh - 104px); max-height:none !important; overflow:hidden !important; border-radius:18px !important; container-type:size; }
+@media (max-width:1180px) { body.page-h_sales_report.sr2 .sr-split { grid-template-columns:1fr; } body.page-h_sales_report.sr2 .sr-split .sr-wrap { order:0 !important; position:static !important; height:auto !important; container-type:normal; overflow:visible !important; } }
+
+/* ── summary rail (sizes scale with the rail's height so every row is visible at once) ── */
+body.page-h_sales_report.sr2 .sr-split .sr-card { height:100% !important; display:flex !important; flex-direction:column; gap:.8cqh; background:transparent !important; border:0 !important; box-shadow:none !important; overflow:hidden !important; border-radius:0 !important; }
+body.page-h_sales_report.sr2 .sr-title-row { display:none !important; }
+body.page-h_sales_report.sr2 .sr2-hero { flex:0 0 auto; background:linear-gradient(160deg,var(--hero1),var(--hero2)); color:#e2e8f0; border-radius:14px; padding:1.5cqh 14px 1.6cqh; box-shadow:0 10px 26px rgba(15,23,42,.2); }
+body.page-h_sales_report.sr2 .sr2-hero .sr2-cap { display:flex; justify-content:flex-start; gap:8px; font:800 clamp(.5rem,1.2cqh,.62rem) var(--f); letter-spacing:.14em; text-transform:uppercase; color:#fca5a5; margin-bottom:.4cqh; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row { min-height:0 !important; flex:none !important; background:none !important; border:0 !important; padding:0 !important; overflow:visible !important; gap:8px; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-label { text-align:left !important; padding:0 !important; color:#cbd5e1 !important; font:600 clamp(.62rem,1.55cqh,.78rem) var(--f) !important; font-style:normal !important; flex:1; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-label span { display:inline !important; font-size:.6rem !important; opacity:.7; color:#cbd5e1 !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-value-wrap { width:auto !important; flex:none; display:block !important; align-self:auto !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-note { display:none; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.net { display:block !important; margin:0 0 .8cqh !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.net .sr-label { display:block; flex:none; font:700 clamp(.56rem,1.3cqh,.7rem) var(--f) !important; color:#94a3b8 !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.net .sr-value-wrap { width:100% !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { width:100%; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:left !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 clamp(1.3rem,4.6cqh,2.05rem) var(--m) !important; letter-spacing:-.02em; line-height:1.1; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh { display:flex !important; align-items:center; margin:0 0 .7cqh !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input { width:128px; height:clamp(24px,3.7cqh,34px) !important; max-height:none !important; background:rgba(255,255,255,.1) !important; border:1px solid rgba(255,255,255,.22) !important; border-radius:9px !important; color:#fff !important; -webkit-text-fill-color:#fff !important; text-align:right !important; padding:0 10px !important; font:700 clamp(.7rem,1.8cqh,.9rem) var(--m) !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input:focus { border-color:#fca5a5 !important; box-shadow:0 0 0 3px rgba(125,211,200,.25) !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input::placeholder { color:rgba(255,255,255,.4); }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short { display:flex !important; align-items:center; padding:clamp(5px,1.1cqh,10px) 12px !important; border-radius:11px !important; background:#065f46 !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short[data-state=short] { background:#9f1239 !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short[data-state=over] { background:#92400e !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short .sr-label { color:#fff !important; font:800 clamp(.54rem,1.3cqh,.66rem) var(--f) !important; letter-spacing:.12em; text-transform:uppercase; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap { display:flex !important; align-items:center; gap:10px; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:110px; background:none !important; border:0 !important; padding:0 !important; height:auto !important; max-height:none !important; text-align:right !important; color:#fff !important; -webkit-text-fill-color:#fff !important; font:800 clamp(.85rem,2.4cqh,1.15rem) var(--m) !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { content:'✓ Tally'; font:800 .72rem var(--f); color:#d1fae5; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short[data-state=short] .sr-value-wrap::after { content:'Short'; color:#ffe4e6; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short[data-state=over] .sr-value-wrap::after { content:'Over'; color:#fef3c7; }
+
+body.page-h_sales_report.sr2 .sr2-g { flex:var(--n,4) 1 0; min-height:0; display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:12px; margin:0; overflow:hidden; }
+body.page-h_sales_report.sr2 .sr2-gh { flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:clamp(3px,.8cqh,8px) 12px; background:var(--inp); border-bottom:1px solid var(--line); font:800 clamp(.5rem,1.15cqh,.62rem) var(--f); letter-spacing:.12em; text-transform:uppercase; color:var(--mut); }
+body.page-h_sales_report.sr2 .sr2-gh span { margin-left:auto; font:800 clamp(.58rem,1.4cqh,.74rem) var(--m); letter-spacing:0; text-transform:none; color:var(--acc); }
+body.page-h_sales_report.sr2 .sr2-gh.neg span { color:var(--neg); }
+body.page-h_sales_report.sr2 .sr2-g .sr-row { display:flex !important; align-items:center !important; flex:1 1 0 !important; min-height:0 !important; padding:0 12px !important; gap:10px !important; background:transparent !important; border:0 !important; border-bottom:1px solid var(--line) !important; overflow:hidden !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-row:last-child { border-bottom:0 !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-label { text-align:left !important; padding:0 !important; color:var(--ink) !important; font:600 clamp(.58rem,1.55cqh,.8rem)/1.1 var(--f) !important; font-style:normal !important; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.page-h_sales_report.sr2 .sr2-g .sr-label span { display:none !important; }
+@container (min-height: 900px) { body.page-h_sales_report.sr2 .sr2-g .sr-label span { display:inline !important; font:500 .62rem var(--f) !important; color:var(--mut) !important; margin-left:4px; } }
+body.page-h_sales_report.sr2 .sr2-g .sr-value-wrap { width:auto !important; flex:none; display:flex !important; align-items:center; align-self:stretch !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-input.readout { width:118px; background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; height:auto !important; max-height:none !important; min-height:0 !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 clamp(.6rem,1.6cqh,.85rem) var(--m) !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-row.pink-val .sr-input.readout { color:var(--neg) !important; -webkit-text-fill-color:var(--neg) !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-input:not(.readout) { width:116px; height:min(82%,30px) !important; max-height:none !important; min-height:16px !important; background:var(--inp) !important; border:1.5px solid var(--acc) !important; border-radius:8px !important; padding:0 10px !important; text-align:right !important; color:var(--ink) !important; -webkit-text-fill-color:var(--ink) !important; font:700 clamp(.62rem,1.6cqh,.85rem) var(--m) !important; box-shadow:none !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-input:not(.readout):focus { box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-note { display:none; }
+body.page-h_sales_report.sr2 .sr-split .sr-wrap .sr2-rem { flex:2.2 1 0; min-height:44px; display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.8cqh 12px 1cqh; margin:0; }
+body.page-h_sales_report.sr2 .sr2-rem label { flex:none; color:var(--mut) !important; font:800 clamp(.5rem,1.15cqh,.62rem) var(--f) !important; letter-spacing:.12em; text-transform:uppercase; margin:0 0 .5cqh !important; }
+body.page-h_sales_report.sr2 .sr2-rem textarea { flex:1; min-height:0; resize:none !important; background:var(--inp) !important; color:var(--ink) !important; border:1px solid var(--line) !important; border-radius:9px !important; font:500 clamp(.6rem,1.5cqh,.8rem)/1.35 var(--f) !important; padding:6px 9px !important; width:100%; box-sizing:border-box; }
+body.page-h_sales_report.sr2 .sr2-rem textarea:focus { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+@media (max-width:1180px) {
+  body.page-h_sales_report.sr2 .sr-split .sr-card { height:auto !important; }
+  body.page-h_sales_report.sr2 .sr2-g { flex:none; } body.page-h_sales_report.sr2 .sr2-g .sr-row { flex:none !important; min-height:34px !important; }
+  body.page-h_sales_report.sr2 .sr2-rem { min-height:110px; }
 }
-body.page-h_sales_report.sr-dark {
-  --h-main:#6a3535; --h-dark:#4f2626; --h-mid:#7c4040; --h-tint:#33252a; --h-tint2:#3d2b2b; --h-pale:#271c1c; --h-line:#4d3737; --h-ink:#ead6d2;
-  --sr-bg:#161111; --sr-card:#201818; --sr-card2:#1b1414; --sr-input:#2c2020; --sr-input-bd:#4d3737; --sr-text:#e9dedb; --sr-sub:#b49e99; --sr-band-text:#f0e2de; --sr-glow:96,165,235; --sr-glow-bd:#6aa8e8;
-}
-body.page-h_sales_report:is(.sr-soft,.sr-dark), body.page-h_sales_report:is(.sr-soft,.sr-dark) .main-wrapper { background:var(--sr-bg) !important; color:var(--sr-text); }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .topbar { background:var(--sr-card) !important; border-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .topbar * { color:var(--sr-text); }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-header-card { background:linear-gradient(135deg,var(--h-main),var(--h-dark)) !important; border-radius:14px !important; box-shadow:0 6px 18px rgba(0,0,0,.18); }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-header-card, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-header-card * { color:var(--sr-band-text) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-card, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-oc-bar { background:var(--sr-card) !important; border:1px solid var(--h-line) !important; border-radius:16px !important; box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.07) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section { overflow:hidden; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-oc-bar label { color:var(--sr-text) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-oc-bar input, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-controls input { background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; border-radius:10px !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-controls .btn, body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-lock { background:var(--sr-card) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-save-status { color:var(--sr-sub) !important; }
-/* titles / table headers: muted brick, light text */
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-title-row, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section-title, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section-title.dark-red, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col:nth-child(n) .sub-col-title, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-grid .sub-col:nth-child(n) .sub-col-title,
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table th, body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-add-row { background:var(--h-main) !important; color:var(--sr-band-text) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-main-title { color:var(--sr-band-text) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-section-title, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col-title { text-align:left !important; letter-spacing:.1em !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table th { border-color:rgba(255,255,255,.14) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table th.sub { background:var(--h-dark) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table td { background:var(--sr-card); color:var(--sr-text); border-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tbody tr:hover td { background:var(--sr-card2) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td { background:var(--h-tint2) !important; color:var(--h-ink) !important; border-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.total-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-table tfoot td.grand-total { background:var(--h-dark) !important; color:var(--sr-band-text) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-inp { color:var(--sr-text) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-inp:focus, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-inp:focus { background:var(--sr-input) !important; box-shadow:inset 0 0 0 2px var(--sr-glow-bd) !important; }
-/* sub-section cards */
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-grid { gap:8px !important; padding:8px; border-top:0 !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col { border:1px solid var(--h-line) !important; border-radius:12px; overflow:hidden; background:var(--sr-card); }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr { background:var(--h-tint) !important; border-bottom-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-col-hdr span { color:var(--h-ink) !important; border-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-row { border-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-row:hover { background:var(--sr-card2) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-inp { background:var(--sr-input) !important; color:var(--sr-text) !important; border:1px solid var(--sr-input-bd) !important; border-radius:8px !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-footer { background:var(--h-tint2) !important; border-top-color:var(--h-line) !important; color:var(--h-ink) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-footer span { color:var(--h-ink) !important; border-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-add-row { border-radius:999px !important; padding:6px 14px !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .btn-del-row { background:var(--h-tint) !important; color:var(--h-ink) !important; }
-/* summary column */
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row { border-bottom:1px solid var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.for-row, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.pink-val { background:var(--sr-card) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green { background:var(--h-tint) !important; box-shadow:inset 4px 0 0 var(--h-mid); }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-label { color:var(--h-ink) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-note { color:var(--sr-sub) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.gray-hdr { background:var(--sr-card2) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.net { background:#c7b27c !important; box-shadow:inset 4px 0 0 #a98f4c; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh { background:#35404e !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short { background:#8f4a52 !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.remarks { background:var(--sr-card) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.pink-val .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.for-row .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.gray-hdr .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.remarks .sr-label { color:var(--sr-text) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.net .sr-label { color:#3a2f10 !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh .sr-label, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short .sr-label { color:#f1ece9 !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-note { color:var(--sr-sub) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.coh .sr-note, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short .sr-note { color:rgba(255,255,255,.75) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-inputnote { background:var(--sr-card) !important; color:var(--sr-text) !important; border-bottom-color:var(--h-line) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-inputnote-box { background:var(--sr-input) !important; }
-/* inputs: typable = dim cream + soft blue glow, auto = flat value */
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap input.sr-input:not([readonly]), body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap textarea.sr-remarks {
-  background:var(--sr-input) !important; color:var(--sr-text) !important; -webkit-text-fill-color:var(--sr-text);
-  border:1px solid var(--sr-glow-bd) !important; border-radius:9px !important;
-  box-shadow:0 0 0 2px rgba(var(--sr-glow),.25), 0 0 12px rgba(var(--sr-glow),.4) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap input.sr-input:not([readonly]):hover, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap textarea.sr-remarks:hover { box-shadow:0 0 0 2px rgba(var(--sr-glow),.4), 0 0 14px rgba(var(--sr-glow),.5) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap input.sr-input:not([readonly]):focus, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap textarea.sr-remarks:focus { border-color:var(--sr-glow-bd) !important; box-shadow:0 0 0 3px rgba(var(--sr-glow),.5), 0 0 20px rgba(var(--sr-glow),.65) !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap .sr-input[readonly], body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-wrap .sr-input.readout { background:transparent !important; color:var(--sr-text) !important; -webkit-text-fill-color:var(--sr-text); border:1px solid transparent !important; box-shadow:none !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-input.readout, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.green .sr-input[readonly] { color:var(--h-ink) !important; -webkit-text-fill-color:var(--h-ink); }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.net .sr-input.readout { background:rgba(255,255,255,.3) !important; color:#3a2f10 !important; -webkit-text-fill-color:#3a2f10; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.short .sr-input.readout { background:rgba(236,228,214,.8) !important; color:#5c1119 !important; -webkit-text-fill-color:#5c1119; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-row.for-row .sr-input { background:transparent !important; }
-body.page-h_sales_report:is(.sr-soft,.sr-dark) .sr-input::placeholder, body.page-h_sales_report:is(.sr-soft,.sr-dark) .di-inp::placeholder, body.page-h_sales_report:is(.sr-soft,.sr-dark) .sub-inp::placeholder, body.page-h_sales_report:is(.sr-soft,.sr-dark) textarea::placeholder { color:var(--sr-sub); opacity:.55; }
-body.page-h_sales_report.sr-dark .sr-row.short .sr-input.readout { background:rgba(20,10,12,.45) !important; color:#ffd9dd !important; -webkit-text-fill-color:#ffd9dd; }
-body.page-h_sales_report.sr-dark .sr-row.net .sr-input.readout { background:rgba(0,0,0,.2) !important; color:#fff4d4 !important; -webkit-text-fill-color:#fff4d4; }
-body.page-h_sales_report.sr-dark .sr-row.net { background:#8a7437 !important; }
-body.page-h_sales_report.sr-dark .sr-row.net .sr-label { color:#fff4d4 !important; }
-/* theme switch */
-#srThemeBtn { font-family:var(--font-m); font-size:.72rem; font-weight:700; padding:7px 12px; border-radius:9px; cursor:pointer; background:#fff; color:#1d2a22; border:1px solid #cbd5e1; }
-body.page-h_sales_report.sr-soft #srThemeBtn { background:#e8e4d9; color:#2b2522; border-color:#a9a396; }
-body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb; border-color:#4d3737; }
+body.page-h_sales_report.sr2 .locked-banner { border-radius:12px; }
+body.page-h_sales_report.sr2 #replenRow[style*="display: none"], body.page-h_sales_report.sr2 #replenRow[style*="display:none"] { display:none !important; }
+
+/* ── entry boxes: coloured header band (no dot), Excel-style Name | Amount row ── */
+body.page-h_sales_report.sr2 .sub-col { grid-template-rows:40px auto auto auto; grid-template-areas:"title total" "hdr hdr" "rows rows" "add add"; padding:0 !important; overflow:hidden; background:linear-gradient(var(--acc) 0 40px, var(--card) 40px) !important; }
+body.page-h_sales_report.sr2 .sub-col.sr2-out { background:linear-gradient(var(--neg) 0 40px, var(--card) 40px) !important; }
+body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title { color:#fff !important; margin:0 !important; padding:0 14px !important; justify-content:center !important; text-align:center !important; font-size:.8rem !important; letter-spacing:.08em !important; }
+body.page-h_sales_report.sr2 .sub-col-title::before, body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-col-title::before { display:none !important; content:none !important; }
+body.page-h_sales_report.sr2 .sub-col-hdr { grid-area:hdr; display:grid !important; grid-template-columns:minmax(0,1fr) 98px 22px; gap:6px; padding:7px 12px !important; background:var(--inp) !important; border-bottom:1px solid var(--line) !important; border-top:0 !important; }
+body.page-h_sales_report.sr2 .sub-col-hdr span { font:800 .62rem var(--f) !important; letter-spacing:.1em; text-transform:uppercase; color:var(--mut) !important; border:0 !important; padding:0 !important; background:none !important; text-align:left; }
+body.page-h_sales_report.sr2 .sub-col-hdr span:nth-child(2) { text-align:right; padding-right:8px !important; }
+body.page-h_sales_report.sr2 .sub-rows { padding:2px 12px 0; }
+body.page-h_sales_report.sr2 .sub-row:first-child { border-top:0 !important; }
+body.page-h_sales_report.sr2 .sub-col .btn-add-row { margin:2px 12px 0 !important; padding:9px 2px 8px !important; }
+body.page-h_sales_report.sr2 .sub-footer span:last-child { margin:0 12px 0 0 !important; align-self:center; background:rgba(255,255,255,.22) !important; color:#fff !important; }
+body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { background:rgba(255,255,255,.22) !important; color:#fff !important; }
+body.page-h_sales_report.sr2 .sub-col:focus-within { box-shadow:0 0 0 3px var(--ring); }
+
+/* ── Add Row buttons: clearly visible ── */
+body.page-h_sales_report.sr2 .sr2-dine > .btn-add-row { display:flex !important; align-items:center; justify-content:center; width:auto !important; margin:12px 14px 14px auto !important; padding:9px 22px !important; background:var(--acc) !important; color:#fff !important; border:0 !important; border-radius:10px !important; font:800 .8rem var(--f) !important; letter-spacing:.04em; box-shadow:0 2px 6px rgba(0,0,0,.18) !important; cursor:pointer; }
+body.page-h_sales_report.sr2 .sr2-dine > .btn-add-row:hover { filter:brightness(1.1); color:#fff !important; border:0 !important; }
+body.page-h_sales_report.sr2 .di-table th { letter-spacing:.03em !important; font-size:.5rem !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none; }
+body.page-h_sales_report.sr2 .sr2-cap span + span::before { content:'·'; margin-right:8px; opacity:.7; }
+body.page-h_sales_report.sr2 .sr2-hero .sr2-cap span + span::before { content:'·'; margin-right:8px; }
+body.page-h_sales_report.sr2 .sr2-hero { flex:0 0 auto; position:relative; z-index:2; }
+/* zoomed-out / big numbers: keep typed values fully visible */
+body.page-h_sales_report.sr2 .sr2-g .sr-input:not(.readout) { width:140px !important; min-width:0; font-size:clamp(.74rem,1.5cqh,.9rem) !important; padding:0 8px !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-input.readout { width:140px !important; font-size:clamp(.74rem,1.5cqh,.9rem) !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-label { font-size:clamp(.7rem,1.5cqh,.84rem) !important; min-width:0; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input { width:150px !important; font-size:clamp(.8rem,1.7cqh,.95rem) !important; padding:0 8px !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:150px !important; font-size:clamp(.85rem,1.9cqh,1.05rem) !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap { gap:6px; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { font-size:.62rem; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { font-size:clamp(1.3rem,3.6cqh,1.9rem) !important; }
+/* ── box total: just the number, tinted, under the entries ── */
+body.page-h_sales_report.sr2 .sub-col { grid-template-columns:minmax(0,1fr) !important; grid-template-areas:"title" "hdr" "rows" "total" "add" !important; grid-template-rows:40px auto auto auto auto !important; }
+body.page-h_sales_report.sr2 .sub-footer span:last-child, body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { grid-area:total; display:block !important; text-align:right; margin:6px 12px 0 !important; padding:7px 12px !important; border-radius:8px !important; background:var(--accbg) !important; color:var(--acc) !important; font:800 .95rem var(--m) !important; box-shadow:inset 0 0 0 1.5px var(--acc) !important; }
+body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { background:var(--negbg) !important; color:var(--neg) !important; box-shadow:inset 0 0 0 1.5px var(--neg) !important; }
+body.page-h_sales_report.sr2 .sub-footer span:last-child::before { content:none !important; }
+/* ── Dine-in / extra tables: same coloured title band + readable column headings ── */
+body.page-h_sales_report.sr2 .sr2-dine .sr-section-title { display:flex !important; justify-content:center; align-items:center; background:var(--acc) !important; color:#fff !important; padding:0 14px !important; height:40px; font:800 .8rem var(--f) !important; letter-spacing:.08em !important; text-align:center !important; }
+body.page-h_sales_report.sr2 .sr2-dine.extra-section-col .sr-section-title::before { display:none !important; }
+body.page-h_sales_report.sr2 .di-table th { font-size:.64rem !important; letter-spacing:.06em !important; color:var(--ink) !important; font-weight:800 !important; padding:10px 6px !important; text-align:center !important; }
+/* ═══ calmer, cleaner polish (final layer) ═══ */
+body.page-h_sales_report.sr2 .sub-col { background:var(--card) !important; border:1px solid var(--line) !important; border-radius:12px !important; box-shadow:0 1px 2px rgba(15,23,42,.05) !important; grid-template-areas:"title" "hdr" "rows" "add" "total" !important; grid-template-rows:auto auto auto auto auto !important; }
+body.page-h_sales_report.sr2 .sub-col.sr2-out { background:var(--card) !important; }
+body.page-h_sales_report.sr2 .sub-col:focus-within { box-shadow:0 0 0 3px var(--ring) !important; border-color:var(--acc) !important; }
+body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title { background:var(--accbg) !important; color:var(--acc) !important; justify-content:flex-start !important; text-align:left !important; padding:11px 14px !important; font-size:.72rem !important; letter-spacing:.09em !important; border-bottom:1px solid var(--line) !important; }
+body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col.sr2-out:nth-child(n) .sub-col-title { background:var(--negbg) !important; color:var(--neg) !important; }
+body.page-h_sales_report.sr2 .sub-col-hdr { background:transparent !important; padding:8px 14px 2px !important; }
+body.page-h_sales_report.sr2 .sub-rows { padding:2px 14px 0 !important; }
+body.page-h_sales_report.sr2 .sub-col .btn-add-row { margin:2px 14px 6px !important; }
+body.page-h_sales_report.sr2 .sub-footer span:last-child, body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { grid-area:total; margin:0 !important; padding:10px 14px !important; border-radius:0 !important; box-shadow:none !important; border-top:1px solid var(--line) !important; background:var(--accbg) !important; color:var(--acc) !important; font:800 1.02rem var(--m) !important; text-align:right; }
+body.page-h_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { background:var(--negbg) !important; color:var(--neg) !important; }
+/* dine-in + extra tables */
+body.page-h_sales_report.sr2 .sr2-dine .sr-section-title { background:var(--accbg) !important; color:var(--acc) !important; justify-content:flex-start !important; text-align:left !important; height:auto; padding:11px 16px !important; font-size:.72rem !important; letter-spacing:.09em !important; border-bottom:1px solid var(--line) !important; }
+body.page-h_sales_report.sr2 .di-table th { background:transparent !important; color:var(--mut) !important; font-size:.62rem !important; font-weight:700 !important; text-transform:uppercase; border-bottom:1px solid var(--line) !important; }
+body.page-h_sales_report.sr2 .di-table tfoot tr:first-child td { background:var(--inp) !important; color:var(--ink) !important; font-size:.8rem !important; padding:8px 12px !important; }
+body.page-h_sales_report.sr2 .di-table tfoot tr:last-child td { background:var(--accbg) !important; background-image:none !important; color:var(--acc) !important; font-size:1rem !important; padding:10px 12px !important; border-top:1px solid var(--line) !important; }
+body.page-h_sales_report.sr2 .di-table tfoot td.total-label { color:var(--acc) !important; }
+body.page-h_sales_report.sr2 .sr2-dine > .btn-add-row { padding:8px 18px !important; font-size:.76rem !important; border-radius:8px !important; box-shadow:none !important; }
+/* darker title bars */
+body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title, body.page-h_sales_report.sr2 .sr2-dine .sr-section-title { background:var(--acc) !important; color:#fff !important; border-bottom:0 !important; }
+body.page-h_sales_report.sr2 .sr-section .sub-grid .sub-col.sr2-out:nth-child(n) .sub-col-title { background:var(--neg) !important; color:#fff !important; }
+body.page-h_sales_report.sr2-dark .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title, body.page-h_sales_report.sr2-dark .sr2-dine .sr-section-title, body.page-h_sales_report.sr2-dark .sr-section .sub-grid .sub-col.sr2-out:nth-child(n) .sub-col-title { color:#0b1210 !important; }
+
+/* ── H branch: red identity, amber for deductions ── */
+body.page-h_sales_report.sr2-light { --acc:#b91c1c; --accbg:#fee2e2; --neg:#b45309; --negbg:#fef3c7; --hero1:#1f1112; --hero2:#5b1522; --ring:rgba(185,28,28,.2); }
+body.page-h_sales_report.sr2-dark  { --bg:#140d0d; --card:#1e1414; --ink:#f3e8e6; --mut:#b49e99; --line:#3a2626; --inp:#170f0f; --acc:#f87171; --accbg:#3a1517; --neg:#fbbf24; --negbg:#3a2a0a; --hero1:#1a0b0c; --hero2:#4a1219; --ring:rgba(248,113,113,.28); }
+body.page-h_sales_report.sr2 .sr2-rem textarea, body.page-h_sales_report.sr2 .sr2-rem textarea:hover { box-shadow:none !important; }
+body.page-h_sales_report.sr2 .sr2-rem textarea:focus { box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-h_sales_report.sr2 .sr2-g .sr-input:not(.readout):hover { box-shadow:none !important; }
+/* Opening / Closing cashier pills sit in the top bar */
+body.page-h_sales_report.sr2 .sr2-bar .sr-oc-bar { display:contents !important; }
+body.page-h_sales_report.sr2 .sr2-bar .sr-oc-field { order:4; flex:1 1 190px; max-width:250px; min-width:0; margin:0 !important; padding:0 12px !important; height:40px; background:var(--card) !important; border:1px solid var(--line) !important; border-radius:12px; display:flex !important; align-items:center; gap:8px !important; }
+body.page-h_sales_report.sr2 .sr-oc-field label { font:700 .62rem var(--f) !important; letter-spacing:.12em; text-transform:uppercase; color:var(--mut) !important; white-space:nowrap; margin:0 !important; }
+body.page-h_sales_report.sr2 .sr-oc-field input { flex:1; min-width:0; background:transparent !important; border:0 !important; box-shadow:none !important; color:var(--ink) !important; font:600 .88rem var(--f) !important; padding:0 !important; height:100%; outline:none; }
+body.page-h_sales_report.sr2 .sr-oc-field:focus-within { border-color:var(--acc) !important; box-shadow:0 0 0 3px var(--ring) !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input, body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input:hover { box-shadow:none !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input:focus { box-shadow:0 0 0 3px rgba(252,165,165,.3) !important; border-color:#fca5a5 !important; }
+body.page-h_sales_report.sr2 .sr2-hero .sr-label span { display:none !important; }
+body.page-h_sales_report.sr2 .di-table th { letter-spacing:.03em !important; font-size:.5rem !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none; }
+body.page-h_sales_report.sr2 #di-table thead tr:first-child th:nth-child(4) { width:24%; }
+/* Advance Deposit / Bar Sales tables as cards */
+body.page-h_sales_report.sr2 .extra-sections-row { display:grid !important; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:12px !important; margin:0 0 16px !important; }
+body.page-h_sales_report.sr2 .extra-sections-row .sr-section.sr2-dine { margin:0 !important; }
+body.page-h_sales_report.sr2 .sr2-dine.extra-section-col .sr-section-title { display:flex !important; align-items:center; gap:8px; text-align:left !important; }
+body.page-h_sales_report.sr2 .sr2-dine.extra-section-col .sr-section-title::before { content:''; width:9px; height:9px; border-radius:50%; background:var(--acc); }
+body.page-h_sales_report.sr2 .extra-table th:first-child, body.page-h_sales_report.sr2 .extra-table td:first-child { width:34%; }
+body.page-h_sales_report.sr2 .extra-table { table-layout:fixed; }
+body.page-h_sales_report.sr2 .extra-table .di-inp.txt { text-align:left; font-family:var(--f) !important; }
 </style>
 <script>
-// Eye-comfort theme: Original (default) → Soft → Dark. Remembered per browser.
+// New design: Light (default) / Dark. Remembered per browser. (design only)
 (function () {
-  var order = ['sr-orig', 'sr-soft', 'sr-dark'], names = {'sr-soft': '🌿 Soft', 'sr-dark': '🌙 Dark', 'sr-orig': '☀ Original'};
-  var cur = 'sr-orig';
-  try { var sv = localStorage.getItem('hSrTheme'); if (order.indexOf(sv) >= 0) cur = sv; } catch (e) {}
+  var cur = 'sr2-light';
+  try { var sv = localStorage.getItem('hSr2Theme'); if (sv === 'sr2-light' || sv === 'sr2-dark') cur = sv; } catch (e) {}
   function apply() {
-    order.forEach(function (c) { document.body.classList.remove(c); });
-    document.body.classList.add(cur);
-    var b = document.getElementById('srThemeBtn'); if (b) b.textContent = names[cur];
+    document.body.classList.remove('sr-soft', 'sr-dark', 'sr-orig', 'sr2-light', 'sr2-dark');
+    document.body.classList.add('sr2', cur);
+    var b = document.getElementById('srThemeBtn'); if (b) b.textContent = cur === 'sr2-dark' ? '☀ Light' : '🌙 Dark';
   }
   window.srCycleTheme = function () {
-    cur = order[(order.indexOf(cur) + 1) % order.length];
-    try { localStorage.setItem('hSrTheme', cur); } catch (e) {}
+    cur = cur === 'sr2-dark' ? 'sr2-light' : 'sr2-dark';
+    try { localStorage.setItem('hSr2Theme', cur); } catch (e) {}
     apply();
+  };
+  // ‹ › buttons next to the date
+  window.srStepDate = function (d) {
+    var f = document.querySelector('.sr-controls form'), i = f && f.querySelector('input[type=date]');
+    if (!i || !i.value) return;
+    var t = new Date(i.value + 'T00:00:00'); t.setDate(t.getDate() + d);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    i.value = t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate());
+    i.dispatchEvent(new Event('change', {bubbles: true}));
   };
   document.addEventListener('DOMContentLoaded', function () {
     var ctl = document.querySelector('.sr-controls');
-    var btn = document.createElement('button'); btn.type = 'button'; btn.id = 'srThemeBtn'; btn.title = 'Change screen brightness / colours';
+    var btn = document.createElement('button'); btn.type = 'button'; btn.id = 'srThemeBtn'; btn.title = 'Switch Light / Dark';
     btn.onclick = window.srCycleTheme;
     if (ctl) ctl.appendChild(btn); else document.body.appendChild(btn);
     apply();
   });
-  document.body && document.body.classList.add(cur);
+  document.body && document.body.classList.add('sr2', cur);
+  apply();
+
+  // live group subtotals + Short/Over colour (reads the figures the page already calculates)
+  function num(id) { var e = document.getElementById(id); if (!e) return 0; var v = parseFloat(String(e.value != null && e.value !== '' ? e.value : e.textContent).replace(/,/g, '')); return isNaN(v) ? 0 : v; }
+  function fmt(n) { return '₱' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+  var LESS = ['maya_swipe','unpaid_med_credit','paid_med_card','advance_paid_appigo','grab_sales','gcash','gift_card','discount','bank_transfer_cheque','cash_out_interest','gift_cert_sold_tips','pcf_expenses','other_expenses'];
+  function tick() {
+    var a = document.getElementById('sr2-sum-gross'); if (a) a.textContent = 'Gross ' + fmt(num('gross_sales'));
+    var b = document.getElementById('sr2-sum-swipe'); if (b) b.textContent = fmt(num('total_swipe'));
+    var c = document.getElementById('sr2-sum-less');  if (c) c.textContent = '− ' + fmt(LESS.reduce(function (s, id) { return s + num(id); }, 0));
+    var r = document.querySelector('.sr-row.short');
+    if (r) { var so = num('short_over'); r.setAttribute('data-state', Math.abs(so) < 0.005 ? 'ok' : (so < 0 ? 'short' : 'over')); }
+  }
+  // size the summary rail to exactly the visible screen height (no inner scrolling)
+  function fit() {
+    var w = document.querySelector('.sr-split .sr-wrap'), sp = document.querySelector('.sr-split');
+    if (!w || !sp) return;
+    if (window.innerWidth <= 1180) { w.style.height = ''; return; }
+    var t = Math.max(12, sp.getBoundingClientRect().top);
+    w.style.height = Math.max(430, window.innerHeight - t - 12) + 'px';
+  }
+  document.addEventListener('scroll', fit, true); window.addEventListener('resize', fit);
+  document.addEventListener('DOMContentLoaded', fit); window.addEventListener('load', fit); setTimeout(fit, 250);
+  setInterval(tick, 300); document.addEventListener('DOMContentLoaded', tick);
 })();
 </script>
 <div class="sr-split">
@@ -679,6 +869,7 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
 </div>
 <?php endif; ?>
 
+<div class="sr2-bar">
 <!-- Opening / Closing Cashier -->
 <div class="sr-oc-bar">
   <div class="sr-oc-field">
@@ -694,7 +885,9 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
 <!-- Controls -->
 <div class="sr-controls">
   <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button type="button" class="sr2-step prev" onclick="srStepDate(-1)" title="Previous day">‹</button>
     <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($fDate) ?>" onchange="this.form.submit()">
+    <button type="button" class="sr2-step next" onclick="srStepDate(1)" title="Next day">›</button>
     <button type="button" class="btn btn-primary" onclick="saveAll()">💾 Save All</button>
     <a href="h_sales_report.php?export_csv=1&date=<?= htmlspecialchars($fDate) ?>" class="btn btn-ghost">⬇ Download Excel</a>
     <span id="saveStatus" class="sr-save-status"></span>
@@ -724,11 +917,12 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
   <span class="lock-badge-static" title="Locked by management">🔒 Locked</span>
   <?php endif; ?>
 </div>
+</div>
 
 <!-- ══════════════════════════════════════════════════════════
      DINE IN SECTION
 ════════════════════════════════════════════════════════════ -->
-<div class="sr-section">
+<div class="sr-section sr2-dine">
   <div class="sr-section-title dark-red">DINE IN</div>
   <div style="overflow-x:auto">
   <table class="di-table" id="di-table">
@@ -798,83 +992,54 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
   <button class="btn-add-row" onclick="addDiRow()">+ Add Row</button>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     SUB-SECTIONS ROW 1: Marketing Pullout | GRAB | Expenses | Late Payment
-════════════════════════════════════════════════════════════ -->
+<?php
+$renderCol = function ($sec, $label, $cls = '') use ($details) {
+    $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+?>
+    <div class="sub-col <?= $cls ?>" data-section="<?= $sec ?>">
+      <div class="sub-col-title"><?= $label ?></div>
+      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
+      <div class="sub-rows">
+        <?php foreach ($secRows as $sr): ?>
+        <div class="sub-row">
+          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
+          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
+          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
+      <div class="sub-footer">
+        <span>Total</span>
+        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
+      </div>
+    </div>
+<?php }; ?>
+
+<div class="sr2-eyebrow">Sales &amp; payments <i>— type each entry; totals feed the Summary</i></div>
 <div class="sr-section">
   <div class="sub-grid" id="subsec-row1">
-
     <?php
-    $subsec1 = [
-        'marketing_pullout' => 'Marketing Pullout',
-        'grab'              => 'GRAB',
-        'expenses'          => 'EXPENSES',
-        'late_payment'      => 'LATE PAYMENT',
-    ];
-    foreach ($subsec1 as $sec => $label):
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+    $renderCol('grab', 'GRAB');
+    $renderCol('late_payment', 'LATE PAYMENT');
+    $renderCol('advance_payment', 'ADVANCE PAYMENT');
     ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
-      <div class="sub-col-title"><?= $label ?></div>
-      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
-      <div class="sub-rows">
-        <?php foreach ($secRows as $sr): ?>
-        <div class="sub-row">
-          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-      <div class="sub-footer">
-        <span>Total</span>
-        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-      </div>
-    </div>
-    <?php endforeach; ?>
-
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     SUB-SECTIONS ROW 2: Advance Payment | GC Sponsorship | GC Sold
-════════════════════════════════════════════════════════════ -->
+<div class="sr2-eyebrow">Pull-outs &amp; expenses</div>
 <div class="sr-section">
-  <div class="sub-grid three-col" id="subsec-row2">
-
+  <div class="sub-grid" id="subsec-row2">
     <?php
-    $subsec2 = [
-        'advance_payment'  => 'ADVANCE PAYMENT',
-        'gc_sponsorship'   => 'GC SPONSORSHIP',
-        'gc_sold'          => 'GC SOLD',
-    ];
-    foreach ($subsec2 as $sec => $label):
-        $secRows = $details[$sec] ?? [['item_name'=>'','amount'=>0]];
+    $renderCol('marketing_pullout', 'MARKETING PULLOUT', 'sr2-out');
+    $renderCol('expenses', 'EXPENSES', 'sr2-out');
+    $renderCol('gc_sponsorship', 'GC SPONSORSHIP', 'sr2-out');
+    $renderCol('gc_sold', 'GC SOLD', 'sr2-out');
     ?>
-    <div class="sub-col" data-section="<?= $sec ?>">
-      <div class="sub-col-title"><?= $label ?></div>
-      <div class="sub-col-hdr"><span>Name</span><span>Amount</span><span></span></div>
-      <div class="sub-rows">
-        <?php foreach ($secRows as $sr): ?>
-        <div class="sub-row">
-          <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
-          <button class="btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" style="margin:2px 4px">✕</button>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <button class="btn-add-row" onclick="addSubRow('<?= $sec ?>')">+ Add</button>
-      <div class="sub-footer">
-        <span>Total</span>
-        <span id="sub-tot-<?= $sec ?>">P<?= number_format(array_sum(array_column($secRows,'amount')),2) ?></span>
-      </div>
-    </div>
-    <?php endforeach; ?>
-
   </div>
 </div>
 
+<div class="sr2-eyebrow">Advance deposit &amp; bar sales</div>
 <!-- ══════════════════════════════════════════════════════════
      EXTRA SECTIONS: Advance Deposit | Bar Sales
 ════════════════════════════════════════════════════════════ -->
@@ -883,7 +1048,7 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
     $secRows = $extraDetails[$sec] ?? [];
     $ncols   = count($cfg['cols']);
 ?>
-<div class="sr-section extra-section-col">
+<div class="sr-section sr2-dine extra-section-col">
   <div class="sr-section-title dark-red"><?= $cfg['label'] ?></div>
   <div style="overflow-x:auto">
   <table class="di-table extra-table" data-section="<?= $sec ?>">
@@ -936,14 +1101,8 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
 ════════════════════════════════════════════════════════════ -->
 <div class="sr-wrap">
 <div class="sr-card">
-  <div class="sr-title-row"><div class="sr-main-title">Summary Report</div></div>
-  <div class="sr-inputnote"><span class="sr-inputnote-box"></span> Glowing blue boxes = you can type here. The other boxes are filled in automatically.</div>
-
-  <div class="sr-row for-row">
-    <div class="sr-label" style="text-align:left;flex:1">For</div>
-    <div class="sr-value-wrap"><span class="sr-input readout" style="font-size:.8rem"><?= date('n/j/Y', strtotime($fDate)) ?></span></div>
-  </div>
-
+<div class="sr2-g" style="--n:7">
+  <div class="sr2-gh">Sales build-up<span id="sr2-sum-gross"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Gross Sales <span style="font-size:.65rem;opacity:.7">(auto: Z Reading + Additional Sales − Service Charge + Discount − Marketing Pull Out)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="gross_sales" value="<?= $fmt($grossSalesCalc) ?>" readonly tabindex="-1"></div>
@@ -961,6 +1120,17 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
     <div class="sr-label">Z Reading Gross <span style="font-size:.65rem;opacity:.7">(auto: DINE IN + Marketing Pullout + Grab + GC Sponsorship + Bar Sales + Carwash Sales)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="z_reading_gross" value="<?= $fmt($zReadingGrossCalc) ?>" readonly tabindex="-1"></div>
   </div>
+  <div class="sr-row pink-val">
+    <div class="sr-label">Marketing Pull Out <span style="font-size:.65rem;opacity:.7">(auto from Marketing Pullout)</span></div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="marketing_pull_out" value="<?= $fmt($marketingCalc) ?>" readonly tabindex="-1"></div>
+  </div>
+  <div class="sr-row pink-val">
+    <div class="sr-label">Bar Sales <span style="font-size:.65rem;opacity:.7">(auto from Bar Sales)</span></div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="bar_sales" value="<?= $fmt($barCalc) ?>" readonly tabindex="-1"></div>
+  </div>
+</div>
+<div class="sr2-g" style="--n:4">
+  <div class="sr2-gh">Swipe breakdown<span id="sr2-sum-swipe"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Total Swipe <span style="font-size:.65rem;opacity:.7">(auto: Deposit + Late Payment + Maya)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="total_swipe" value="<?= $fmt($v('deposit_swipe_card')+$v('late_payment_card')+$v('maya_swipe')) ?>" readonly tabindex="-1"></div>
@@ -973,6 +1143,9 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
     <div class="sr-label">Late Payment (Card) <span style="font-size:.65rem;opacity:.7">(auto from Late Payment)</span></div>
     <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="late_payment_card" value="<?= $v('late_payment_card') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
   </div>
+</div>
+<div class="sr2-g" style="--n:10">
+  <div class="sr2-gh neg">Less from Gross Sales → Net Sales<span id="sr2-sum-less"></span></div>
   <div class="sr-row green">
     <div class="sr-label">Sales of the day Swipe (MAYA)</div>
     <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="maya_swipe" value="<?= $v('maya_swipe') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
@@ -987,20 +1160,12 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="grab_sales" value="<?= $fmt($grabCalc) ?>" readonly tabindex="-1"></div>
   </div>
   <div class="sr-row pink-val">
-    <div class="sr-label">Bar Sales <span style="font-size:.65rem;opacity:.7">(auto from Bar Sales)</span></div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="bar_sales" value="<?= $fmt($barCalc) ?>" readonly tabindex="-1"></div>
-  </div>
-  <div class="sr-row pink-val">
     <div class="sr-label">G-Cash <span style="font-size:.65rem;opacity:.7">(auto from Palawan Pay)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="gcash" value="<?= $fmt($gcashCalc) ?>" readonly tabindex="-1"></div>
   </div>
   <div class="sr-row pink-val">
     <div class="sr-label">Gift Card <span style="font-size:.65rem;opacity:.7">(auto from GC Sponsorship)</span></div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="gift_card" value="<?= $fmt($giftCardCalc) ?>" readonly tabindex="-1"></div>
-  </div>
-  <div class="sr-row pink-val">
-    <div class="sr-label">Marketing Pull Out <span style="font-size:.65rem;opacity:.7">(auto from Marketing Pullout)</span></div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="marketing_pull_out" value="<?= $fmt($marketingCalc) ?>" readonly tabindex="-1"></div>
   </div>
   <div class="sr-row pink-val">
     <div class="sr-label">Discount <span style="font-size:.65rem;opacity:.7">(auto from Discount col)</span></div>
@@ -1018,7 +1183,9 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
     <div class="sr-label">Other Expenses</div>
     <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="other_expenses" value="<?= $v('other_expenses') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
   </div>
-
+</div>
+<div class="sr2-hero">
+  <div class="sr2-cap"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
   <div class="sr-row net">
     <div class="sr-label">Net Sales</div>
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_sales" value="<?= $fmt($grossSalesCalc - $v('maya_swipe') - $unpaidMedCalc - $grabCalc - $gcashCalc - $giftCardCalc - $bankTransferCalc - $pcfCalc - $v('other_expenses') - $discountCalc) ?>" readonly tabindex="-1"></div>
@@ -1033,10 +1200,10 @@ body.page-h_sales_report.sr-dark #srThemeBtn { background:#2c2020; color:#e9dedb
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="short_over" value="0.00" readonly tabindex="-1"></div>
     <div class="sr-note" style="color:#ffd8d8">(if "-" sign means short)</div>
   </div>
-  <div class="sr-row remarks">
-    <div class="sr-label">Remarks</div>
-    <div class="sr-value-wrap"><textarea class="sr-remarks" id="remarks" rows="3" maxlength="2000" placeholder="Add notes for this day's report (e.g. reason for short/over, adjustments, reminders)…"><?= htmlspecialchars($vs('remarks')) ?></textarea></div>
-  </div>
+</div>
+<div class="sr2-rem"><label for="remarks">Remarks</label>
+<textarea class="sr-remarks" id="remarks" rows="3" maxlength="2000" placeholder="Add notes for this day's report (e.g. reason for short/over, adjustments, reminders)…"><?= htmlspecialchars($vs('remarks')) ?></textarea>
+</div>
 </div>
 </div>
 </div><!-- /.sr-split -->
