@@ -611,7 +611,7 @@ body.page-stella_sales_report.sr2 .sr-split .sr-wrap { order:-1 !important; flex
 body.page-stella_sales_report.sr2 .sr-split .sr-card { height:100% !important; display:flex !important; flex-direction:column; gap:.8cqh; background:transparent !important; border:0 !important; box-shadow:none !important; overflow:hidden !important; border-radius:0 !important; }
 body.page-stella_sales_report.sr2 .sr-title-row { display:none !important; }
 body.page-stella_sales_report.sr2 .sr2-hero { flex:0 0 auto; background:linear-gradient(160deg,var(--hero1),var(--hero2)); color:#e2e8f0; border-radius:14px; padding:1.5cqh 14px 1.6cqh; box-shadow:0 10px 26px rgba(15,23,42,.2); }
-body.page-stella_sales_report.sr2 .sr2-hero .sr2-cap { display:flex; justify-content:space-between; font:800 clamp(.5rem,1.2cqh,.62rem) var(--f); letter-spacing:.14em; text-transform:uppercase; color:#7dd3c8; margin-bottom:.4cqh; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr2-cap { display:flex; justify-content:flex-start; gap:8px; font:800 clamp(.5rem,1.2cqh,.62rem) var(--f); letter-spacing:.14em; text-transform:uppercase; color:#7dd3c8; margin-bottom:.4cqh; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-row { min-height:0 !important; flex:none !important; background:none !important; border:0 !important; padding:0 !important; overflow:visible !important; gap:8px; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-label { text-align:left !important; padding:0 !important; color:#cbd5e1 !important; font:600 clamp(.62rem,1.55cqh,.78rem) var(--f) !important; font-style:normal !important; flex:1; }
 body.page-stella_sales_report.sr2 .sr2-hero .sr-label span { display:inline !important; font-size:.6rem !important; opacity:.7; color:#cbd5e1 !important; }
@@ -661,6 +661,38 @@ body.page-stella_sales_report.sr2 .sr2-rem textarea:focus { border-color:var(--a
 }
 body.page-stella_sales_report.sr2 .locked-banner { border-radius:12px; }
 body.page-stella_sales_report.sr2 #replenRow[style*="display: none"], body.page-stella_sales_report.sr2 #replenRow[style*="display:none"] { display:none !important; }
+
+/* ── entry boxes: coloured header band (no dot), Excel-style Name | Amount row ── */
+body.page-stella_sales_report.sr2 .sub-col { grid-template-rows:40px auto auto auto; grid-template-areas:"title total" "hdr hdr" "rows rows" "add add"; padding:0 !important; overflow:hidden; background:linear-gradient(var(--acc) 0 40px, var(--card) 40px) !important; }
+body.page-stella_sales_report.sr2 .sub-col.sr2-out { background:linear-gradient(var(--neg) 0 40px, var(--card) 40px) !important; }
+body.page-stella_sales_report.sr2 .sr-section .sub-grid .sub-col:nth-child(n) .sub-col-title { color:#fff !important; margin:0 !important; padding:0 14px !important; justify-content:center !important; text-align:center !important; font-size:.8rem !important; letter-spacing:.08em !important; }
+body.page-stella_sales_report.sr2 .sub-col-title::before, body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-col-title::before { display:none !important; content:none !important; }
+body.page-stella_sales_report.sr2 .sub-col-hdr { grid-area:hdr; display:grid !important; grid-template-columns:minmax(0,1fr) 98px 22px; gap:6px; padding:7px 12px !important; background:var(--inp) !important; border-bottom:1px solid var(--line) !important; border-top:0 !important; }
+body.page-stella_sales_report.sr2 .sub-col-hdr span { font:800 .62rem var(--f) !important; letter-spacing:.1em; text-transform:uppercase; color:var(--mut) !important; border:0 !important; padding:0 !important; background:none !important; text-align:left; }
+body.page-stella_sales_report.sr2 .sub-col-hdr span:nth-child(2) { text-align:right; padding-right:8px !important; }
+body.page-stella_sales_report.sr2 .sub-rows { padding:2px 12px 0; }
+body.page-stella_sales_report.sr2 .sub-row:first-child { border-top:0 !important; }
+body.page-stella_sales_report.sr2 .sub-col .btn-add-row { margin:2px 12px 0 !important; padding:9px 2px 8px !important; }
+body.page-stella_sales_report.sr2 .sub-footer span:last-child { margin:0 12px 0 0 !important; align-self:center; background:rgba(255,255,255,.22) !important; color:#fff !important; }
+body.page-stella_sales_report.sr2 .sub-col.sr2-out .sub-footer span:last-child { background:rgba(255,255,255,.22) !important; color:#fff !important; }
+body.page-stella_sales_report.sr2 .sub-col:focus-within { box-shadow:0 0 0 3px var(--ring); }
+
+/* ── Add Row buttons: clearly visible ── */
+body.page-stella_sales_report.sr2 .sr2-dine > .btn-add-row { display:flex !important; align-items:center; justify-content:center; width:auto !important; margin:12px 14px 14px auto !important; padding:9px 22px !important; background:var(--acc) !important; color:#fff !important; border:0 !important; border-radius:10px !important; font:800 .8rem var(--f) !important; letter-spacing:.04em; box-shadow:0 2px 6px rgba(0,0,0,.18) !important; cursor:pointer; }
+body.page-stella_sales_report.sr2 .sr2-dine > .btn-add-row:hover { filter:brightness(1.1); color:#fff !important; border:0 !important; }
+body.page-stella_sales_report.sr2 .di-table th { letter-spacing:.03em !important; font-size:.5rem !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none; }
+body.page-stella_sales_report.sr2 .sr2-cap span + span::before { content:'·'; margin-right:8px; opacity:.7; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr2-cap span + span::before { content:'·'; margin-right:8px; }
+body.page-stella_sales_report.sr2 .sr2-hero { flex:0 0 auto; position:relative; z-index:2; }
+/* zoomed-out / big numbers: keep typed values fully visible */
+body.page-stella_sales_report.sr2 .sr2-g .sr-input:not(.readout) { width:140px !important; min-width:0; font-size:clamp(.74rem,1.5cqh,.9rem) !important; padding:0 8px !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-input.readout { width:140px !important; font-size:clamp(.74rem,1.5cqh,.9rem) !important; }
+body.page-stella_sales_report.sr2 .sr2-g .sr-label { font-size:clamp(.7rem,1.5cqh,.84rem) !important; min-width:0; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.coh .sr-input { width:150px !important; font-size:clamp(.8rem,1.7cqh,.95rem) !important; padding:0 8px !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-input { width:150px !important; font-size:clamp(.85rem,1.9cqh,1.05rem) !important; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap { gap:6px; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.short .sr-value-wrap::after { font-size:.62rem; }
+body.page-stella_sales_report.sr2 .sr2-hero .sr-row.net .sr-input { font-size:clamp(1.3rem,3.6cqh,1.9rem) !important; }
 </style>
 <script>
 // New design: Light (default) / Dark. Remembered per browser. (design only)
@@ -919,30 +951,6 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
 ════════════════════════════════════════════════════════════ -->
 <div class="sr-wrap">
 <div class="sr-card">
-<div class="sr2-hero">
-  <div class="sr2-cap"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
-  <div class="sr-row net">
-    <div class="sr-label">Net Sales</div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_sales" value="<?= $fmt($v('net_sales')) ?>" readonly tabindex="-1"></div>
-  </div>
-  <div class="sr-row coh">
-    <div class="sr-label">COH(Cash on Hand)</div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="coh" value="<?= $v('coh') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
-    <div class="sr-note" style="color:#cfd8ea">(cash sales only except SC)</div>
-  </div>
-  <div class="sr-row coh" id="replenRow" style="display:none">
-    <div class="sr-label">Cash Replenishment <span style="font-weight:400;font-size:.7em">(auto when Net Sales is negative)</span></div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="cash_replenishment" value="<?= $v('cash_replenishment') ?: '' ?>" oninput="replenTyped()" placeholder="0.00" data-saved="<?= htmlspecialchars((string)($v('cash_replenishment') ?: 0)) ?>"></div>
-    <div class="sr-note" style="color:#cfd8ea">(cash from the vault used to cover the shortfall)</div>
-  </div>
-  <div class="sr-row short">
-    <div class="sr-label">Short/Over</div>
-    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="short_over" value="<?= $fmt($v('short_over')) ?>" readonly tabindex="-1"></div>
-    <div class="sr-note" style="color:#ffd8d8">(if "-" sign means short)</div>
-  </div>
-
-  
-</div>
 <div class="sr2-g" style="--n:5">
   <div class="sr2-gh">Sales build-up<span id="sr2-sum-gross"></span></div>
   <div class="sr-row green">
@@ -1031,6 +1039,30 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     <div class="sr-label">Other Expenses</div>
     <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="other_expenses" value="<?= $v('other_expenses') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
   </div>
+</div>
+<div class="sr2-hero">
+  <div class="sr2-cap"><span>Summary report</span><span><?= date('D, M j, Y', strtotime($fDate)) ?></span></div>
+  <div class="sr-row net">
+    <div class="sr-label">Net Sales</div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="net_sales" value="<?= $fmt($v('net_sales')) ?>" readonly tabindex="-1"></div>
+  </div>
+  <div class="sr-row coh">
+    <div class="sr-label">COH(Cash on Hand)</div>
+    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="coh" value="<?= $v('coh') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
+    <div class="sr-note" style="color:#cfd8ea">(cash sales only except SC)</div>
+  </div>
+  <div class="sr-row coh" id="replenRow" style="display:none">
+    <div class="sr-label">Cash Replenishment <span style="font-weight:400;font-size:.7em">(auto when Net Sales is negative)</span></div>
+    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="cash_replenishment" value="<?= $v('cash_replenishment') ?: '' ?>" oninput="replenTyped()" placeholder="0.00" data-saved="<?= htmlspecialchars((string)($v('cash_replenishment') ?: 0)) ?>"></div>
+    <div class="sr-note" style="color:#cfd8ea">(cash from the vault used to cover the shortfall)</div>
+  </div>
+  <div class="sr-row short">
+    <div class="sr-label">Short/Over</div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="short_over" value="<?= $fmt($v('short_over')) ?>" readonly tabindex="-1"></div>
+    <div class="sr-note" style="color:#ffd8d8">(if "-" sign means short)</div>
+  </div>
+
+  
 </div>
 
   <!-- Remarks -->
@@ -1651,4 +1683,4 @@ body.xl-dragging, body.xl-dragging * { user-select:none !important; cursor:cross
 })();
 </script>
 </body>
-</html>s
+</html>
