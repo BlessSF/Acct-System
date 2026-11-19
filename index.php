@@ -201,6 +201,43 @@ body { background:#f6f7f9; color:#1c2026; }
 .tile-ic { margin:0; width:38px; height:38px; flex:none; }
 .tile-l { flex:1; text-align:left; }
 .tile-branch { min-height:56px; }
+
+/* ── a bit more life ── */
+.auth-shell { background:radial-gradient(900px 420px at 50% -80px, rgba(15,123,92,.16), transparent 70%), radial-gradient(circle at 1px 1px, #dfe3e8 1px, transparent 1.2px) 0 0/22px 22px, #f6f7f9; }
+.brand-icon { box-shadow:0 6px 16px rgba(15,123,92,.35); }
+.login-title { font-size:1.9rem; }
+.tile { box-shadow:0 1px 2px rgba(16,24,40,.05); border-radius:14px; min-height:66px; }
+.tile:hover { border-color:#0f7b5c; box-shadow:0 8px 22px rgba(15,123,92,.14); transform:translateY(-1px); }
+.tile-chev { width:18px; height:18px; stroke:#a3aab4; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .15s, stroke .15s; flex:none; }
+.tile:hover .tile-chev { stroke:#0f7b5c; transform:translateX(3px); }
+.tile-ic { width:42px; height:42px; border-radius:12px; }
+.tiles .tile:nth-child(1) .tile-ic { background:#e6f4ee; color:#0f7b5c; }
+.tiles .tile:nth-child(2) .tile-ic { background:#e8eefc; color:#2f55c7; }
+.tiles .tile:nth-child(3) .tile-ic { background:#fdf1dc; color:#b26a00; }
+.tiles .tile:nth-child(4) .tile-ic { background:#f3e8fb; color:#7a3fb0; }
+.tile-branch .tile-l { text-align:center; }
+.login-foot { margin-top:34px; text-align:center; font:400 .75rem var(--m); color:#9aa1ab; }
+#panel-branch .tiles { grid-template-columns:1fr 1fr; gap:10px; }
+#panel-branch .tile-branch { min-height:56px; justify-content:center; }
+
+/* ── richer surroundings: ledger grid + floating report cards ── */
+.auth-shell { position:relative; overflow:hidden; background:#f4f6f8; }
+.auth-shell::before { content:''; position:absolute; inset:0; background-image:linear-gradient(#e4e8ed 1px,transparent 1px),linear-gradient(90deg,#e4e8ed 1px,transparent 1px); background-size:44px 44px; -webkit-mask-image:radial-gradient(ellipse at center, transparent 18%, #000 75%); mask-image:radial-gradient(ellipse at center, transparent 18%, #000 75%); pointer-events:none; }
+.auth-shell::after { content:''; position:absolute; left:0; right:0; top:0; height:5px; background:linear-gradient(90deg,#0f7b5c,#2f9e7e); }
+.login-wrap { position:relative; z-index:2; }
+.deco { position:absolute; inset:0; pointer-events:none; z-index:1; }
+.dc { position:absolute; width:210px; padding:14px 16px 16px; background:#fff; border:1px solid #e1e5ea; border-radius:14px; box-shadow:0 10px 28px rgba(16,24,40,.08); }
+.dc-h { display:flex; align-items:center; gap:8px; font:600 .78rem var(--f); color:#4b5563; margin-bottom:12px; }
+.dc-dot { width:8px; height:8px; border-radius:50%; background:#0f7b5c; }
+.dc svg { width:100%; height:auto; display:block; }
+.dc-bar { height:8px; border-radius:6px; background:#eef1f4; margin-bottom:9px; overflow:hidden; } .dc-bar i { display:block; height:100%; background:#2f55c7; border-radius:6px; opacity:.8; }
+.dc-pill { display:inline-block; padding:8px 14px; border-radius:999px; background:#e6f4ee; color:#0f7b5c; font:700 .85rem var(--f); }
+.dc-line { height:7px; border-radius:5px; background:#eef1f4; margin-bottom:9px; width:100%; }
+.dc1 { left:6%; top:14%; transform:rotate(-4deg); }
+.dc2 { right:7%; top:12%; transform:rotate(3deg); }
+.dc3 { left:9%; bottom:14%; transform:rotate(3deg); width:180px; }
+.dc4 { right:8%; bottom:13%; transform:rotate(-3deg); }
+@media (max-width:1100px) { .deco { display:none; } }
 @media (max-width:520px) { .auth-shell { padding:16px; } .tile { min-height:116px; } }
 </style>
 </head>
@@ -236,18 +273,22 @@ body { background:#f6f7f9; color:#1c2026; }
           <button type="button" class="tile" onclick="chooseMode('manager')">
             <span class="tile-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/></svg></span>
             <span class="tile-l">Manager</span>
+            <svg class="tile-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </button>
           <button type="button" class="tile" onclick="chooseMode('accounting_head')">
             <span class="tile-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
             <span class="tile-l">Accounting Head</span>
+            <svg class="tile-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </button>
           <button type="button" class="tile" onclick="chooseMode('oic')">
             <span class="tile-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M16 6l3 3M14 8l2 2"/></svg></span>
             <span class="tile-l">Accounting</span>
+            <svg class="tile-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </button>
           <button type="button" class="tile" onclick="chooseMode('cashier')">
             <span class="tile-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span>
             <span class="tile-l">OIC/Cashier</span>
+            <svg class="tile-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
           </button>
         </div>
       </div>
