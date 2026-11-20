@@ -79,6 +79,8 @@ include '../layout.php';
 .cf-tabs{display:flex;gap:6px;flex-wrap:wrap}
 .cf-tab{border:1px solid var(--cf-line);background:#fff;color:#374151;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.02em;font-family:inherit}
 .cf-tab:hover{background:var(--cf-soft)}
+.cf-pen{margin-left:6px;opacity:.8;font-size:12px}
+.cf-tabedit{border:1px solid var(--accent)!important;background:#fff!important;border-radius:10px;padding:8px 12px!important;font-size:13px;font-weight:600;width:auto!important;text-transform:none}
 .cf-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .cf-save{font-size:12.5px;color:var(--cf-mut);display:flex;align-items:center;gap:8px}
 .cf-save i{width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block}
@@ -174,6 +176,8 @@ include '../layout.php';
   var AR   = [['medrep','MEDREP UNPAID'],['corp','CORP UNPAID'],['owner',"OWNER'S UNPAID"],['staff','STAFF UNPAID'],['advc','ADV PAYMENT COMMI'],['ca',"STAFF CA'S"],['pos','POS SUBSCRIPTION'],['egovq','MAAM QUEEN EGOV'],['egov','EGOV EXCESS']];
 
   var TABS = [['b1','MARCH 30, 2026'],['bd','BREAKDOWN VS FS'],['wd','WITHDRAWALS MONITORING'],['cs','CF STATEMENT'],['b2','CASH-FLOW'],['fs','CASHFLOW/FS']];
+  var DEF_TITLE = {b1: 'STELLA CASH FLOW BALANCE SHEET — AS OF MARCH 30, 2026', b2: 'STELLA CASH FLOW BALANCE SHEET'};
+  function tabName(k) { var n = (S.names || {})[k]; return has(n) ? n : TABS.filter(function (t) { return t[0] === k; })[0][1]; }
 
   function newBsCol() { return {id: uid(), date: '', v: {}, rel: [{l:'',v:''},{l:'',v:''},{l:'',v:''}], pay: [{l:'',v:''},{l:'',v:''},{l:'',v:''}], begin: '', pull: '', remarks: ''}; }
   function newWdRow() { return {d: '', p: '', a: '', r: ''}; }
@@ -191,7 +195,7 @@ include '../layout.php';
     };
   }
   var S = INIT || defaults();
-  (function fix() { var d = defaults(); Object.keys(d).forEach(function (k) { if (!S[k]) S[k] = d[k]; }); })();
+  (function fix() { if (!S.names) S.names = {}; var d = defaults(); Object.keys(d).forEach(function (k) { if (!S[k]) S[k] = d[k]; }); })();
 
   var tab = (location.hash || '').replace('#', '');
   if (!TABS.some(function (t) { return t[0] === tab; })) tab = 'b1';
@@ -205,6 +209,7 @@ include '../layout.php';
   }
   function inp(path, cls, ph, type) {
     var v = getP(path);
+    if ((path === 'names.b1t' || path === 'names.b2t') && !has(v)) v = ph;
     if (cls === 'n' && has(v)) { var r = evalExpr(v); if (!isNaN(r)) v = fmt(r); }
     return '<input type="' + (type || 'text') + '" data-p="' + path + '" class="' + (cls || '') + '" value="' + esc(v == null ? '' : v) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
   }
@@ -239,7 +244,7 @@ include '../layout.php';
   // ── render: balance sheet (MARCH 30 / CASH-FLOW) ────────
   function renderBs(key, title, sub) {
     var cols = S[key].cols, h = '';
-    h += '<div class="cf-card"><div class="cf-ttl"><div><div class="cf-h">' + title + '</div><div class="cf-sub">' + sub + '</div></div><button class="cf-btn" data-act="bsaddcol" data-k="' + key + '">+ Add column</button></div>';
+    h += '<div class="cf-card"><div class="cf-ttl"><div><div class="cf-h" style="margin-left:-8px;min-width:520px">' + inp('names.' + key + 't', '', title) .replace('<input ', '<input style="font-size:15px;font-weight:700" ') + '</div><div class="cf-sub">' + sub + '</div></div><button class="cf-btn" data-act="bsaddcol" data-k="' + key + '">+ Add column</button></div>';
     h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">DATE</th>';
     cols.forEach(function (c, i) { h += '<th class="c" style="min-width:270px"><div style="display:flex;gap:4px;align-items:center">' + inp(key + '.cols.' + i + '.date', '', '', 'date') + '<button class="cf-x" title="Remove column" data-act="bsdelcol" data-k="' + key + '" data-i="' + i + '">×</button></div></th>'; });
     h += '</tr></thead><tbody>';
@@ -458,16 +463,16 @@ include '../layout.php';
 
   // ── main render ─────────────────────────────────────────
   function renderTabs() {
-    document.getElementById('cfTabs').innerHTML = TABS.map(function (t) { return '<button class="cf-tab' + (t[0] === tab ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('');
+    document.getElementById('cfTabs').innerHTML = TABS.map(function (t) { return '<button class="cf-tab' + (t[0] === tab ? ' on' : '') + '" data-tab="' + t[0] + '" title="Double-click to rename">' + esc(tabName(t[0])) + (t[0] === tab ? ' <span class="cf-pen" data-rename="' + t[0] + '" title="Rename this tab">✎</span>' : '') + '</button>'; }).join('');
   }
   function render() {
     renderTabs();
     var body = document.getElementById('cfBody'), h = '';
-    if (tab === 'b1') h = renderBs('b1', 'STELLA CASH FLOW BALANCE SHEET — AS OF MARCH 30, 2026', 'Bank balances, receivables and payables per date. Add a column for each cut-off date.');
+    if (tab === 'b1') h = renderBs('b1', DEF_TITLE.b1, 'Bank balances, receivables and payables per date. Add a column for each cut-off date.');
     else if (tab === 'bd') h = renderBd();
     else if (tab === 'wd') h = renderWd();
     else if (tab === 'cs') h = renderCs();
-    else if (tab === 'b2') h = renderBs('b2', 'STELLA CASH FLOW BALANCE SHEET', 'Month-end balance sheet. Add a column for each month (JAN, FEB, MARCH 30, APRIL 30 …).');
+    else if (tab === 'b2') h = renderBs('b2', DEF_TITLE.b2, 'Month-end balance sheet. Add a column for each month (JAN, FEB, MARCH 30, APRIL 30 …).');
     else if (tab === 'fs') h = renderFs();
     body.innerHTML = h;
     recalc();
@@ -513,7 +518,19 @@ include '../layout.php';
     if (isNaN(r)) { t.value = ''; setP(t.getAttribute('data-p'), ''); recalc(); queueSave(); return; }
     r = round2(r); t.value = fmt(r); setP(t.getAttribute('data-p'), String(r)); recalc(); queueSave();
   });
+  function renameTab(k) {
+    var btn = document.querySelector('[data-tab="' + k + '"]'); if (!btn) return;
+    var i = document.createElement('input'); i.type = 'text'; i.value = tabName(k); i.className = 'cf-tabedit';
+    i.style.width = Math.max(140, i.value.length * 9 + 30) + 'px';
+    btn.replaceWith(i); i.focus(); i.select();
+    var done = false;
+    function fin(save) { if (done) return; done = true; if (save) { S.names[k] = i.value.trim(); queueSave(); } renderTabs(); }
+    i.addEventListener('keydown', function (e) { if (e.key === 'Enter') fin(true); else if (e.key === 'Escape') fin(false); });
+    i.addEventListener('blur', function () { fin(true); });
+  }
+  document.getElementById('cfTabs').addEventListener('dblclick', function (e) { var b = e.target.closest('[data-tab]'); if (b) renameTab(b.getAttribute('data-tab')); });
   document.getElementById('cfTabs').addEventListener('click', function (e) {
+    var pen = e.target.closest('[data-rename]'); if (pen) { e.stopPropagation(); renameTab(pen.getAttribute('data-rename')); return; }
     var b = e.target.closest('[data-tab]'); if (!b) return;
     tab = b.getAttribute('data-tab'); location.hash = tab; render();
   });
