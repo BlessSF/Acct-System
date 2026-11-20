@@ -807,6 +807,11 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     </a>
     <?php endif; ?>
     <?php if (currentBranch() === 'Stella' || isManagement()): ?>
+    <a href="<?= BASE_URL ?>/stella/stella_cashflow_sheet.php" class="nav-item <?= ($activePage==='stella_cashflow_sheet')?'active':'' ?>">
+      <span class="ni">📈</span> CashFlow
+    </a>
+    <?php endif; ?>
+    <?php if (currentBranch() === 'Stella' || isManagement()): ?>
     <a href="<?= BASE_URL ?>/stella/stella_disbursement.php" class="nav-item <?= ($activePage==='stella_disbursement')?'active':'' ?>">
       <span class="ni">📒</span> <?= isBranch() ? 'Disbursement' : 'Stella Disbursement' ?>
     </a>
