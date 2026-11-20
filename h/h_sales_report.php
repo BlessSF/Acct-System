@@ -783,6 +783,14 @@ body.page-h_sales_report.sr2 .sub-grid { grid-template-columns:repeat(2,minmax(0
 }
 body.page-h_sales_report.sr2 #subsec-in { align-items:start !important; }
 
+
+/* Excel-style block selection: make the blue selection clearly visible (drag across boxes) */
+html body.page-h_sales_report.sr2 input.xl-sel.xl-sel { background:rgba(59,130,246,.22) !important; box-shadow:inset 0 0 0 1.5px #3b82f6 !important; border-radius:4px !important; transition:none !important; }
+html body.page-h_sales_report.sr2 input.xl-selhi.xl-selhi { background:rgba(59,130,246,.10) !important; box-shadow:inset 0 0 0 2px #2563eb !important; transition:none !important; }
+html body.page-h_sales_report.sr2 input.xl-pv.xl-pv { background:rgba(59,130,246,.08) !important; outline:1.5px dashed #3b82f6 !important; outline-offset:-1.5px; }
+html body.page-h_sales_report.sr2 #xlFill { width:10px !important; height:10px !important; background:#2563eb !important; border:2px solid #fff !important; border-radius:2px; z-index:60 !important; }
+body.page-h_sales_report.sr2.xl-dragging, body.page-h_sales_report.sr2.xl-dragging * { user-select:none !important; cursor:cell !important; }
+
 /* ── H branch: red identity, amber for deductions ── */
 body.page-h_sales_report.sr2-light { --acc:#b91c1c; --accbg:#fee2e2; --neg:#b45309; --negbg:#fef3c7; --hero1:#1f1112; --hero2:#5b1522; --ring:rgba(185,28,28,.2); }
 body.page-h_sales_report.sr2-dark  { --bg:#140d0d; --card:#1e1414; --ink:#f3e8e6; --mut:#b49e99; --line:#3a2626; --inp:#170f0f; --acc:#f87171; --accbg:#3a1517; --neg:#fbbf24; --negbg:#3a2a0a; --hero1:#1a0b0c; --hero2:#4a1219; --ring:rgba(248,113,113,.28); }
@@ -866,6 +874,7 @@ body.page-h_sales_report.sr2 .extra-table .di-inp.txt { text-align:left; font-fa
   document.addEventListener('DOMContentLoaded', fit); window.addEventListener('load', fit); setTimeout(fit, 250);
   setInterval(tick, 300); document.addEventListener('DOMContentLoaded', tick);
 })();
+
 </script>
 <div class="sr-split">
 <div class="sr-main">

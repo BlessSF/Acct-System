@@ -744,6 +744,14 @@ body.page-stella_sales_report.sr2 .sub-grid { grid-template-columns:repeat(2,min
   body.page-stella_sales_report.sr2 #subsec-in .sub-col[data-section=cash_out_interest] { grid-column:4; grid-row:1 / span 2; }
 }
 body.page-stella_sales_report.sr2 #subsec-in { align-items:start !important; }
+
+
+/* Excel-style block selection: make the blue selection clearly visible (drag across boxes) */
+html body.page-stella_sales_report.sr2 input.xl-sel.xl-sel { background:rgba(59,130,246,.22) !important; box-shadow:inset 0 0 0 1.5px #3b82f6 !important; border-radius:4px !important; transition:none !important; }
+html body.page-stella_sales_report.sr2 input.xl-selhi.xl-selhi { background:rgba(59,130,246,.10) !important; box-shadow:inset 0 0 0 2px #2563eb !important; transition:none !important; }
+html body.page-stella_sales_report.sr2 input.xl-pv.xl-pv { background:rgba(59,130,246,.08) !important; outline:1.5px dashed #3b82f6 !important; outline-offset:-1.5px; }
+html body.page-stella_sales_report.sr2 #xlFill { width:10px !important; height:10px !important; background:#2563eb !important; border:2px solid #fff !important; border-radius:2px; z-index:60 !important; }
+body.page-stella_sales_report.sr2.xl-dragging, body.page-stella_sales_report.sr2.xl-dragging * { user-select:none !important; cursor:cell !important; }
 </style>
 <script>
 // New design: Light (default) / Dark. Remembered per browser. (design only)
@@ -802,6 +810,7 @@ body.page-stella_sales_report.sr2 #subsec-in { align-items:start !important; }
   document.addEventListener('DOMContentLoaded', fit); window.addEventListener('load', fit); setTimeout(fit, 250);
   setInterval(tick, 300); document.addEventListener('DOMContentLoaded', tick);
 })();
+
 </script>
 <div class="sr-split">
 <div class="sr-main">
