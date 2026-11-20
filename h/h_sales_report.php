@@ -1262,8 +1262,8 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="total_swipe" value="<?= $fmt($v('deposit_swipe_card')+$v('late_payment_card')+$v('maya_swipe')) ?>" readonly tabindex="-1"></div>
   </div>
   <div class="sr-row gray-hdr">
-    <div class="sr-label">Deposit Swipe (Card)</div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="deposit_swipe_card" value="<?= $v('deposit_swipe_card') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
+    <div class="sr-label">Deposit Swipe (Card) <span style="font-size:.65rem;opacity:.7">(auto: Advance Deposit total)</span></div>
+    <div class="sr-value-wrap"><input type="text" class="sr-input readout" id="deposit_swipe_card" value="<?= $fmt($v('deposit_swipe_card')) ?>" readonly tabindex="-1"></div>
   </div>
   <div class="sr-row gray-hdr">
     <div class="sr-label">Late Payment (Card) <span style="font-size:.65rem;opacity:.7">(auto from Late Payment)</span></div>
@@ -1504,7 +1504,7 @@ const EXTRA_COLS = {
   bar_sales:       ['amount_cash','amount_card'],
 };
 
-function extraChanged(sec) {
+function extraChanged(sec, init) {
   const cols  = EXTRA_COLS[sec];
   const table = document.querySelector(`.extra-table[data-section="${sec}"]`);
   if (!table) return;
@@ -1528,6 +1528,9 @@ function extraChanged(sec) {
   // into Z Reading Gross). Advance Deposit is memo-only — it never appears
   // in the Excel's Gross/Net Sales formula.
   if (sec === 'bar_sales')     { setVal('bar_sales', fmt(secTotal)); recalc(); }
+  // Advance Deposit (Card + Cash) feeds Deposit Swipe (Card) automatically.
+  // On page load an empty Advance Deposit keeps the value already saved for older days.
+  if (sec === 'advance_deposit' && (!init || secTotal > 0)) { setVal('deposit_swipe_card', fmt(secTotal)); recalc(); }
 }
 
 function addExtraRow(sec) {
@@ -1738,7 +1741,7 @@ function lockPage() {
 
 document.addEventListener('DOMContentLoaded', () => {
   diChanged();
-  Object.keys(EXTRA_COLS).forEach(sec => extraChanged(sec));
+  Object.keys(EXTRA_COLS).forEach(sec => extraChanged(sec, true));
   recalc();
   if (REPORT_LOCKED) lockPage();
 });
