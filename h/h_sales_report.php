@@ -791,6 +791,11 @@ html body.page-h_sales_report.sr2 input.xl-pv.xl-pv { background:rgba(59,130,246
 html body.page-h_sales_report.sr2 #xlFill { width:10px !important; height:10px !important; background:#2563eb !important; border:2px solid #fff !important; border-radius:2px; z-index:60 !important; }
 body.page-h_sales_report.sr2.xl-dragging, body.page-h_sales_report.sr2.xl-dragging * { user-select:none !important; cursor:cell !important; }
 
+/* Undo / Redo buttons */
+body.page-h_sales_report.sr2 .sr-undo-btn { order:7; height:40px; display:inline-flex !important; align-items:center; background:var(--card) !important; color:var(--ink) !important; border:1px solid var(--line) !important; border-radius:12px !important; padding:0 14px !important; font:700 .78rem var(--f) !important; cursor:pointer; }
+body.page-h_sales_report.sr2 .sr-undo-btn:hover:not(:disabled) { border-color:var(--acc) !important; color:var(--acc) !important; }
+body.page-h_sales_report.sr2 .sr-undo-btn:disabled { opacity:.4; cursor:default; }
+
 /* ── H branch: red identity, amber for deductions ── */
 body.page-h_sales_report.sr2-light { --acc:#b91c1c; --accbg:#fee2e2; --neg:#b45309; --negbg:#fef3c7; --hero1:#1f1112; --hero2:#5b1522; --ring:rgba(185,28,28,.2); }
 body.page-h_sales_report.sr2-dark  { --bg:#140d0d; --card:#1e1414; --ink:#f3e8e6; --mut:#b49e99; --line:#3a2626; --inp:#170f0f; --acc:#f87171; --accbg:#3a1517; --neg:#fbbf24; --negbg:#3a2a0a; --hero1:#1a0b0c; --hero2:#4a1219; --ring:rgba(248,113,113,.28); }
@@ -875,6 +880,97 @@ body.page-h_sales_report.sr2 .extra-table .di-inp.txt { text-align:left; font-fa
   setInterval(tick, 300); document.addEventListener('DOMContentLoaded', tick);
 })();
 
+
+// ── Undo / Redo (Ctrl+Z / Ctrl+Y) for every entry on the report — works with auto-save ──
+(function () {
+  var DYN = '.sub-col .sub-rows, #di-body, [id^="extra-body-"]';
+  var stack = [], idx = -1, timer = null, applying = false, ready = false;
+  function locked() { return typeof REPORT_LOCKED !== 'undefined' && REPORT_LOCKED; }
+  function dynKey(c) {
+    if (c.id === 'di-body') return 'di';
+    if (c.id && c.id.indexOf('extra-body-') === 0) return 'extra:' + c.id.slice(11);
+    var col = c.closest('.sub-col'); return 'sub:' + (col ? col.getAttribute('data-section') : '');
+  }
+  function rowsOf(c) { return Array.prototype.filter.call(c.children, function (r) { return r.querySelector && r.querySelector('input'); }); }
+  function valOf(i) { return i.type === 'checkbox' ? (i.checked ? '1' : '0') : i.value; }
+  function trackedStatic(el) {
+    return el.id && !el.readOnly && !el.disabled && !/^(hidden|button|submit|date)$/.test(el.type) && !el.closest(DYN) && !el.closest('.sr-controls,#filterForm,#lockPopover,.lock-wrap,.se-controls');
+  }
+  function snap() {
+    var st = {}, dyn = {};
+    document.querySelectorAll('input[id],textarea[id],select[id]').forEach(function (el) { if (trackedStatic(el)) st[el.id] = valOf(el); });
+    document.querySelectorAll(DYN).forEach(function (c) {
+      dyn[dynKey(c)] = rowsOf(c).map(function (r) { return Array.prototype.map.call(r.querySelectorAll('input'), valOf); });
+    });
+    return JSON.stringify({st: st, dyn: dyn});
+  }
+  function commit() {
+    clearTimeout(timer); timer = null;
+    if (!ready || applying) return;
+    var s = snap();
+    if (idx >= 0 && stack[idx] === s) return;
+    stack = stack.slice(0, idx + 1); stack.push(s);
+    if (stack.length > 150) stack.shift();
+    idx = stack.length - 1; buttons();
+  }
+  function later() { if (applying || !ready) return; clearTimeout(timer); timer = setTimeout(commit, 450); }
+  function fire(el, type) { el.dispatchEvent(new Event(type, {bubbles: true})); }
+  function setEl(el, v) {
+    if (valOf(el) === v) return;
+    if (el.type === 'checkbox') { el.checked = v === '1'; fire(el, 'change'); }
+    else { el.value = v; fire(el, 'input'); if (el.tagName === 'SELECT') fire(el, 'change'); }
+  }
+  function apply(state) {
+    applying = true;
+    try {
+      var o = JSON.parse(state);
+      Object.keys(o.st).forEach(function (id) { var el = document.getElementById(id); if (el) setEl(el, o.st[id]); });
+      document.querySelectorAll(DYN).forEach(function (c) {
+        var want = o.dyn[dynKey(c)]; if (!want) return;
+        var col = c.closest('.sub-col'), sec = col ? col.getAttribute('data-section') : '', key = dynKey(c), changed = false;
+        var guard = 0;
+        while (rowsOf(c).length < want.length && guard++ < 300) {
+          var n = rowsOf(c).length;
+          if (key === 'di') window.addDiRow(); else if (key.indexOf('extra:') === 0) window.addExtraRow(key.slice(6)); else window.addSubRow(sec);
+          if (rowsOf(c).length === n) break; changed = true;
+        }
+        while (rowsOf(c).length > want.length) { rowsOf(c).pop().remove(); changed = true; }
+        rowsOf(c).forEach(function (r, i) { Array.prototype.forEach.call(r.querySelectorAll('input'), function (inp, j) { if (want[i] && want[i][j] !== undefined) setEl(inp, want[i][j]); }); });
+        if (changed) { if (key === 'di') window.diChanged(); else if (key.indexOf('extra:') === 0) window.extraChanged(key.slice(6)); else window.subChanged(sec); }
+      });
+      // make sure auto-save notices structural changes too
+      var nudge = document.getElementById('remarks') || document.querySelector('.sub-inp');
+      if (nudge) fire(nudge, 'change');
+    } catch (e) { if (window.console) console.error(e); }
+    setTimeout(function () { applying = false; if (idx >= 0) stack[idx] = snap(); }, 80);
+  }
+  function toast(m) { if (typeof window.showToast === 'function') window.showToast(m, 'success'); }
+  function undo() { if (locked()) return; commit(); if (idx <= 0) { toast('Nothing to undo'); return; } idx--; apply(stack[idx]); buttons(); toast('↶ Undone'); }
+  function redo() { if (locked()) return; commit(); if (idx >= stack.length - 1) { toast('Nothing to redo'); return; } idx++; apply(stack[idx]); buttons(); toast('↷ Redone'); }
+  function buttons() {
+    var u = document.getElementById('srUndoBtn'), r = document.getElementById('srRedoBtn');
+    if (u) u.disabled = idx <= 0; if (r) r.disabled = idx >= stack.length - 1;
+  }
+  document.addEventListener('input', later, true);
+  document.addEventListener('change', later, true);
+  document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.btn-del-row,.btn-add-row')) setTimeout(later, 60); }, true);
+  document.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    var k = e.key.toLowerCase(), a = document.activeElement;
+    var isRedo = k === 'y' || (k === 'z' && e.shiftKey), isUndo = k === 'z' && !e.shiftKey;
+    if (!isUndo && !isRedo) return;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !trackedStatic(a) && !a.closest(DYN)) return; // leave date / filter boxes to the browser
+    e.preventDefault(); if (isUndo) undo(); else redo();
+  }, true);
+  document.addEventListener('DOMContentLoaded', function () {
+    var ctl = document.querySelector('.sr-controls'); if (!ctl || locked()) return;
+    [['srUndoBtn', '↶ Undo', 'Undo (Ctrl+Z)', undo], ['srRedoBtn', '↷ Redo', 'Redo (Ctrl+Y)', redo]].forEach(function (d) {
+      var b = document.createElement('button'); b.type = 'button'; b.id = d[0]; b.textContent = d[1]; b.title = d[2]; b.className = 'sr-undo-btn'; b.onclick = d[3]; ctl.appendChild(b);
+    });
+    buttons();
+  });
+  window.addEventListener('load', function () { setTimeout(function () { ready = true; commit(); }, 900); });
+})();
 </script>
 <div class="sr-split">
 <div class="sr-main">
