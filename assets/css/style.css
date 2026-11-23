@@ -3134,190 +3134,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 
 
 /* ============================================================
- *  stella_income_statement.php   (body.sp-stella_income_statement)
- *  Moved here from the inline <style> block(s) of the page.
- *  Selectors are scoped with :where() so specificity is unchanged.
- * ============================================================ */
-:where(body.sp-stella_income_statement) .is-wrap { max-width: 780px; margin: 0 auto; }
-:where(body.sp-stella_income_statement) .is-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-:where(body.sp-stella_income_statement) .is-header {
-  background: #1e3060;
-  color: #fff;
-  padding: 18px 28px 14px;
-}
-:where(body.sp-stella_income_statement) .is-header-title {
-  font-family: var(--font-m);
-  font-size: .62rem;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  color: rgba(255,255,255,.5);
-  margin-bottom: 4px;
-}
-:where(body.sp-stella_income_statement) .is-header-main {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  color: #fff;
-}
-:where(body.sp-stella_income_statement) .is-header-date {
-  font-family: var(--font-m);
-  font-size: .72rem;
-  color: rgba(255,255,255,.6);
-  margin-top: 3px;
-}
-:where(body.sp-stella_income_statement) .is-body { padding: 0; }
-
-/* Section heading row */
-:where(body.sp-stella_income_statement) .is-section {
-  background: #f0f2f5;
-  padding: 8px 28px;
-  font-family: var(--font-m);
-  font-size: .62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  color: var(--subtext2);
-  border-top: 1px solid var(--border);
-}
-:where(body.sp-stella_income_statement) .is-subsection {
-  padding: 6px 28px 2px 40px;
-  font-family: var(--font-m);
-  font-size: .6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--subtext);
-  border-bottom: 1px solid #f0f2f5;
-}
-
-/* Row */
-:where(body.sp-stella_income_statement) .is-row {
-  display: flex;
-  align-items: center;
-  padding: 0 28px 0 44px;
-  border-bottom: 1px solid #f4f5f7;
-  min-height: 38px;
-  transition: background .1s;
-}
-:where(body.sp-stella_income_statement) .is-row:hover { background: #fafbfc; }
-:where(body.sp-stella_income_statement) .is-row.indent2 { padding-left: 60px; }
-:where(body.sp-stella_income_statement) .is-label {
-  flex: 1;
-  font-size: .78rem;
-  color: var(--text);
-  padding: 6px 0;
-}
-:where(body.sp-stella_income_statement) .is-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 160px;
-  justify-content: flex-end;
-}
-:where(body.sp-stella_income_statement) .is-input {
-  width: 130px;
-  padding: 5px 10px;
-  text-align: right;
-  font-family: var(--font-m);
-  font-size: .78rem;
-  color: var(--text);
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  outline: none;
-  transition: border-color .15s, box-shadow .15s;
-}
-:where(body.sp-stella_income_statement) .is-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(15,123,92,.08);
-}
-:where(body.sp-stella_income_statement) .is-input.is-input-auto {
-  background: #eff6ff;
-  border-color: #93c5fd;
-}
-:where(body.sp-stella_income_statement) .is-input.is-input-auto:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
-}
-:where(body.sp-stella_income_statement) .is-pct {
-  font-family: var(--font-m);
-  font-size: .7rem;
-  color: var(--subtext);
-  width: 36px;
-  text-align: right;
-}
-:where(body.sp-stella_income_statement) .is-pct.red  { color: var(--accent2); font-weight: 600; }
-:where(body.sp-stella_income_statement) .is-pct.green{ color: var(--accent);  font-weight: 600; }
-:where(body.sp-stella_income_statement) .is-pct.gold { color: var(--accent3); font-weight: 600; }
-
-/* Total rows */
-:where(body.sp-stella_income_statement) .is-total {
-  display: flex;
-  align-items: center;
-  padding: 8px 28px 8px 44px;
-  background: #f8f9fb;
-  border-top: 2px solid var(--border2);
-  border-bottom: 1px solid var(--border);
-}
-:where(body.sp-stella_income_statement) .is-total.underline { border-bottom: 2px solid var(--border2); }
-:where(body.sp-stella_income_statement) .is-total-label {
-  flex: 1;
-  font-family: var(--font-m);
-  font-size: .72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--subtext2);
-}
-:where(body.sp-stella_income_statement) .is-total-val {
-  font-family: var(--font-m);
-  font-size: .88rem;
-  font-weight: 800;
-  color: var(--text);
-  min-width: 130px;
-  text-align: right;
-}
-:where(body.sp-stella_income_statement) .is-total-pct {
-  font-family: var(--font-m);
-  font-size: .7rem;
-  font-weight: 700;
-  width: 36px;
-  text-align: right;
-  margin-left: 6px;
-}
-
-/* Net Income highlight */
-:where(body.sp-stella_income_statement) .is-net {
-  background: #fffbeb;
-  border-top: 2px solid var(--accent3) !important;
-}
-:where(body.sp-stella_income_statement) .is-net .is-total-label { color: var(--accent3); font-size: .82rem; }
-:where(body.sp-stella_income_statement) .is-net .is-total-val   { color: var(--accent3); font-size: 1rem; }
-
-/* Controls */
-:where(body.sp-stella_income_statement) .is-controls {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-
-:where(body.sp-stella_income_statement) .flash.toast {
-  position: fixed; top: 68px; right: 22px;
-  z-index: 9999; max-width: 320px;
-  animation: fadeSlideDown .3s ease;
-}
-
-
-/* ============================================================
  *  stella_month_end_inv.php   (body.sp-stella_month_end_inv)
  *  Moved here from the inline <style> block(s) of the page.
  *  Selectors are scoped with :where() so specificity is unchanged.
@@ -4894,30 +4710,6 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
 :where(body.sp-stella_expenses) .sx-41 { font-family:var(--font-m) !important; font-size:.76rem !important; padding:7px 13px !important; background:var(--accent-dim) !important; border-radius:8px !important; border:1px solid rgba(34,211,165,.2) !important; }
 
 /* inline style="" attributes of stella_income_statement.php moved here as classes (!important keeps them winning exactly like inline styles did) */
-:where(body.sp-stella_income_statement) .sx-1 { background:#f0fdf4 !important; font-weight:700 !important; border-color:rgba(15,123,92,.2) !important; }
-:where(body.sp-stella_income_statement) .sx-2 { font-family:var(--font-m) !important; font-size:.58rem !important; margin-left:8px !important; background:rgba(15,123,92,.08) !important; padding:2px 7px !important; border-radius:10px !important; border:1px solid rgba(15,123,92,.15) !important; }
-:where(body.sp-stella_income_statement) .sx-3 { font-size:.75rem !important; }
-:where(body.sp-stella_income_statement) .sx-4 { padding-left:28px !important; }
-:where(body.sp-stella_income_statement) .sx-5 { background:#f0fdf4 !important; border-top:2px solid var(--accent) !important; }
-:where(body.sp-stella_income_statement) .sx-6 { font-size:.95rem !important; }
-:where(body.sp-stella_income_statement) .sx-7 { font-size:.8rem !important; }
-:where(body.sp-stella_income_statement) .sx-8 { background:#fff1f0 !important; border-top:2px solid #dc354533 !important; }
-:where(body.sp-stella_income_statement) .sx-9 { background:#fff1f0 !important; }
-:where(body.sp-stella_income_statement) .sx-10 { padding-left:16px !important; }
-:where(body.sp-stella_income_statement) .sx-11 { background:#f0fdf4 !important; font-weight:700 !important; cursor:default !important; border-color:rgba(15,123,92,.2) !important; }
-:where(body.sp-stella_income_statement) .sx-12 { font-family:var(--font-m) !important; font-size:.6rem !important; margin-left:8px !important; background:rgba(15,123,92,.08) !important; padding:2px 7px !important; border-radius:10px !important; border:1px solid rgba(15,123,92,.15) !important; }
-:where(body.sp-stella_income_statement) .sx-13 { background:#162d4a !important; font-family:var(--font-m) !important; font-size:.55rem !important; text-transform:uppercase !important; letter-spacing:.1em !important; padding:5px 12px !important; border-bottom:1px solid #2d5480 !important; }
-:where(body.sp-stella_income_statement) .sx-14 { border-collapse:collapse !important; width:max-content !important; min-width:100% !important; }
-:where(body.sp-stella_income_statement) .sx-15 { overflow-x:auto !important; }
-:where(body.sp-stella_income_statement) .sx-16 { border-color:rgba(147,197,253,.25) !important; background:rgba(147,197,253,.07) !important; font-size:.65rem !important; }
-:where(body.sp-stella_income_statement) .sx-17 { font-size:.92rem !important; font-weight:700 !important; letter-spacing:-.02em !important; }
-:where(body.sp-stella_income_statement) .sx-18 { font-family:var(--font-m) !important; font-size:.58rem !important; text-transform:uppercase !important; letter-spacing:.12em !important; margin-bottom:2px !important; }
-:where(body.sp-stella_income_statement) .sx-19 { background:#1e3a5f !important; padding:12px 22px !important; display:flex !important; align-items:center !important; justify-content:space-between !important; flex-wrap:wrap !important; gap:8px !important; }
-:where(body.sp-stella_income_statement) .sx-20 { max-width:100% !important; margin-bottom:20px !important; }
-:where(body.sp-stella_income_statement) .sx-21 { font-family:var(--font-m) !important; font-size:.72rem !important; }
-:where(body.sp-stella_income_statement) .sx-22 { gap:6px !important; }
-:where(body.sp-stella_income_statement) .sx-23 { max-width:180px !important; }
-:where(body.sp-stella_income_statement) .sx-24 { display:flex !important; gap:10px !important; align-items:center !important; flex-wrap:wrap !important; }
 
 /* inline style="" attributes of stella_month_end_inv.php moved here as classes (!important keeps them winning exactly like inline styles did) */
 :where(body.sp-stella_month_end_inv) .sx-1 { grid-column:1/-1 !important; }
@@ -5061,3 +4853,85 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
 :where(body.sp-stella_income_statement_acct) .is-empty { color:var(--subtext); }
 :where(body.sp-stella_income_statement_acct) .is-hide-zero .is-row[data-zero="1"] { display:none; }
 @media print { :where(body.sp-stella_income_statement_acct) .is-controls, :where(body.sp-stella_income_statement_acct) .sidebar, :where(body.sp-stella_income_statement_acct) aside { display:none !important; } }
+
+
+/* ============================================================
+ *  stella_income_statement.php   (body.sp-stella_income_statement)
+ *  Yearly month-by-month grid, copied from STELLA_INCOME_STATEMENT_2026.xlsx
+ * ============================================================ */
+:where(body.sp-stella_income_statement) .is-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+:where(body.sp-stella_income_statement) .is-yearform { margin:0; }
+:where(body.sp-stella_income_statement) .is-year { width:auto; min-width:90px; }
+:where(body.sp-stella_income_statement) .is-status { font-size:.8rem; color:#6b7280; min-width:110px; }
+:where(body.sp-stella_income_statement) .is-status.ok { color:#15803d; }
+:where(body.sp-stella_income_statement) .is-status.err { color:#b91c1c; }
+:where(body.sp-stella_income_statement) .is-legend { margin-left:auto; font-size:.74rem; color:#6b7280; }
+:where(body.sp-stella_income_statement) .is-legend .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:3px; }
+:where(body.sp-stella_income_statement) .dot.live { background:#f59e0b; }
+:where(body.sp-stella_income_statement) .dot.saved { background:#16a34a; }
+
+:where(body.sp-stella_income_statement) .is-sheet { overflow:auto; max-height:calc(100vh - 170px); border:1px solid #bfbfbf; border-radius:6px; background:#fff; }
+:where(body.sp-stella_income_statement) .is-grid { border-collapse:separate; border-spacing:0; font-size:12.5px; width:max-content; min-width:100%; }
+:where(body.sp-stella_income_statement) .is-grid th,
+:where(body.sp-stella_income_statement) .is-grid td { padding:0; border-right:1px solid #d9d9d9; border-bottom:1px solid #e5e5e5; height:24px; }
+
+/* header */
+:where(body.sp-stella_income_statement) .is-grid thead th { position:sticky; top:0; z-index:3; }
+:where(body.sp-stella_income_statement) .is-title { left:0; z-index:5 !important; background:#595959; color:#FFC000; font-style:italic; font-weight:700; text-align:left; padding:0 10px !important; min-width:270px; font-size:13px; white-space:nowrap; }
+:where(body.sp-stella_income_statement) .is-mh { background:#FFFF00; color:#000; font-weight:700; text-align:center; min-width:118px; white-space:nowrap; padding:0 6px !important; }
+:where(body.sp-stella_income_statement) .is-ph { background:#0070C0; min-width:46px; width:46px; }
+:where(body.sp-stella_income_statement) .is-chip { display:inline-block; margin-left:5px; font-size:9px; font-weight:600; text-transform:uppercase; padding:1px 5px; border-radius:8px; vertical-align:middle; }
+:where(body.sp-stella_income_statement) .is-chip.live { background:#fde68a; color:#92400e; }
+:where(body.sp-stella_income_statement) .is-chip.saved { background:#bbf7d0; color:#166534; }
+
+/* label column */
+:where(body.sp-stella_income_statement) .is-lab { position:sticky; left:0; z-index:2; background:#595959; color:#fff; padding:0 10px !important; white-space:nowrap; min-width:270px; text-align:left; }
+:where(body.sp-stella_income_statement) .is-lab.l1 { padding-left:26px !important; }
+:where(body.sp-stella_income_statement) .is-lab.l2 { text-align:right; font-style:italic; }
+:where(body.sp-stella_income_statement) .is-head .is-lab,
+:where(body.sp-stella_income_statement) .is-sub .is-lab { font-weight:700; }
+:where(body.sp-stella_income_statement) .is-sub .is-lab { font-style:italic; }
+
+/* month + % cells */
+:where(body.sp-stella_income_statement) .is-c { background:#fff; color:#000; text-align:right; min-width:118px; padding:0 6px !important; }
+:where(body.sp-stella_income_statement) .is-p { background:#0070C0; color:#fff; text-align:center; font-size:11px; min-width:46px; width:46px; }
+:where(body.sp-stella_income_statement) .is-gap .is-lab,
+:where(body.sp-stella_income_statement) .is-gap .is-c { height:14px; }
+
+:where(body.sp-stella_income_statement) .is-in { width:100%; border:0; background:transparent; text-align:right; font:inherit; color:#000; padding:3px 0; outline:none; }
+:where(body.sp-stella_income_statement) .is-in:focus { background:#fffbe6; box-shadow:inset 0 0 0 2px #2563eb; }
+:where(body.sp-stella_income_statement) .is-in.ro { color:#374151; cursor:default; font-weight:600; }
+:where(body.sp-stella_income_statement) .is-calc { font-weight:600; }
+:where(body.sp-stella_income_statement) .is-calc.neg { color:#c00000; }
+:where(body.sp-stella_income_statement) .is-r.u .is-c { border-bottom:1px solid #000; }
+
+/* "Net income after VAT payment" row (row 50 in the sheet) */
+:where(body.sp-stella_income_statement) .is-r-nat .is-lab { background:#D2F1DA; color:#000; font-weight:700; }
+:where(body.sp-stella_income_statement) .is-r-nat .is-lab::before { content:"Net Income after VAT payment"; }
+:where(body.sp-stella_income_statement) .is-r-nat .is-c { background:#D2F1DA; font-weight:700; border-bottom:3px double #000; }
+
+/* extra expenses */
+:where(body.sp-stella_income_statement) .is-x-head .is-lab { background:#92D050; color:#000; font-weight:700; }
+:where(body.sp-stella_income_statement) .is-x-head .is-c,
+:where(body.sp-stella_income_statement) .is-x .is-c,
+:where(body.sp-stella_income_statement) .is-x-add .is-c { background:#92D050; }
+:where(body.sp-stella_income_statement) .is-x .is-lab,
+:where(body.sp-stella_income_statement) .is-x-add .is-lab { background:#92D050; color:#000; }
+:where(body.sp-stella_income_statement) .is-xlab { display:flex; align-items:center; gap:4px; }
+:where(body.sp-stella_income_statement) .is-xl { flex:1; border:0; background:transparent; font:inherit; font-weight:600; color:#000; padding:3px 0; outline:none; min-width:0; }
+:where(body.sp-stella_income_statement) .is-xl:focus { background:#fffbe6; box-shadow:inset 0 0 0 2px #2563eb; }
+:where(body.sp-stella_income_statement) .is-xdel { border:0; background:transparent; color:#7f1d1d; cursor:pointer; font-size:11px; opacity:.5; padding:0 2px; }
+:where(body.sp-stella_income_statement) .is-xdel:hover { opacity:1; }
+:where(body.sp-stella_income_statement) .is-addx { border:1px dashed #3f6212; background:transparent; color:#1a2e05; border-radius:4px; font-size:11px; padding:2px 8px; cursor:pointer; }
+:where(body.sp-stella_income_statement) .is-addx:hover { background:#a3da5f; }
+
+/* NET INCOME */
+:where(body.sp-stella_income_statement) .is-r-ni .is-lab { background:#1f2937; color:#fff; font-weight:800; font-size:14px; }
+:where(body.sp-stella_income_statement) .is-r-ni .is-c { font-weight:800; font-size:14px; border-top:2px solid #000; border-bottom:3px double #000; }
+
+@media print {
+  :where(body.sp-stella_income_statement) .is-controls { display:none !important; }
+  :where(body.sp-stella_income_statement) .is-sheet { max-height:none; overflow:visible; border:0; }
+  :where(body.sp-stella_income_statement) .is-grid { font-size:8px; }
+  :where(body.sp-stella_income_statement) .is-lab { position:static; }
+}

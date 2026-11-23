@@ -1,6 +1,15 @@
 <?php
 // ============================================================
-//  stella_income_statement.php — Stella Income Statement
+//  stella_income_statement.php — Stella Income Statement (yearly, month by month)
+//
+//  Layout copied from STELLA_INCOME_STATEMENT_2026.xlsx:
+//    one column per month (+ a blue % of Net Sales column), the same line items,
+//    Total rows, Net Income before taxes, VAT payment, EXTRA EXPENSES block, NET INCOME.
+//  Same data / same formulas as before:
+//    - Net Sales   = Store Gross total from the Summary Report (auto, read-only)
+//    - the lines that exist in the Expenses Ledger are pre-filled from it until the month is saved
+//    - VAT Payment = VAT total of the Expenses Ledger until the month is saved
+//    - a month is stored in stella_income_statement (one row per month)
 // ============================================================
 require_once '../config.php';
 require_once '../auth.php';
@@ -14,57 +23,67 @@ if (isBranch() && currentBranch() !== 'Stella') {
 $pdo  = getPDO();
 $user = currentUser();
 
-// ── Filters ───────────────────────────────────────────────
-$stmtDate = $_GET['date'] ?? date('Y-m-d');
-// Validate date format
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $stmtDate)) $stmtDate = date('Y-m-d');
-$displayDate = date('F d, Y', strtotime($stmtDate));
+// ── Keep the table ready (adds the Management Fee column + the Extra Expenses table) ──
+try {
+    $has = false;
+    foreach ($pdo->query("SHOW COLUMNS FROM `stella_income_statement`")->fetchAll(PDO::FETCH_COLUMN) as $c) {
+        if ($c === 'management_fee') { $has = true; break; }
+    }
+    if (!$has) $pdo->exec("ALTER TABLE `stella_income_statement` ADD COLUMN `management_fee` decimal(14,2) DEFAULT 0.00");
+} catch (Throwable $e) {}
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `stella_is_extra` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `ex_year` smallint(4) NOT NULL,
+        `sort_order` int(6) NOT NULL DEFAULT 0,
+        `label` varchar(255) NOT NULL DEFAULT '',
+        `m1` decimal(14,2) NOT NULL DEFAULT 0, `m2` decimal(14,2) NOT NULL DEFAULT 0, `m3` decimal(14,2) NOT NULL DEFAULT 0,
+        `m4` decimal(14,2) NOT NULL DEFAULT 0, `m5` decimal(14,2) NOT NULL DEFAULT 0, `m6` decimal(14,2) NOT NULL DEFAULT 0,
+        `m7` decimal(14,2) NOT NULL DEFAULT 0, `m8` decimal(14,2) NOT NULL DEFAULT 0, `m9` decimal(14,2) NOT NULL DEFAULT 0,
+        `m10` decimal(14,2) NOT NULL DEFAULT 0, `m11` decimal(14,2) NOT NULL DEFAULT 0, `m12` decimal(14,2) NOT NULL DEFAULT 0,
+        `saved_by` varchar(100) DEFAULT NULL,
+        `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+        PRIMARY KEY (`id`), KEY `idx_year` (`ex_year`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+} catch (Throwable $e) {}
 
-// ── AJAX: Save ────────────────────────────────────────────
+// ── Every editable line, in the order of the Excel sheet ──
+const IS_FIELDS = [
+    'net_sales','sales_discount','cost_of_sales','other_income_royalty',
+    'equipment_supplies','depreciation_expense','transportation_fuel','lpg',
+    'rent','water_electricity','drinking_water','pest_control_bio','common_area_charges','exhaust_cleaning','salaries',
+    'office_equipment_supplies','philhealth_sss','medical_supplies','agency_fees','bank_fees','staff_meal',
+    'representation_benefits','professional_fees','communication','management_fee','freight_storage',
+    'repairs_maintenance','sponsorship_marketing','taxes_licenses','system_development','construction_progress',
+    'insurance','admin_shares','miscellaneous_expense','vat_payment',
+];
+
+// ── AJAX ──────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     header('Content-Type: application/json');
-
-    $fields = [
-        // Revenue
-        'net_sales','sales_discount','cost_of_sales',
-        // Other Income
-        'other_income_royalty',
-        // Operating – Variable
-        'equipment_supplies','depreciation_expense','transportation_fuel','lpg',
-        // Operating – Fixed
-        'rent','water_electricity','drinking_water','pest_control_bio',
-        'common_area_charges','exhaust_cleaning','salaries',
-        // G&A
-        'office_equipment_supplies','philhealth_sss','medical_supplies',
-        'agency_fees','bank_fees','staff_meal','representation_benefits',
-        'professional_fees','communication','freight_storage',
-        'repairs_maintenance','sponsorship_marketing','taxes_licenses',
-        'system_development','construction_progress','insurance',
-        'admin_shares','miscellaneous_expense',
-        // Tax
-        'vat_payment',
-    ];
-
+    $date = $_POST['stmt_date'] ?? '';
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) { echo json_encode(['ok' => false, 'msg' => 'Bad date']); exit; }
     $data = [
-        'store_name'   => 'Stella',
-        'stmt_date'    => $_POST['stmt_date'] ?? $stmtDate,
-        'stmt_year'    => (int)date('Y', strtotime($_POST['stmt_date'] ?? $stmtDate)),
-        'stmt_month'   => (int)date('n', strtotime($_POST['stmt_date'] ?? $stmtDate)),
-        'stmt_day'     => (int)date('j', strtotime($_POST['stmt_date'] ?? $stmtDate)),
-        'stmt_label'   => trim($_POST['stmt_label'] ?? ''),
-        'saved_by'     => $user['name'],
+        'store_name' => 'Stella',
+        'stmt_date'  => $date,
+        'stmt_year'  => (int)date('Y', strtotime($date)),
+        'stmt_month' => (int)date('n', strtotime($date)),
+        'stmt_day'   => (int)date('j', strtotime($date)),
+        'saved_by'   => $user['name'],
     ];
-    foreach ($fields as $f) $data[$f] = (float)($_POST[$f] ?? 0);
-
-    $cols      = array_keys($data);
-    $dupUpdate = implode(',', array_map(fn($c) => "`$c`=VALUES(`$c`)", $cols));
-
+    foreach (IS_FIELDS as $f) $data[$f] = (float)($_POST[$f] ?? 0);
     try {
-        $sql = "INSERT INTO stella_income_statement ("
-             . implode(',', array_map(fn($c) => "`$c`", $cols))
-             . ") VALUES (" . implode(',', array_fill(0, count($cols), '?')) . ")"
-             . " ON DUPLICATE KEY UPDATE $dupUpdate";
-        $pdo->prepare($sql)->execute(array_values($data));
+        $q = $pdo->prepare("SELECT id FROM stella_income_statement WHERE store_name='Stella' AND stmt_date=? ORDER BY id DESC LIMIT 1");
+        $q->execute([$date]);
+        $id = $q->fetchColumn();
+        if ($id) {
+            $set = implode(',', array_map(fn($c) => "`$c`=?", array_keys($data)));
+            $pdo->prepare("UPDATE stella_income_statement SET $set WHERE id=?")->execute([...array_values($data), $id]);
+        } else {
+            $cols = array_keys($data);
+            $pdo->prepare("INSERT INTO stella_income_statement (" . implode(',', array_map(fn($c) => "`$c`", $cols)) . ") VALUES (" . implode(',', array_fill(0, count($cols), '?')) . ")")
+                ->execute(array_values($data));
+        }
         echo json_encode(['ok' => true]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
@@ -72,152 +91,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     exit;
 }
 
-
-// ── CSV Export ────────────────────────────────────────────
-if (isset($_GET['export_csv'])) {
-    require_once __DIR__ . '/../lib/xlsx_writer.php';
-    require_once __DIR__ . '/../lib/branch_colors.php';
-
-    $csvDate = $_GET['date'] ?? date('Y-m-d');
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $csvDate)) $csvDate = date('Y-m-d');
-    $csvRow = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_extra'])) {
+    header('Content-Type: application/json');
+    $act = $_POST['ajax_extra'];
+    $yr  = (int)($_POST['year'] ?? date('Y'));
     try {
-        $s = $pdo->prepare("SELECT * FROM `stella_income_statement` WHERE store_name='Stella' AND stmt_date=? LIMIT 1");
-        $s->execute([$csvDate]);
-        $csvRow = $s->fetch() ?: null;
-    } catch (Throwable $ignored) {}
-
-    $cv = fn($k) => $csvRow ? number_format((float)($csvRow[$k] ?? 0), 2, '.', '') : '0.00';
-
-    $netSales    = (float)($csvRow['net_sales']           ?? 0);
-    $salesDisc   = (float)($csvRow['sales_discount']      ?? 0);
-    $cogs        = (float)($csvRow['cost_of_sales']       ?? 0);
-    $royalty     = (float)($csvRow['other_income_royalty']?? 0);
-    $grossProfit = $netSales - $salesDisc - $cogs;
-
-    $varFields   = ['equipment_supplies','depreciation_expense','transportation_fuel','lpg'];
-    $fixedFields = ['rent','water_electricity','drinking_water','pest_control_bio','common_area_charges','exhaust_cleaning','salaries'];
-    $gaFields    = ['office_equipment_supplies','philhealth_sss','medical_supplies','agency_fees','bank_fees',
-                    'staff_meal','representation_benefits','professional_fees','communication','freight_storage',
-                    'repairs_maintenance','sponsorship_marketing','taxes_licenses','system_development',
-                    'construction_progress','insurance','admin_shares','miscellaneous_expense'];
-
-    $varTotal     = array_sum(array_map(fn($f) => (float)($csvRow[$f] ?? 0), $varFields));
-    $fixedTotal   = array_sum(array_map(fn($f) => (float)($csvRow[$f] ?? 0), $fixedFields));
-    $gaTotal      = array_sum(array_map(fn($f) => (float)($csvRow[$f] ?? 0), $gaFields));
-    $opexTotal    = $varTotal + $fixedTotal;
-    $totalExp     = $opexTotal + $gaTotal;
-    $netBeforeTax = $grossProfit - $totalExp + $royalty;
-    $vatPayment   = (float)($csvRow['vat_payment'] ?? 0);
-    $netAfterTax  = $netBeforeTax - $vatPayment;
-
-    $pct = fn($part) => $netSales > 0 ? round($part / $netSales * 100, 1).'%' : '-';
-
-    $varLabels = ['Equipment and Supplies','Depreciation Expense','Transportation and Fuel','LPG'];
-    $fixedLabels = ['Rent','Water and Electricity','Drinking Water','Pest Control, Bio Aug.',
-                    'Common Area Charges','Exhaust Cleaning','Salaries'];
-    $gaLabels = ['Office Equipment & Supplies','Philhealth, Pag-ibig, SSS Premium','Medical Supplies',
-                 'Agency Fees / Commission','Bank Fees','Staff Meal','Representation / Employee Benefits',
-                 'Professional / Administrative Fees','Communication','Freight Charge & Storage',
-                 'Repairs and Maintenance','Sponsorship and Marketing','Taxes and Licenses-Others (Est)',
-                 'System Development','Construction and Progress','Insurance','ADMIN Shares','Miscellaneous Expense'];
-
-    $xlsx = new SimpleXlsxWriter(branchAccentColor('Stella'));
-    $xlsx->title('Stella BRANCH — INCOME STATEMENT ' . date('Y', strtotime($csvDate)));
-    $xlsx->subtitle(date('F d, Y', strtotime($csvDate)));
-    $xlsx->blank();
-    $xlsx->header(['Line Item', 'Amount', '% of Net Sales']);
-
-    $xlsx->sectionRow('REVENUE');
-    $xlsx->row(['Net Sales',              $cv('net_sales'),            $pct($netSales)]);
-    $xlsx->row(['Sales Discount',         $cv('sales_discount'),       $pct($salesDisc)]);
-    $xlsx->row(['Cost of Sales',          $cv('cost_of_sales'),        $pct($cogs)]);
-    $xlsx->totalRow(['GROSS PROFIT',      number_format($grossProfit,2,'.',''), $pct($grossProfit)]);
-    $xlsx->row(['Other Income - Royalty', $cv('other_income_royalty'), $pct($royalty)]);
-    $xlsx->blank();
-
-    $xlsx->sectionRow('OPERATING EXPENSES - VARIABLE');
-    foreach ($varFields as $i => $f)
-        $xlsx->row([$varLabels[$i], $cv($f), $pct((float)($csvRow[$f] ?? 0))]);
-    $xlsx->totalRow(['TOTAL VARIABLE', number_format($varTotal,2,'.',''), $pct($varTotal)]);
-    $xlsx->blank();
-
-    $xlsx->sectionRow('OPERATING EXPENSES - FIXED');
-    foreach ($fixedFields as $i => $f)
-        $xlsx->row([$fixedLabels[$i], $cv($f), $pct((float)($csvRow[$f] ?? 0))]);
-    $xlsx->totalRow(['TOTAL FIXED', number_format($fixedTotal,2,'.',''), $pct($fixedTotal)]);
-    $xlsx->totalRow(['TOTAL OPERATING EXPENSES', number_format($opexTotal,2,'.',''), $pct($opexTotal)]);
-    $xlsx->blank();
-
-    $xlsx->sectionRow('GENERAL AND ADMINISTRATIVE EXPENSES');
-    foreach ($gaFields as $i => $f)
-        $xlsx->row([$gaLabels[$i], $cv($f), $pct((float)($csvRow[$f] ?? 0))]);
-    $xlsx->totalRow(['TOTAL ADMINISTRATIVE EXPENSES', number_format($gaTotal,2,'.',''), $pct($gaTotal)]);
-    $xlsx->blank();
-
-    $xlsx->sectionRow('TOTALS');
-    $xlsx->row(['Total Expenses',               number_format($totalExp,2,'.',''),     $pct($totalExp)]);
-    $xlsx->row(['Net Income (Loss) Before Tax', number_format($netBeforeTax,2,'.',''), $pct($netBeforeTax)]);
-    $xlsx->row(['VAT Payment',                  $cv('vat_payment'),                    $pct($vatPayment)]);
-    $xlsx->totalRow(['NET INCOME AFTER TAX',    number_format($netAfterTax,2,'.',''),  $pct($netAfterTax)]);
-    $xlsx->blank();
-    $xlsx->footer('Generated by SalesHub — ' . date('Y-m-d H:i:s'));
-    $xlsx->columnWidths([38,16,14]);
-    $xlsx->output('income_statement_stella_'.$csvDate.'.xlsx');
+        if ($act === 'add') {
+            $mx = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),0) FROM stella_is_extra WHERE ex_year=" . $yr)->fetchColumn();
+            $pdo->prepare("INSERT INTO stella_is_extra (ex_year, sort_order, label, saved_by) VALUES (?,?,?,?)")
+                ->execute([$yr, $mx + 1, trim($_POST['label'] ?? 'NEW LINE'), $user['name']]);
+            echo json_encode(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
+        } elseif ($act === 'del') {
+            $pdo->prepare("DELETE FROM stella_is_extra WHERE id=? AND ex_year=?")->execute([(int)$_POST['id'], $yr]);
+            echo json_encode(['ok' => true]);
+        } elseif ($act === 'save') {
+            $m = json_decode($_POST['amounts'] ?? '[]', true) ?: [];
+            $set = ['label=?', 'saved_by=?']; $vals = [trim($_POST['label'] ?? ''), $user['name']];
+            for ($i = 1; $i <= 12; $i++) { $set[] = "m$i=?"; $vals[] = (float)($m[$i - 1] ?? 0); }
+            $vals[] = (int)$_POST['id']; $vals[] = $yr;
+            $pdo->prepare("UPDATE stella_is_extra SET " . implode(',', $set) . " WHERE id=? AND ex_year=?")->execute($vals);
+            echo json_encode(['ok' => true]);
+        } else {
+            echo json_encode(['ok' => false, 'msg' => 'Unknown action']);
+        }
+    } catch (Throwable $e) {
+        echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
+    }
+    exit;
 }
 
-// ── Load saved data ───────────────────────────────────────
-$row = null;
+// ── Year ──────────────────────────────────────────────────
+$year = (int)($_GET['year'] ?? date('Y'));
+if ($year < 2000 || $year > 2100) $year = (int)date('Y');
+$MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+
+// ── Saved month rows (latest row of each month wins) ──────
+$saved = [];   // month => row
 try {
-    $stmt = $pdo->prepare("SELECT * FROM stella_income_statement WHERE store_name='Stella' AND stmt_date=? LIMIT 1");
-    $stmt->execute([$stmtDate]);
-    $row = $stmt->fetch() ?: null;
-} catch (Throwable $ignored) {}
+    $st = $pdo->prepare("SELECT * FROM stella_income_statement WHERE store_name='Stella' AND YEAR(stmt_date)=? ORDER BY stmt_date ASC, id ASC");
+    $st->execute([$year]);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $saved[(int)date('n', strtotime($r['stmt_date']))] = $r;
+} catch (Throwable $e) {}
 
-$v = fn($k) => $row ? number_format((float)($row[$k] ?? 0), 2, '.', '') : '0.00';
-
-// ── Stella Expenses column totals (for the selected month) ─
-$expYear  = (int)date('Y', strtotime($stmtDate));
-$expMonth = (int)date('n', strtotime($stmtDate));
-
-// ── Auto-pull Store Gross total from Summary Report ────────
-// Net Sales = SUM of store_gross for the selected month from summary_report_entries
-$storeGrossTotal = 0;
+// ── Net Sales per month = Store Gross total from the Summary Report ──
+$netAuto = array_fill(1, 12, 0.0);
 try {
-    $sgStmt = $pdo->prepare("SELECT COALESCE(SUM(store_gross),0) FROM summary_report_entries WHERE store_name='Stella' AND YEAR(report_date)=? AND MONTH(report_date)=?");
-    $sgStmt->execute([$expYear, $expMonth]);
-    $storeGrossTotal = (float)$sgStmt->fetchColumn();
-} catch (Throwable $ignored) {}
-$netSalesAuto = number_format($storeGrossTotal, 2, '.', '');
+    $q = $pdo->prepare("SELECT MONTH(report_date) m, COALESCE(SUM(store_gross),0) s FROM summary_report_entries WHERE store_name='Stella' AND YEAR(report_date)=? GROUP BY MONTH(report_date)");
+    $q->execute([$year]);
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $netAuto[(int)$r['m']] = round((float)$r['s'], 2);
+} catch (Throwable $e) {}
 
-$expTotals = [];
-$expCols = [
-    'amount_w_vat','vat','amount_wo_vat','non_vat','total_amount',
-    'purchases','salaries','rent','medicine','lpg','repairs_maintenance',
-    'fuel_trans','communication','transportation','light','drinking_water',
-    'water','sss_phic_hdmf','taxes_licences','office_supplies','kitchen_supplies',
-    'bio_pest_control','representation','miscellaneous','sir_budoy_nikki',
-    'staff_meal','marketing','sales_discounts','row_total'
-];
-try {
-    $selectParts = implode(',', array_map(fn($c) => "COALESCE(SUM(`$c`),0) AS `$c`", $expCols));
-    $expStmt = $pdo->prepare("SELECT $selectParts FROM stella_expenses WHERE YEAR(expense_date)=? AND MONTH(expense_date)=?");
-    $expStmt->execute([$expYear, $expMonth]);
-    $expTotals = $expStmt->fetch() ?: [];
-} catch (Throwable $ignored) {}
-$ef = fn($k) => isset($expTotals[$k]) ? number_format((float)$expTotals[$k], 2, '.', ',') : '0.00';
-
-// ── Auto VAT Payment = total VAT from expenses ledger ─────
-// Only populate if VAT > 0, otherwise leave as 0.00
-$vatAuto = (float)($expTotals['vat'] ?? 0);
-$vatAutoFmt = $vatAuto > 0 ? number_format($vatAuto, 2, '.', '') : '0.00';
-
-
-// ── Auto-map: Income Statement line items pulled from the Expenses Ledger ──
-// Any field listed here mirrors the matching (or combined) column total from
-// the branch's Expenses Ledger for the selected month, the same way Net
-// Sales mirrors the Summary Report and VAT Payment already mirrored the
-// ledger's VAT column. These fields become read-only on the form below.
+// ── Expenses Ledger totals per month (pre-fills the lines that exist there) ──
 $autoExpenseMap = [
     'sales_discount'            => ['sales_discounts'],
     'transportation_fuel'       => ['fuel_trans'],
@@ -238,666 +162,412 @@ $autoExpenseMap = [
     'taxes_licenses'            => ['taxes_licences'],
     'miscellaneous_expense'     => ['miscellaneous'],
 ];
-$autoExpenseVal = [];
-foreach ($autoExpenseMap as $__field => $__cols) {
-    $__sum = 0.0;
-    foreach ($__cols as $__c) $__sum += (float)($expTotals[$__c] ?? 0);
-    $autoExpenseVal[$__field] = number_format($__sum, 2, '.', '');
+$ledgerCols = ['vat'];
+foreach ($autoExpenseMap as $cols) foreach ($cols as $c) $ledgerCols[] = $c;
+$ledger = array_fill(1, 12, []);
+try {
+    $sel = implode(',', array_map(fn($c) => "COALESCE(SUM(`$c`),0) AS `$c`", array_unique($ledgerCols)));
+    $q = $pdo->prepare("SELECT MONTH(expense_date) m, $sel FROM stella_expenses WHERE YEAR(expense_date)=? GROUP BY MONTH(expense_date)");
+    $q->execute([$year]);
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $ledger[(int)$r['m']] = $r;
+} catch (Throwable $e) {}
+
+// ── Build the value of every line for each month ──
+$vals = []; $monthDate = []; $isSaved = [];
+for ($m = 1; $m <= 12; $m++) {
+    $row = $saved[$m] ?? null;
+    $isSaved[$m]   = $row !== null;
+    $monthDate[$m] = $row ? $row['stmt_date'] : sprintf('%04d-%02d-01', $year, $m);
+    foreach (IS_FIELDS as $f) {
+        if ($f === 'net_sales')       { $v = $netAuto[$m]; }
+        elseif ($row)                 { $v = (float)($row[$f] ?? 0); }
+        elseif ($f === 'vat_payment') { $v = (float)($ledger[$m]['vat'] ?? 0); }
+        elseif (isset($autoExpenseMap[$f])) {
+            $v = 0.0;
+            foreach ($autoExpenseMap[$f] as $c) $v += (float)($ledger[$m][$c] ?? 0);
+        } else                        { $v = 0.0; }
+        $vals[$m][$f] = round($v, 2);
+    }
 }
-$autoBadge = '<span style="font-family:var(--font-m);font-size:.58rem;color:var(--accent);margin-left:8px;background:rgba(15,123,92,.08);padding:2px 7px;border-radius:10px;border:1px solid rgba(15,123,92,.15)">↳ Auto from Expenses</span>';
-$autoAttrs  = 'readonly tabindex="-1" style="background:#f0fdf4;color:var(--accent);font-weight:700;cursor:default;border-color:rgba(15,123,92,.2)"';
+// legacy "Bank Fees" is not on the Excel sheet: only show the line if the year actually has something in it
+$showBank = false;
+for ($m = 1; $m <= 12; $m++) if (abs($vals[$m]['bank_fees']) > 0.004) $showBank = true;
+
+// ── Extra expenses (green block) ──
+$extras = [];
+try {
+    $cnt = $pdo->prepare("SELECT COUNT(*) FROM stella_is_extra WHERE ex_year=?");
+    $cnt->execute([$year]);
+    if ((int)$cnt->fetchColumn() === 0) {
+        $ins = $pdo->prepare("INSERT INTO stella_is_extra (ex_year, sort_order, label, saved_by) VALUES (?,?,?,?)");
+        foreach (['QUARTERLY VAT PAYMENT','BUSINESS PERMIT RENEWAL','FB BOOSTING','TEAM BUILDING SHARE/SUMMER LEAGUE',
+                  'HONDA BEAT MOTORCYCLE','ANNUAL INCOME TAX RETURN','BIR PENALTY','ILOILO CITY LOA'] as $i => $lb)
+            $ins->execute([$year, $i + 1, $lb, $user['name']]);
+    }
+    $q = $pdo->prepare("SELECT * FROM stella_is_extra WHERE ex_year=? ORDER BY sort_order ASC, id ASC");
+    $q->execute([$year]);
+    $extras = $q->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {}
+
+// ── The rows of the sheet (same order as the Excel) ──
+//  kind: in = editable line | calc = formula line | head = heading | sub = sub heading | gap = empty row
+//  lvl: 0 = column A, 1 = column B (indented), 2 = column C ("Total" right-aligned)
+$ROWS = [
+    ['in',  'net_sales',      'Net Sales',        0, ['ro' => 1, 'tip' => 'Auto from the Summary Report (Store Gross)']],
+    ['in',  'sales_discount', 'Sales Discount',   0, ['pct' => 1]],
+    ['in',  'cost_of_sales',  'Cost of Sales',    0, ['pct' => 1]],
+    ['calc','gross',          'Gross Profit',     0, ['u' => 1]],
+    ['in',  'other_income_royalty', 'Other Income-Royalty', 0, []],
+    ['gap'],
+    ['head','Operating Expenses'],
+    ['in',  'equipment_supplies',   'Equipment and Supplies',  1, []],
+    ['in',  'depreciation_expense', 'Depreciation Expense',    1, []],
+    ['in',  'transportation_fuel',  'Transportation and Fuel', 1, []],
+    ['in',  'lpg',                  'LPG',                     1, []],
+    ['calc','tvar', 'Total', 2, ['u' => 1]],
+    ['sub', 'Fixed:'],
+    ['in',  'rent',                'Rent',                  1, []],
+    ['in',  'water_electricity',   'Water and Electricity', 1, []],
+    ['in',  'drinking_water',      'Drinking Water',        1, []],
+    ['in',  'pest_control_bio',    'Pest Control, Bio Aug,', 1, []],
+    ['in',  'common_area_charges', 'Common Area Charges',   1, []],
+    ['in',  'exhaust_cleaning',    'Exhaust Cleaning',      1, []],
+    ['in',  'salaries',            'Salaries',              1, ['pct' => 1]],
+    ['calc','tfix', 'Total', 2, ['u' => 1]],
+    ['gap'],
+    ['calc','topex', 'Total Operating Expenses', 0, ['u' => 1, 'pct' => 1]],
+    ['head','General and Administrative Expenses'],
+    ['in', 'office_equipment_supplies', 'Office Equipment &Supplies',          1, []],
+    ['in', 'philhealth_sss',            'Philhealth, Pag- ibig,SSS Premium',   1, []],
+    ['in', 'medical_supplies',          'Medical Supplies',                    1, []],
+    ['in', 'agency_fees',               'AGENCY FEES/COMMISSION',              1, []],
+    ['in', 'staff_meal',                'Staff Meal',                          1, []],
+    ['in', 'representation_benefits',   'Representation/Employee Benefits',    1, []],
+    ['in', 'professional_fees',         'Professional/Administrative Fees',    1, []],
+    ['in', 'communication',             'Communication',                       1, []],
+    ['in', 'management_fee',            'Management Fee',                      1, []],
+    ['in', 'freight_storage',           'Freight Charge & Storage',            1, []],
+    ['in', 'repairs_maintenance',       'Repairs and Maintenance',             1, []],
+    ['in', 'sponsorship_marketing',     'Sponsorship and Marketing',           1, []],
+    ['in', 'taxes_licenses',            'Taxes and Licenses-Others(Est)',      1, []],
+    ['in', 'system_development',        'System Development',                  1, []],
+    ['in', 'construction_progress',     'Construction and Progress',           1, []],
+    ['in', 'insurance',                 'Insurance',                           1, []],
+    ['in', 'admin_shares',              'ADMIN Shares',                        1, []],
+    ['in', 'miscellaneous_expense',     'Miscellaneous Expense',               1, []],
+];
+if ($showBank) {   // legacy line, only when the year has an amount in it
+    foreach ($ROWS as $i => $r) if (($r[1] ?? '') === 'miscellaneous_expense') { array_splice($ROWS, $i + 1, 0, [['in', 'bank_fees', 'Bank Fees', 1, []]]); break; }
+}
+$ROWS = array_merge($ROWS, [
+    ['calc','tga',  'Total Administrative Expenses', 0, ['u' => 1, 'pct' => 1]],
+    ['gap'],
+    ['calc','texp', 'Total Expenses', 0, ['u' => 1, 'pct' => 1]],
+    ['gap'],
+    ['calc','nbt',  'Net Income (Loss) Before Taxes', 0, []],
+    ['in',  'vat_payment', 'VAT PAYMENT', 0, ['tip' => 'Auto from the Expenses Ledger VAT total until the month is saved']],
+    ['calc','nat',  '', 0, ['pct' => 1, 'cls' => 'is-r-nat']],
+]);
 
 $pageTitle  = 'Income Statement';
 $activePage = 'stella_income_statement';
+$bodyClass  = 'sp-stella_income_statement';
+
+// ── Excel download (same layout as the screen) ──
+if (isset($_GET['export_csv'])) {
+    require_once __DIR__ . '/../lib/xlsx_writer.php';
+    require_once __DIR__ . '/../lib/branch_colors.php';
+    $calc = function (array $v) {
+        $o = [];
+        $o['gross'] = $v['net_sales'] - $v['sales_discount'] - $v['cost_of_sales'];
+        $o['tvar']  = $v['equipment_supplies'] + $v['depreciation_expense'] + $v['transportation_fuel'] + $v['lpg'];
+        $o['tfix']  = $v['rent'] + $v['water_electricity'] + $v['drinking_water'] + $v['pest_control_bio'] + $v['common_area_charges'] + $v['exhaust_cleaning'] + $v['salaries'];
+        $o['topex'] = $o['tvar'] + $o['tfix'];
+        $o['tga']   = 0;
+        foreach (['office_equipment_supplies','philhealth_sss','medical_supplies','agency_fees','bank_fees','staff_meal','representation_benefits','professional_fees','communication','management_fee','freight_storage','repairs_maintenance','sponsorship_marketing','taxes_licenses','system_development','construction_progress','insurance','admin_shares','miscellaneous_expense'] as $f) $o['tga'] += $v[$f];
+        $o['texp']  = $o['topex'] + $o['tga'];
+        $o['nbt']   = $o['gross'] - $o['texp'] + $v['other_income_royalty'];
+        $o['nat']   = $o['nbt'] - $v['vat_payment'];
+        return $o;
+    };
+    $C = []; $exTot = array_fill(1, 12, 0.0);
+    foreach ($extras as $x) for ($m = 1; $m <= 12; $m++) $exTot[$m] += (float)$x["m$m"];
+    for ($m = 1; $m <= 12; $m++) { $C[$m] = $calc($vals[$m]); $C[$m]['ni'] = $C[$m]['nat'] - $exTot[$m]; }
+    $f2  = fn($n) => number_format((float)$n, 2, '.', '');
+    $pc  = fn($n, $m) => $vals[$m]['net_sales'] > 0 ? round($n / $vals[$m]['net_sales'] * 100) . '%' : '';
+    $xlsx = new SimpleXlsxWriter(branchAccentColor('Stella'));
+    $xlsx->title('STELLA INCOME STATEMENT YR ' . $year);
+    $xlsx->subtitle('Generated ' . date('F d, Y'));
+    $xlsx->blank();
+    $hd = ['Line Item'];
+    for ($m = 1; $m <= 12; $m++) { $hd[] = $MONTHS[$m - 1] . ' ' . $year; $hd[] = '%'; }
+    $xlsx->header($hd);
+    foreach ($ROWS as $r) {
+        if ($r[0] === 'gap') { $xlsx->blank(); continue; }
+        if ($r[0] === 'head' || $r[0] === 'sub') { $xlsx->sectionRow($r[1]); continue; }
+        $label = $r[2] !== '' ? $r[2] : 'Net Income after VAT payment';
+        $cells = [($r[3] === 1 ? '    ' : '') . $label]; $key = $r[1];
+        $tot = $r[0] === 'calc' && !in_array($key, ['tvar','tfix','gross','nbt']);
+        for ($m = 1; $m <= 12; $m++) {
+            $n = $r[0] === 'in' ? $vals[$m][$key] : $C[$m][$key];
+            $cells[] = $f2($n);
+            $cells[] = !empty($r[4]['pct']) ? $pc($n, $m) : '';
+        }
+        $tot ? $xlsx->totalRow($cells) : $xlsx->row($cells);
+    }
+    $xlsx->blank();
+    $xlsx->sectionRow('EXTRA EXPENSES:');
+    foreach ($extras as $x) {
+        $cells = [$x['label']];
+        for ($m = 1; $m <= 12; $m++) { $cells[] = (float)$x["m$m"] != 0 ? $f2($x["m$m"]) : ''; $cells[] = ''; }
+        $xlsx->row($cells);
+    }
+    $cells = ['NET INCOME'];
+    for ($m = 1; $m <= 12; $m++) { $cells[] = $f2($C[$m]['ni']); $cells[] = $pc($C[$m]['ni'], $m); }
+    $xlsx->totalRow($cells);
+    $xlsx->blank();
+    $xlsx->footer('Generated by SalesHub — ' . date('Y-m-d H:i:s'));
+    $w = [38]; for ($m = 1; $m <= 12; $m++) { $w[] = 16; $w[] = 6; }
+    $xlsx->columnWidths($w);
+    $xlsx->output('income_statement_stella_' . $year . '.xlsx');
+}
+
 include '../layout.php';
+$H = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 ?>
 
-<style>
-.is-wrap { max-width: 780px; margin: 0 auto; }
-.is-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-.is-header {
-  background: #1e3060;
-  color: #fff;
-  padding: 18px 28px 14px;
-}
-.is-header-title {
-  font-family: var(--font-m);
-  font-size: .62rem;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  color: rgba(255,255,255,.5);
-  margin-bottom: 4px;
-}
-.is-header-main {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  color: #fff;
-}
-.is-header-date {
-  font-family: var(--font-m);
-  font-size: .72rem;
-  color: rgba(255,255,255,.6);
-  margin-top: 3px;
-}
-.is-body { padding: 0; }
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
-/* Section heading row */
-.is-section {
-  background: #f0f2f5;
-  padding: 8px 28px;
-  font-family: var(--font-m);
-  font-size: .62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  color: var(--subtext2);
-  border-top: 1px solid var(--border);
-}
-.is-subsection {
-  padding: 6px 28px 2px 40px;
-  font-family: var(--font-m);
-  font-size: .6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--subtext);
-  border-bottom: 1px solid #f0f2f5;
-}
-
-/* Row */
-.is-row {
-  display: flex;
-  align-items: center;
-  padding: 0 28px 0 44px;
-  border-bottom: 1px solid #f4f5f7;
-  min-height: 38px;
-  transition: background .1s;
-}
-.is-row:hover { background: #fafbfc; }
-.is-row.indent2 { padding-left: 60px; }
-.is-label {
-  flex: 1;
-  font-size: .78rem;
-  color: var(--text);
-  padding: 6px 0;
-}
-.is-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 160px;
-  justify-content: flex-end;
-}
-.is-input {
-  width: 130px;
-  padding: 5px 10px;
-  text-align: right;
-  font-family: var(--font-m);
-  font-size: .78rem;
-  color: var(--text);
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  outline: none;
-  transition: border-color .15s, box-shadow .15s;
-}
-.is-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(15,123,92,.08);
-}
-.is-input.is-input-auto {
-  background: #eff6ff;
-  border-color: #93c5fd;
-}
-.is-input.is-input-auto:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
-}
-.is-pct {
-  font-family: var(--font-m);
-  font-size: .7rem;
-  color: var(--subtext);
-  width: 36px;
-  text-align: right;
-}
-.is-pct.red  { color: var(--accent2); font-weight: 600; }
-.is-pct.green{ color: var(--accent);  font-weight: 600; }
-.is-pct.gold { color: var(--accent3); font-weight: 600; }
-
-/* Total rows */
-.is-total {
-  display: flex;
-  align-items: center;
-  padding: 8px 28px 8px 44px;
-  background: #f8f9fb;
-  border-top: 2px solid var(--border2);
-  border-bottom: 1px solid var(--border);
-}
-.is-total.underline { border-bottom: 2px solid var(--border2); }
-.is-total-label {
-  flex: 1;
-  font-family: var(--font-m);
-  font-size: .72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--subtext2);
-}
-.is-total-val {
-  font-family: var(--font-m);
-  font-size: .88rem;
-  font-weight: 800;
-  color: var(--text);
-  min-width: 130px;
-  text-align: right;
-}
-.is-total-pct {
-  font-family: var(--font-m);
-  font-size: .7rem;
-  font-weight: 700;
-  width: 36px;
-  text-align: right;
-  margin-left: 6px;
-}
-
-/* Net Income highlight */
-.is-net {
-  background: #fffbeb;
-  border-top: 2px solid var(--accent3) !important;
-}
-.is-net .is-total-label { color: var(--accent3); font-size: .82rem; }
-.is-net .is-total-val   { color: var(--accent3); font-size: 1rem; }
-
-/* Controls */
-.is-controls {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-
-.flash.toast {
-  position: fixed; top: 68px; right: 22px;
-  z-index: 9999; max-width: 320px;
-  animation: fadeSlideDown .3s ease;
-}
-</style>
-
-<!-- Controls -->
 <div class="is-controls">
-  <form method="GET" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <input type="date" name="date" class="form-control" style="max-width:180px"
-           value="<?= htmlspecialchars($stmtDate) ?>" onchange="this.form.submit()">
+  <form method="GET" class="is-yearform">
+    <select name="year" class="form-control is-year" onchange="this.form.submit()">
+      <?php for ($y = (int)date('Y') + 1; $y >= 2024; $y--): ?>
+      <option value="<?= $y ?>" <?= $y === $year ? 'selected' : '' ?>><?= $y ?></option>
+      <?php endfor; ?>
+    </select>
   </form>
-  <button class="btn btn-primary" onclick="saveAll()">💾 Save</button>
-  <a id="csvBtn" href="stella_income_statement.php?export_csv=1&date=<?= htmlspecialchars($stmtDate) ?>" class="btn btn-ghost" style="gap:6px">⬇ Download Excel</a>
-  <span id="saveStatus" style="font-family:var(--font-m);font-size:.72rem;color:var(--subtext)"></span>
+  <button class="btn btn-primary" type="button" id="btnSave">💾 Save</button>
+  <a id="csvBtn" href="stella_income_statement.php?export_csv=1&amp;year=<?= $year ?>" class="btn btn-ghost">⬇ Download Excel</a>
+  <span id="saveStatus" class="is-status"></span>
+  <span class="is-legend"><i class="dot live"></i> live from ledger &nbsp; <i class="dot saved"></i> saved</span>
 </div>
 
-<div class="is-wrap" style="max-width:100%;margin-bottom:20px">
-
-  <!-- ── Stella Expenses Summary ── -->
-  <div class="is-card" style="overflow-x:auto">
-    <div style="background:#1e3a5f;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div>
-        <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.5);margin-bottom:2px">Stella Branch</div>
-        <div style="font-size:.92rem;font-weight:700;color:#fff;letter-spacing:-.02em">
-          EXPENSES LEDGER SUMMARY — <?= date('F Y', strtotime($stmtDate)) ?>
-        </div>
-      </div>
-      <a href="stella_expenses.php?month=<?= $expMonth ?>&year=<?= $expYear ?>"
-         class="btn btn-ghost btn-sm" style="color:#93c5fd;border-color:rgba(147,197,253,.25);background:rgba(147,197,253,.07);font-size:.65rem">
-        View Full Ledger →
-      </a>
-    </div>
-
-    <?php
-    $expGroups = [
-      'VAT BREAKDOWN' => [
-        'amount_w_vat'   => 'Amount w/ VAT',
-        'vat'            => 'VAT',
-        'amount_wo_vat'  => 'Amount w/out VAT',
-        'non_vat'        => 'Non VAT',
-        'total_amount'   => 'TOTAL AMOUNT',
-      ],
-      'EXPENSE CATEGORIES' => [
-        'purchases'          => 'Purchases',
-        'salaries'           => 'Salaries',
-        'rent'               => 'Rent',
-        'medicine'           => 'Medicine',
-        'lpg'                => 'LPG',
-        'repairs_maintenance'=> 'Repairs & Maintenance',
-        'fuel_trans'         => 'Fuel & Trans',
-        'communication'      => 'Communication',
-        'transportation'     => 'Transportation / Delivery fee',
-        'light'              => 'Light',
-        'drinking_water'     => 'Drinking Water',
-        'water'              => 'Water',
-        'sss_phic_hdmf'      => 'SSS / PHIC / HDMF',
-        'taxes_licences'     => 'Taxes & Licences',
-        'office_supplies'    => 'Office Supplies',
-        'kitchen_supplies'   => 'Kitchen Supplies',
-        'bio_pest_control'   => 'Bio Aug. / Pest Control',
-        'representation'     => 'Representation',
-        'miscellaneous'      => 'Miscellaneous',
-        'sir_budoy_nikki'    => "Sir Budoy / M'Nikki",
-        'staff_meal'         => 'Staff Meal',
-        'marketing'          => 'Marketing',
-        'sales_discounts'    => 'Sales Discounts',
-        'row_total'          => 'ROW TOTAL',
-      ],
-    ];
-    foreach ($expGroups as $groupName => $cols): ?>
-    <div style="overflow-x:auto">
-      <table style="border-collapse:collapse;width:max-content;min-width:100%">
-        <thead>
-          <tr>
-            <td colspan="<?= count($cols) ?>"
-                style="background:#162d4a;color:rgba(255,255,255,.6);font-family:var(--font-m);font-size:.55rem;
-                       text-transform:uppercase;letter-spacing:.1em;padding:5px 12px;border-bottom:1px solid #2d5480">
-              <?= $groupName ?>
-            </td>
-          </tr>
-          <tr>
-            <?php foreach ($cols as $col => $label):
-              $isTotal = in_array($col, ['total_amount','row_total']);
-            ?>
-            <th style="background:<?= $isTotal ? '#1a4a2e' : '#1e3a5f' ?>;color:#fff;
-                       font-family:var(--font-m);font-size:.52rem;font-weight:700;
-                       text-transform:uppercase;letter-spacing:.05em;
-                       padding:8px 10px;border:1px solid #2d5480;
-                       white-space:normal;text-align:center;min-width:100px;max-width:120px;line-height:1.3">
-              <?= htmlspecialchars($label) ?>
-            </th>
-            <?php endforeach; ?>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <?php foreach ($cols as $col => $label):
-              $val = $expTotals[$col] ?? 0;
-              $isTotal   = in_array($col, ['total_amount','row_total']);
-              $isZero    = (float)$val == 0;
-              $bgColor   = $isTotal ? '#f0fdf4' : ($isZero ? '#f8f9fb' : '#fff');
-              $txtColor  = $isTotal ? 'var(--accent)' : ($isZero ? 'var(--muted)' : 'var(--text)');
-              $fWeight   = $isTotal ? '800' : ($isZero ? '400' : '600');
-            ?>
-            <td style="background:<?= $bgColor ?>;border:1px solid #e3e6ea;
-                       padding:9px 10px;text-align:right;
-                       font-family:var(--font-m);font-size:.72rem;
-                       color:<?= $txtColor ?>;font-weight:<?= $fWeight ?>;
-                       white-space:nowrap;min-width:100px">
-              <?= $isZero ? '<span style="color:var(--muted)">—</span>' : $ef($col) ?>
-            </td>
-            <?php endforeach; ?>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <?php endforeach; ?>
-
-  </div><!-- /expenses summary card -->
-</div><!-- /is-wrap expenses -->
-
-<div class="is-wrap">
-<div class="is-card">
-
-  <!-- Header -->
-  <div class="is-header">
-    <div class="is-header-title">Stella Branch</div>
-    <div class="is-header-main">INCOME STATEMENT <?= date('Y', strtotime($stmtDate)) ?></div>
-    <div class="is-header-date"><?= $displayDate ?></div>
-  </div>
-
-  <div class="is-body">
-
-    <!-- ── REVENUE ── -->
-    <div class="is-section">Revenue</div>
-    <?php
-    $rows_revenue = [
-      ['sales_discount',  'Sales Discount',   true,  'red'],
-      ['cost_of_sales',   'Cost of Sales',    true,  'red'],
-    ];
-    ?>
-    <!-- Net Sales — auto-pulled from Summary Report store_gross total -->
-    <div class="is-row">
-      <div class="is-label">
-        Net Sales
-        <span style="font-family:var(--font-m);font-size:.6rem;color:var(--accent);margin-left:8px;
-                     background:rgba(15,123,92,.08);padding:2px 7px;border-radius:10px;border:1px solid rgba(15,123,92,.15)">
-          ↳ Auto from Summary Report
-        </span>
-      </div>
-      <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input" id="net_sales" data-field="net_sales"
-               value="<?= $netSalesAuto ?>"
-               readonly tabindex="-1"
-               style="background:#f0fdf4;color:var(--accent);font-weight:700;cursor:default;border-color:rgba(15,123,92,.2)">
-        <div class="is-pct" id="pct_net_sales">—</div>
-      </div>
-    </div>
-    <?php foreach ($rows_revenue as [$field, $label, $show_pct, $pct_class]):
-      $isAuto = isset($autoExpenseMap[$field]);
-    ?>
-    <div class="is-row">
-      <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
-      <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
-               value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
-               oninput="recalc()">
-        <?php if ($show_pct): ?>
-        <div class="is-pct <?=$pct_class?>" id="pct_<?=$field?>">—</div>
+<div class="is-sheet" id="isSheet">
+<table class="is-grid" id="isGrid">
+  <thead>
+    <tr>
+      <th class="is-title">STELLA INCOME STATEMENT YR <?= $year ?></th>
+      <?php for ($m = 1; $m <= 12; $m++): ?>
+      <th class="is-mh" data-m="<?= $m ?>"><?= $MONTHS[$m - 1] ?> <?= $year ?>
+        <span class="is-chip <?= $isSaved[$m] ? 'saved' : 'live' ?>" id="chip<?= $m ?>"><?= $isSaved[$m] ? 'saved' : 'live' ?></span></th>
+      <th class="is-ph"></th>
+      <?php endfor; ?>
+    </tr>
+  </thead>
+  <tbody>
+  <?php foreach ($ROWS as $r):
+      $kind = $r[0];
+      if ($kind === 'gap'): ?>
+    <tr class="is-gap"><td class="is-lab"></td><?php for ($m = 1; $m <= 12; $m++): ?><td class="is-c"></td><td class="is-p"></td><?php endfor; ?></tr>
+  <?php elseif ($kind === 'head' || $kind === 'sub'): ?>
+    <tr class="is-<?= $kind ?>"><td class="is-lab l<?= $kind === 'sub' ? 1 : 0 ?>"><?= $H($r[1]) ?></td><?php for ($m = 1; $m <= 12; $m++): ?><td class="is-c"></td><td class="is-p"></td><?php endfor; ?></tr>
+  <?php else:
+      $key = $r[1]; $label = $r[2]; $lvl = $r[3]; $o = $r[4];
+      $cls = 'is-r' . (!empty($o['u']) ? ' u' : '') . (isset($o['cls']) ? ' ' . $o['cls'] : '');
+  ?>
+    <tr class="<?= $cls ?>" data-key="<?= $key ?>">
+      <td class="is-lab l<?= $lvl ?>"><?= $H($label) ?></td>
+      <?php for ($m = 1; $m <= 12; $m++): ?>
+      <td class="is-c">
+        <?php if ($kind === 'in'): ?>
+        <input type="text" inputmode="decimal" autocomplete="off" class="is-in<?= !empty($o['ro']) ? ' ro' : '' ?>"
+               data-m="<?= $m ?>" data-f="<?= $key ?>" value="<?= $vals[$m][$key] == 0 ? '' : number_format($vals[$m][$key], 2, '.', ',') ?>"
+               <?= !empty($o['ro']) ? 'readonly tabindex="-1"' : '' ?> <?= !empty($o['tip']) ? 'title="' . $H($o['tip']) . '"' : '' ?>>
+        <?php else: ?>
+        <span class="is-calc" data-m="<?= $m ?>" data-c="<?= $key ?>">0.00</span>
         <?php endif; ?>
-      </div>
-    </div>
+      </td>
+      <td class="is-p"><?php if (!empty($o['pct'])): ?><span data-m="<?= $m ?>" data-pc="<?= $key ?>"></span><?php endif; ?></td>
+      <?php endfor; ?>
+    </tr>
+  <?php endif; endforeach; ?>
+
+    <!-- EXTRA EXPENSES -->
+    <tr class="is-x-head"><td class="is-lab">EXTRA EXPENSES:</td><?php for ($m = 1; $m <= 12; $m++): ?><td class="is-c"></td><td class="is-p"></td><?php endfor; ?></tr>
+    <?php foreach ($extras as $x): ?>
+    <tr class="is-x" data-xid="<?= (int)$x['id'] ?>">
+      <td class="is-lab is-xlab">
+        <button type="button" class="is-xdel" data-xdel="<?= (int)$x['id'] ?>" title="Remove this line">✕</button>
+        <input type="text" class="is-xl" value="<?= $H($x['label']) ?>" data-xl="<?= (int)$x['id'] ?>" autocomplete="off">
+      </td>
+      <?php for ($m = 1; $m <= 12; $m++): ?>
+      <td class="is-c"><input type="text" inputmode="decimal" autocomplete="off" class="is-in is-xin" data-xm="<?= $m ?>" data-xid="<?= (int)$x['id'] ?>"
+           value="<?= (float)$x["m$m"] == 0 ? '' : number_format((float)$x["m$m"], 2, '.', ',') ?>"></td>
+      <td class="is-p"></td>
+      <?php endfor; ?>
+    </tr>
     <?php endforeach; ?>
+    <tr class="is-x-add"><td class="is-lab"><button type="button" id="btnAddX" class="is-addx">+ Add expense line</button></td><?php for ($m = 1; $m <= 12; $m++): ?><td class="is-c"></td><td class="is-p"></td><?php endfor; ?></tr>
 
-    <!-- Gross Profit total -->
-    <div class="is-total underline">
-      <div class="is-total-label">Gross Profit</div>
-      <div class="is-total-val" id="tot_gross_profit">0.00</div>
-      <div class="is-total-pct" id="pct_gross_profit" style="color:var(--accent)"></div>
-    </div>
-
-    <!-- Other Income -->
-    <div class="is-row" style="padding-left:28px">
-      <div class="is-label" style="color:var(--subtext2);font-size:.75rem">Other Income – Royalty</div>
-      <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input" id="other_income_royalty" data-field="other_income_royalty"
-               value="<?=$v('other_income_royalty')?>" oninput="recalc()">
-        <div class="is-pct" id="pct_other_income_royalty">—</div>
-      </div>
-    </div>
-
-    <!-- ── OPERATING EXPENSES ── -->
-    <div class="is-section">Operating Expenses</div>
-
-    <div class="is-subsection">Variable</div>
-    <?php
-    $rows_var = [
-      ['equipment_supplies',    'Equipment and Supplies'],
-      ['depreciation_expense',  'Depreciation Expense'],
-      ['transportation_fuel',   'Transportation and Fuel'],
-      ['lpg',                   'LPG'],
-    ];
-    foreach ($rows_var as [$field, $label]):
-      $isAuto = isset($autoExpenseMap[$field]);
-    ?>
-    <div class="is-row">
-      <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
-      <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
-               value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
-               oninput="recalc()">
-        <div class="is-pct" id="pct_<?=$field?>">—</div>
-      </div>
-    </div>
-    <?php endforeach; ?>
-    <div class="is-total">
-      <div class="is-total-label" style="padding-left:16px">Total Variable</div>
-      <div class="is-total-val" id="tot_variable">0.00</div>
-      <div class="is-total-pct" id="pct_tot_variable" style="color:var(--accent2)"></div>
-    </div>
-
-    <div class="is-subsection">Fixed</div>
-    <?php
-    $rows_fixed = [
-      ['rent',               'Rent'],
-      ['water_electricity',  'Water and Electricity'],
-      ['drinking_water',     'Drinking Water'],
-      ['pest_control_bio',   'Pest Control, Bio Aug.'],
-      ['common_area_charges','Common Area Charges'],
-      ['exhaust_cleaning',   'Exhaust Cleaning'],
-      ['salaries',           'Salaries'],
-    ];
-    foreach ($rows_fixed as [$field, $label]):
-      $isAuto = isset($autoExpenseMap[$field]);
-    ?>
-    <div class="is-row">
-      <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
-      <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
-               value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
-               oninput="recalc()">
-        <div class="is-pct" id="pct_<?=$field?>">—</div>
-      </div>
-    </div>
-    <?php endforeach; ?>
-    <div class="is-total">
-      <div class="is-total-label" style="padding-left:16px">Total Fixed</div>
-      <div class="is-total-val" id="tot_fixed">0.00</div>
-      <div class="is-total-pct" id="pct_tot_fixed" style="color:var(--accent2)"></div>
-    </div>
-
-    <!-- Total Operating Expenses -->
-    <div class="is-total underline" style="background:#fff1f0">
-      <div class="is-total-label" style="color:var(--accent2)">Total Operating Expenses</div>
-      <div class="is-total-val" id="tot_operating" style="color:var(--accent2)">0.00</div>
-      <div class="is-total-pct" id="pct_tot_operating" style="color:var(--accent2)"></div>
-    </div>
-
-    <!-- ── G&A EXPENSES ── -->
-    <div class="is-section">General and Administrative Expenses</div>
-    <?php
-    $rows_ga = [
-      ['office_equipment_supplies', 'Office Equipment & Supplies'],
-      ['philhealth_sss',            'Philhealth, Pag-ibig, SSS Premium'],
-      ['medical_supplies',          'Medical Supplies'],
-      ['agency_fees',               'Agency Fees / Commission'],
-      ['bank_fees',                 'Bank Fees'],
-      ['staff_meal',                'Staff Meal'],
-      ['representation_benefits',   'Representation / Employee Benefits'],
-      ['professional_fees',         'Professional / Administrative Fees'],
-      ['communication',             'Communication'],
-      ['freight_storage',           'Freight Charge & Storage'],
-      ['repairs_maintenance',       'Repairs and Maintenance'],
-      ['sponsorship_marketing',     'Sponsorship and Marketing'],
-      ['taxes_licenses',            'Taxes and Licenses-Others (Est)'],
-      ['system_development',        'System Development'],
-      ['construction_progress',     'Construction and Progress'],
-      ['insurance',                 'Insurance'],
-      ['admin_shares',              'ADMIN Shares'],
-      ['miscellaneous_expense',     'Miscellaneous Expense'],
-    ];
-    foreach ($rows_ga as [$field, $label]):
-      $isAuto = isset($autoExpenseMap[$field]);
-    ?>
-    <div class="is-row">
-      <div class="is-label"><?= $label ?><?= $isAuto ? $autoBadge : '' ?></div>
-      <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input<?= $isAuto ? ' is-input-auto' : '' ?>" id="<?=$field?>" data-field="<?=$field?>"
-               value="<?= $isAuto ? ($row ? $v($field) : $autoExpenseVal[$field]) : $v($field) ?>"
-               oninput="recalc()">
-        <div class="is-pct" id="pct_<?=$field?>">—</div>
-      </div>
-    </div>
-    <?php endforeach; ?>
-    <div class="is-total underline" style="background:#fff1f0">
-      <div class="is-total-label" style="color:var(--accent2)">Total Administrative Expenses</div>
-      <div class="is-total-val" id="tot_ga" style="color:var(--accent2)">0.00</div>
-      <div class="is-total-pct" id="pct_tot_ga" style="color:var(--accent2)"></div>
-    </div>
-
-    <!-- Total Expenses -->
-    <div class="is-total" style="background:#fff1f0;border-top:2px solid #dc354533">
-      <div class="is-total-label" style="color:var(--accent2);font-size:.8rem">Total Expenses</div>
-      <div class="is-total-val" id="tot_expenses" style="color:var(--accent2);font-size:.95rem">0.00</div>
-      <div class="is-total-pct" id="pct_tot_expenses" style="color:var(--accent2)"></div>
-    </div>
-
-    <!-- Net Income Before Tax -->
-    <div class="is-total" style="background:#f0fdf4;border-top:2px solid var(--accent)">
-      <div class="is-total-label" style="color:var(--accent)">Net Income (Loss) Before Taxes</div>
-      <div class="is-total-val" id="tot_net_before_tax" style="color:var(--accent)">0.00</div>
-      <div class="is-total-pct" id="pct_net_before_tax" style="color:var(--accent)"></div>
-    </div>
-
-    <!-- VAT Payment — auto-pulled from Expenses Ledger VAT total -->
-    <div class="is-row" style="padding-left:28px">
-      <div class="is-label" style="color:var(--subtext2);font-size:.75rem">
-        VAT Payment
-        <span style="font-family:var(--font-m);font-size:.58rem;color:var(--accent);margin-left:8px;
-                     background:rgba(15,123,92,.08);padding:2px 7px;border-radius:10px;border:1px solid rgba(15,123,92,.15)">
-          ↳ Auto from Expenses
-        </span>
-      </div>
-      <div class="is-input-wrap">
-        <input type="number" step="0.01" class="is-input is-input-auto" id="vat_payment" data-field="vat_payment"
-               value="<?= $row ? $v('vat_payment') : $vatAutoFmt ?>"
-               oninput="recalc()"
-               style="background:#f0fdf4;color:var(--accent);font-weight:700;border-color:rgba(15,123,92,.2)">
-        <div class="is-pct" id="pct_vat_payment">—</div>
-      </div>
-    </div>
-
-    <!-- Net Income After Tax -->
-    <div class="is-total is-net">
-      <div class="is-total-label">Net Income After Tax</div>
-      <div class="is-total-val" id="tot_net_after_tax">0.00</div>
-      <div class="is-total-pct" id="pct_net_after_tax" style="color:var(--accent3)"></div>
-    </div>
-
-  </div><!-- /is-body -->
-</div><!-- /is-card -->
-</div><!-- /is-wrap -->
-
-  </div></div>
+    <tr class="is-gap"><td class="is-lab"></td><?php for ($m = 1; $m <= 12; $m++): ?><td class="is-c"></td><td class="is-p"></td><?php endfor; ?></tr>
+    <tr class="is-r is-r-ni" data-key="ni">
+      <td class="is-lab">NET INCOME</td>
+      <?php for ($m = 1; $m <= 12; $m++): ?>
+      <td class="is-c"><span class="is-calc" data-m="<?= $m ?>" data-c="ni">0.00</span></td>
+      <td class="is-p"><span data-m="<?= $m ?>" data-pc="ni"></span></td>
+      <?php endfor; ?>
+    </tr>
+  </tbody>
+</table>
+</div>
 
 <script>
-const STMT_DATE  = <?= json_encode($stmtDate) ?>;
+const YEAR  = <?= (int)$year ?>;
+const MDATE = <?= json_encode(array_values($monthDate)) ?>;          // index 0 = January
+const FIELDS = <?= json_encode(IS_FIELDS) ?>;
+const V = <?= json_encode($vals) ?>;                                  // V[month][field]
+const X = {};                                                         // extra expense lines
+<?php foreach ($extras as $x): ?>X[<?= (int)$x['id'] ?>] = {label: <?= json_encode($x['label']) ?>, m: <?= json_encode(array_map(fn($i) => (float)$x["m$i"], range(1, 12))) ?>};
+<?php endforeach; ?>
+const SAVED = <?= json_encode(array_map('boolval', array_values($isSaved))) ?>;
+const OPEX_VAR = ['equipment_supplies','depreciation_expense','transportation_fuel','lpg'];
+const OPEX_FIX = ['rent','water_electricity','drinking_water','pest_control_bio','common_area_charges','exhaust_cleaning','salaries'];
+const GA = ['office_equipment_supplies','philhealth_sss','medical_supplies','agency_fees','bank_fees','staff_meal','representation_benefits','professional_fees','communication','management_fee','freight_storage','repairs_maintenance','sponsorship_marketing','taxes_licenses','system_development','construction_progress','insurance','admin_shares','miscellaneous_expense'];
 
-function gv(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
-function fmt(n)  { return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function pct(part, base) {
-  if (!base) return '—';
-  return Math.round(part / base * 100) + '%';
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const fmt = n => (Math.round(n * 100) / 100).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const sum = (m, list) => list.reduce((s, f) => s + (V[m][f] || 0), 0);
+
+// "1200+350.5" or "=1200+350.5" typed into a cell is calculated, like in Excel
+function parseCell(txt) {
+  let s = String(txt).replace(/^=/, '').replace(/,/g, '').trim();
+  if (s === '') return 0;
+  if (!/^[0-9+\-*/().\s]+$/.test(s)) return NaN;
+  try { const r = Function('"use strict";return (' + s + ')')(); return isFinite(r) ? r : NaN; } catch (e) { return NaN; }
 }
-function setPct(id, part, base, cls) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = pct(part, base);
-  el.className   = 'is-pct' + (cls ? ' ' + cls : '');
+
+function compute(m) {
+  const v = V[m], o = {};
+  o.gross = v.net_sales - v.sales_discount - v.cost_of_sales;
+  o.tvar  = sum(m, OPEX_VAR);
+  o.tfix  = sum(m, OPEX_FIX);
+  o.topex = o.tvar + o.tfix;
+  o.tga   = sum(m, GA);
+  o.texp  = o.topex + o.tga;
+  o.nbt   = o.gross - o.texp + v.other_income_royalty;
+  o.nat   = o.nbt - v.vat_payment;
+  let ex = 0; for (const id in X) ex += X[id].m[m - 1] || 0;
+  o.ni    = o.nat - ex;
+  return o;
 }
-function setTotal(id, val, pctId, base, cls) {
-  const el = document.getElementById(id);
-  if (el) { el.textContent = fmt(val); if(cls) el.style.color=''; }
-  if (pctId) {
-    const pe = document.getElementById(pctId);
-    if (pe) pe.textContent = base > 0 ? Math.round(val/base*100)+'%' : '—';
+
+function render() {
+  for (let m = 1; m <= 12; m++) {
+    const o = compute(m), base = V[m].net_sales;
+    $$('[data-c][data-m="' + m + '"]').forEach(el => {
+      const n = o[el.dataset.c]; el.textContent = fmt(n); el.classList.toggle('neg', n < 0);
+    });
+    $$('[data-pc][data-m="' + m + '"]').forEach(el => {
+      const k = el.dataset.pc;
+      const n = (k in o) ? o[k] : V[m][k];
+      el.textContent = base > 0 && n !== undefined ? Math.round(n / base * 100) + '%' : '';
+    });
   }
 }
 
-function recalc() {
-  const netSales      = gv('net_sales');
-  const salesDisc     = gv('sales_discount');
-  const cogs          = gv('cost_of_sales');
-  const royalty       = gv('other_income_royalty');
-
-  // ── Revenue ──
-  const grossProfit   = netSales - salesDisc - cogs;
-  setPct('pct_net_sales',      netSales,  netSales, '');
-  setPct('pct_sales_discount', salesDisc, netSales, 'red');
-  setPct('pct_cost_of_sales',  cogs,      netSales, 'red');
-  setTotal('tot_gross_profit', grossProfit, 'pct_gross_profit', netSales);
-
-  // ── Variable Opex ──
-  const varFields = ['equipment_supplies','depreciation_expense','transportation_fuel','lpg'];
-  let varTotal = 0;
-  varFields.forEach(f => {
-    const val = gv(f);
-    varTotal += val;
-    setPct('pct_'+f, val, netSales, 'red');
-  });
-  setTotal('tot_variable', varTotal, 'pct_tot_variable', netSales);
-
-  // ── Fixed Opex ──
-  const fixedFields = ['rent','water_electricity','drinking_water','pest_control_bio','common_area_charges','exhaust_cleaning','salaries'];
-  let fixedTotal = 0;
-  fixedFields.forEach(f => {
-    const val = gv(f);
-    fixedTotal += val;
-    setPct('pct_'+f, val, netSales, 'red');
-  });
-  setTotal('tot_fixed', fixedTotal, 'pct_tot_fixed', netSales);
-
-  const opexTotal = varTotal + fixedTotal;
-  setTotal('tot_operating', opexTotal, 'pct_tot_operating', netSales);
-
-  // ── G&A ──
-  const gaFields = ['office_equipment_supplies','philhealth_sss','medical_supplies','agency_fees','bank_fees','staff_meal','representation_benefits','professional_fees','communication','freight_storage','repairs_maintenance','sponsorship_marketing','taxes_licenses','system_development','construction_progress','insurance','admin_shares','miscellaneous_expense'];
-  let gaTotal = 0;
-  gaFields.forEach(f => {
-    const val = gv(f);
-    gaTotal += val;
-    setPct('pct_'+f, val, netSales, 'red');
-  });
-  setTotal('tot_ga', gaTotal, 'pct_tot_ga', netSales);
-
-  // ── Totals ──
-  const totalExp     = opexTotal + gaTotal;
-  const netBeforeTax = grossProfit - totalExp + royalty;
-  const vatPayment   = gv('vat_payment');
-  const netAfterTax  = netBeforeTax - vatPayment;
-
-  setTotal('tot_expenses',      totalExp,     'pct_tot_expenses',     netSales);
-  setTotal('tot_net_before_tax',netBeforeTax, 'pct_net_before_tax',   netSales);
-  setPct('pct_vat_payment', vatPayment, netSales, 'red');
-  setTotal('tot_net_after_tax', netAfterTax,  'pct_net_after_tax',    netSales);
-
-  // Color net after tax
-  const el = document.getElementById('tot_net_after_tax');
-  if (el) el.style.color = netAfterTax >= 0 ? 'var(--accent3)' : 'var(--accent2)';
-}
-
-async function saveAll() {
-  const btn = document.querySelector('button[onclick="saveAll()"]');
-  const status = document.getElementById('saveStatus');
-  btn.textContent = '…'; btn.disabled = true;
-
+// ── saving ────────────────────────────────────────────────
+const dirty = {}, timers = {};
+function setStatus(t, cls) { const s = $('#saveStatus'); s.textContent = t; s.className = 'is-status ' + (cls || ''); }
+async function saveMonth(m) {
   const fd = new FormData();
   fd.append('ajax_save', '1');
-  fd.append('stmt_date', STMT_DATE);
-
-  document.querySelectorAll('.is-input').forEach(el => {
-    fd.append(el.dataset.field, el.value || '0');
-  });
-
+  fd.append('stmt_date', MDATE[m - 1]);
+  FIELDS.forEach(f => fd.append(f, V[m][f] || 0));
   try {
-    const res  = await fetch('stella_income_statement.php', {method:'POST', body:fd});
-    const data = await res.json();
-    if (data.ok) {
-      status.textContent = '✓ Saved';
-      status.style.color = 'var(--accent)';
-      showToast('✓ Income statement saved', 'success');
-    } else {
-      showToast('❌ ' + data.msg, 'error');
-      status.textContent = '❌ Error';
-    }
-  } catch(e) {
-    showToast('❌ Network error', 'error');
+    const r = await (await fetch('stella_income_statement.php', {method: 'POST', body: fd})).json();
+    if (!r.ok) throw new Error(r.msg || 'error');
+    delete dirty[m]; SAVED[m - 1] = true;
+    const c = $('#chip' + m); c.textContent = 'saved'; c.className = 'is-chip saved';
+    return true;
+  } catch (e) { setStatus('❌ ' + e.message, 'err'); return false; }
+}
+async function saveAll() {
+  const ms = Object.keys(dirty).map(Number);
+  if (!ms.length) { setStatus('✓ All saved', 'ok'); return; }
+  setStatus('Saving…');
+  let ok = true;
+  for (const m of ms) ok = (await saveMonth(m)) && ok;
+  if (ok) { setStatus('✓ Saved', 'ok'); setTimeout(() => { if ($('#saveStatus').textContent === '✓ Saved') setStatus(''); }, 3000); }
+}
+function touchMonth(m) {
+  dirty[m] = true; setStatus('Unsaved changes…');
+  clearTimeout(timers[m]); timers[m] = setTimeout(saveAll, 1200);
+}
+async function post(data) {
+  const fd = new FormData(); for (const k in data) fd.append(k, data[k]);
+  fd.append('year', YEAR);
+  return (await fetch('stella_income_statement.php', {method: 'POST', body: fd})).json();
+}
+
+// ── cell editing ──────────────────────────────────────────
+document.addEventListener('focusin', e => {
+  const t = e.target;
+  if (!t.classList || !t.classList.contains('is-in') || t.readOnly) return;
+  const raw = t.dataset.xid ? (X[t.dataset.xid].m[t.dataset.xm - 1] || 0) : (V[t.dataset.m][t.dataset.f] || 0);
+  t.value = raw === 0 ? '' : String(raw);
+  t.select();
+});
+document.addEventListener('focusout', e => {
+  const t = e.target;
+  if (!t.classList || !t.classList.contains('is-in') || t.readOnly) return;
+  const n = parseCell(t.value);
+  const val = isNaN(n) ? 0 : Math.round(n * 100) / 100;
+  t.value = val === 0 ? '' : fmt(val);
+  if (t.dataset.xid) {
+    const id = t.dataset.xid, i = t.dataset.xm - 1;
+    if (X[id].m[i] === val) return;
+    X[id].m[i] = val; render(); saveExtra(id);
+  } else {
+    const m = +t.dataset.m, f = t.dataset.f;
+    if (V[m][f] === val) return;
+    V[m][f] = val; render(); touchMonth(m);
   }
-  btn.textContent = '💾 Save'; btn.disabled = false;
-  setTimeout(() => { status.textContent = ''; }, 4000);
-}
+});
 
-function showToast(msg, type) {
-  const t = document.createElement('div');
-  t.className = 'flash flash-'+(type||'success')+' toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+const xTimers = {};
+function saveExtra(id) {
+  setStatus('Unsaved changes…');
+  clearTimeout(xTimers[id]);
+  xTimers[id] = setTimeout(async () => {
+    const r = await post({ajax_extra: 'save', id: id, label: X[id].label, amounts: JSON.stringify(X[id].m)});
+    setStatus(r.ok ? '✓ Saved' : '❌ ' + (r.msg || 'error'), r.ok ? 'ok' : 'err');
+    if (r.ok) setTimeout(() => { if ($('#saveStatus').textContent === '✓ Saved') setStatus(''); }, 3000);
+  }, 900);
 }
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.classList && t.classList.contains('is-xl')) { X[t.dataset.xl].label = t.value; saveExtra(t.dataset.xl); }
+});
+document.addEventListener('click', async e => {
+  const del = e.target.closest('[data-xdel]');
+  if (del) {
+    const id = del.dataset.xdel;
+    if (!confirm('Remove "' + (X[id].label || 'this line') + '" and its amounts?')) return;
+    const r = await post({ajax_extra: 'del', id: id});
+    if (r.ok) { delete X[id]; del.closest('tr').remove(); render(); }
+    return;
+  }
+  if (e.target.id === 'btnAddX') {
+    await saveAll();
+    const r = await post({ajax_extra: 'add', label: 'NEW LINE'});
+    if (r.ok) location.reload();
+  }
+});
+$('#btnSave').addEventListener('click', saveAll);
+window.addEventListener('beforeunload', e => { if (Object.keys(dirty).length) { e.preventDefault(); e.returnValue = ''; } });
 
-document.addEventListener('DOMContentLoaded', recalc);
+render();
 </script>
 <script src="../assets/js/keynav.js"></script>
 </body>
