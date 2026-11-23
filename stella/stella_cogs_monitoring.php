@@ -442,6 +442,20 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// Keep the 2nd header row exactly under the 1st (no gap / overlap, whatever the font or zoom).
+(function () {
+  function fit() {
+    var t = document.getElementById('cogsTbl'); if (!t) return;
+    var ref = t.querySelector('thead tr:first-child th[colspan]'); if (!ref) return;
+    var h = ref.getBoundingClientRect().height;
+    t.querySelectorAll('thead tr:nth-child(2) th').forEach(function (th) { th.style.top = h + 'px'; });
+  }
+  window.addEventListener('load', fit); window.addEventListener('resize', fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  setTimeout(fit, 300);
+})();
+</script>
 <style>
 .legend { display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 16px; font-family:var(--font-m); font-size:.66rem; color:var(--subtext); border-bottom:1px solid var(--border); }
 .legend .lg { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:4px; }
@@ -453,12 +467,17 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
   padding:7px 6px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); text-align:center; line-height:1.3;
   position:sticky; top:0; z-index:5; vertical-align:middle;
 }
-.cogs-tbl thead tr:nth-child(2) th { top:34px; }
+.cogs-tbl thead tr:nth-child(2) th { top:34px; } /* exact value is set by script below */
 .cogs-tbl thead .sub { display:block; font-size:.52rem; color:var(--subtext2); text-transform:none; font-weight:400; }
-.cogs-tbl thead th.g-commi { background:rgba(99,102,241,.16); }
-.cogs-tbl thead th.g-cogs  { background:rgba(34,211,165,.18); }
-.cogs-tbl thead th.g-non   { background:rgba(148,163,184,.22); }
-.cogs-tbl thead th.g-tot   { background:rgba(245,158,11,.22); }
+/* Header cells must be fully solid: a tint layered over the solid surface colour, never see-through,
+   so rows scrolling underneath can never show through the headings. */
+.cogs-tbl thead th { background-color:var(--surf2); background-clip:padding-box; }
+.cogs-tbl thead th.g-commi { background-image:linear-gradient(rgba(99,102,241,.16),rgba(99,102,241,.16)); }
+.cogs-tbl thead th.g-cogs  { background-image:linear-gradient(rgba(34,211,165,.18),rgba(34,211,165,.18)); }
+.cogs-tbl thead th.g-non   { background-image:linear-gradient(rgba(148,163,184,.22),rgba(148,163,184,.22)); }
+.cogs-tbl thead th.g-tot   { background-image:linear-gradient(rgba(245,158,11,.22),rgba(245,158,11,.22)); }
+.cogs-tbl thead th { box-shadow:0 1px 0 var(--border); }
+.cogs-tbl tbody td, .cogs-tbl tbody td .ci { position:relative; z-index:0; }
 .cogs-tbl tbody td, .cogs-tbl tfoot td { padding:3px 4px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); text-align:right; min-width:92px; background:var(--surface); }
 .cogs-tbl .sticky-date { position:sticky; left:0; z-index:6; min-width:128px; text-align:center; font-weight:700; }
 .cogs-tbl thead th.sticky-date { z-index:8; }
