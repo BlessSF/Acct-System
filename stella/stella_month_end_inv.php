@@ -127,18 +127,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $endInvNum  = (float)($_POST['end_inv_num']   ?? 0);
         $total      = round($suppCost * $endInvNum, 2);
 
-        // The date being edited is sent by the page (this request has no ?year=&month=&day= in its URL, so
-        // without it the server would fall back to the current month's last day and save into the WRONG date).
-        $saveDate = trim($_POST['inv_date'] ?? '');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $saveDate) || !strtotime($saveDate)) $saveDate = $lastDay;
-        $lastDay = $saveDate;
         $yr = (int)date('Y', strtotime($lastDay));
         $mo = (int)date('n', strtotime($lastDay));
 
         if ($rowId > 0) {
-            // an existing item stays on its own date — only its content is updated
-            $pdo->prepare("UPDATE stella_month_end_inv SET category=?, sort_order=?, item_desc=?, unit=?, supplier_cost=?, end_inv_num=?, total_amount=?, saved_by=? WHERE id=? AND store_name='Stella'")
-                ->execute([$category,$sortOrder,$itemDesc,$unit,$suppCost,$endInvNum,$total,$user['name'],$rowId]);
+            $pdo->prepare("UPDATE stella_month_end_inv SET inv_date=?, inv_year=?, inv_month=?, category=?, sort_order=?, item_desc=?, unit=?, supplier_cost=?, end_inv_num=?, total_amount=?, saved_by=? WHERE id=? AND store_name='Stella'")
+                ->execute([$lastDay,$yr,$mo,$category,$sortOrder,$itemDesc,$unit,$suppCost,$endInvNum,$total,$user['name'],$rowId]);
             echo json_encode(['ok'=>true,'id'=>$rowId,'total'=>$total]);
         } else {
             $pdo->prepare("INSERT INTO stella_month_end_inv (inv_date,inv_year,inv_month,store_name,category,sort_order,item_desc,unit,supplier_cost,end_inv_num,total_amount,saved_by) VALUES (?,?,?,'Stella',?,?,?,?,?,?,?,?)")
@@ -290,140 +284,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_month_counts']))
     exit;
 }
 
-// ── Excel IMPORT (month-end inventory workbook → this date) ──────────
-// Step 1  ajax_import_upload   : receive the .xlsx, keep it in a temp file, list its sheets
-// Step 2  ajax_import_preview  : show what would happen for a chosen sheet + month-end date
-// Step 3  ajax_import_commit   : write it.  No classification in the Excel → section "STORAGE".
-//                                A classification (coloured heading row, e.g. FRUITS&VEGETABLES) →
-//                                that section is used if it exists, created if it does not.
-//                                An item already saved on that date (same name) is UPDATED, not duplicated.
-function invImportTmpPath(string $token): string {
-    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'stella_inv_import_' . $token . '.xlsx';
-}
-function invImportBuildPlan(PDO $pdo, array $items, string $date): array {
-    // Work out cost / qty / total exactly as the page does (total = cost x qty), keeping the Excel total
-    // when the Excel typed an amount without a count (e.g. CELANTRO 50.00).
-    $rows = [];
-    foreach ($items as $it) {
-        $cost = (float)($it['cost'] ?? 0);
-        $qty  = $it['qty'];                      // null = Excel left it blank
-        $tot  = $it['total'];
-        if ($qty === null && $tot !== null && $tot > 0) {
-            if ($cost > 0)      { $qty = $tot / $cost; }
-            else                { $cost = (float)$tot; $qty = 1.0; }
-        }
-        $rows[] = ['cat' => $it['cat'], 'name' => mb_substr($it['name'], 0, 200), 'unit' => normalizeInvUnit((string)$it['unit']),
-                   'cost' => round($cost, 2), 'qty' => ($qty === null ? null : round((float)$qty, 4))];
-    }
-    $ex = $pdo->prepare("SELECT id,category,item_desc,sort_order,end_inv_num FROM stella_month_end_inv WHERE store_name='Stella' AND inv_date=? ORDER BY sort_order,id");
-    $ex->execute([$date]);
-    $existing = [];
-    foreach ($ex->fetchAll() as $r) $existing[mb_strtolower(trim($r['item_desc']))][] = $r;
-    $seen = []; $new = 0; $upd = 0; $cats = [];
-    foreach ($rows as $i => $r) {
-        $k = mb_strtolower(trim($r['name'])); $n = $seen[$k] = ($seen[$k] ?? -1) + 1;
-        $rows[$i]['match'] = $existing[$k][$n] ?? null;
-        if ($rows[$i]['match']) $upd++; else $new++;
-        $label = $r['cat'] ?? ($rows[$i]['match']['category'] ?? 'STORAGE');
-        $cats[$label] = ($cats[$label] ?? 0) + 1;
-    }
-    return ['rows' => $rows, 'new' => $new, 'updated' => $upd, 'cats' => $cats];
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import_upload'])) {
-    header('Content-Type: application/json');
-    try {
-        require_once __DIR__ . '/../lib/xlsx_reader.php';
-        if (!class_exists('ZipArchive')) throw new RuntimeException('This server has no ZIP support (ZipArchive), so Excel files cannot be read.');
-        $f = $_FILES['xlsx'] ?? null;
-        if (!$f || $f['error'] !== UPLOAD_ERR_OK) {
-            $why = ['1'=>'The file is bigger than the server upload limit.','2'=>'The file is bigger than the form limit.','4'=>'No file was chosen.'][(string)($f['error'] ?? 4)] ?? 'The upload failed.';
-            throw new RuntimeException($why);
-        }
-        if (strtolower(pathinfo($f['name'], PATHINFO_EXTENSION)) !== 'xlsx') throw new RuntimeException('Please choose an .xlsx Excel file.');
-        foreach (glob(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'stella_inv_import_*.xlsx') ?: [] as $old) {
-            if (filemtime($old) < time() - 7200) @unlink($old);      // tidy up files older than 2 hours
-        }
-        $token = bin2hex(random_bytes(8));
-        if (!move_uploaded_file($f['tmp_name'], invImportTmpPath($token))) throw new RuntimeException('Could not store the uploaded file.');
-        $zip = xlsxOpen(invImportTmpPath($token));
-        $sheets = [];
-        foreach (xlsxSheets($zip) as $i => $sh) {
-            $sheets[] = ['i' => $i, 'name' => $sh['name'], 'date' => guessSheetDate($sh['name'], $fYear)];
-        }
-        $zip->close();
-        echo json_encode(['ok' => true, 'token' => $token, 'file' => $f['name'], 'sheets' => $sheets]);
-    } catch (Throwable $e) { echo json_encode(['ok' => false, 'msg' => $e->getMessage()]); }
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['ajax_import_preview']) || isset($_POST['ajax_import_commit']))) {
-    header('Content-Type: application/json');
-    try {
-        require_once __DIR__ . '/../lib/xlsx_reader.php';
-        $token = (string)($_POST['token'] ?? '');
-        $date  = (string)($_POST['date'] ?? '');
-        $sheetI = (int)($_POST['sheet'] ?? 0);
-        if (!preg_match('/^[a-f0-9]{16}$/', $token) || !is_file(invImportTmpPath($token))) throw new RuntimeException('The uploaded file expired — please choose the Excel file again.');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !strtotime($date)) throw new RuntimeException('Please pick the month-end date.');
-        $zip = xlsxOpen(invImportTmpPath($token));
-        $sheets = xlsxSheets($zip);
-        if (!isset($sheets[$sheetI])) throw new RuntimeException('That sheet was not found.');
-        $parsed = parseMonthEndSheet(xlsxReadSheet($zip, $sheets[$sheetI]['file']));
-        $zip->close();
-        if (!$parsed['items']) throw new RuntimeException('No items were found on that sheet.');
-        $plan = invImportBuildPlan($pdo, $parsed['items'], $date);
-
-        if (isset($_POST['ajax_import_preview'])) {
-            $known = array_map('mb_strtolower', $CATEGORIES);
-            $catInfo = [];
-            foreach ($plan['cats'] as $name => $cnt) $catInfo[] = ['name' => $name, 'count' => $cnt, 'isNew' => !in_array(mb_strtolower($name), $known, true)];
-            $sum = 0.0; foreach ($plan['rows'] as $r) $sum += round($r['cost'] * ($r['qty'] ?? 0), 2);
-            echo json_encode(['ok' => true, 'found' => count($plan['rows']), 'new' => $plan['new'], 'updated' => $plan['updated'],
-                              'cats' => $catInfo, 'total' => round($sum, 2), 'sheet' => $sheets[$sheetI]['name']]);
-            exit;
-        }
-
-        // ── commit ──
-        $yr = (int)date('Y', strtotime($date)); $mo = (int)date('n', strtotime($date));
-        $pdo->beginTransaction();
-        $catMap = [];   // lower => real name
-        foreach ($pdo->query("SELECT name FROM stella_categories WHERE store_name='Stella'")->fetchAll(PDO::FETCH_COLUMN) as $n) $catMap[mb_strtolower($n)] = $n;
-        $maxOrd = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),-1) FROM stella_categories WHERE store_name='Stella'")->fetchColumn();
-        $insCat = $pdo->prepare("INSERT IGNORE INTO stella_categories (store_name,name,sort_order) VALUES ('Stella',?,?)");
-        $ensureCat = function (string $name) use (&$catMap, &$maxOrd, $insCat): string {
-            $k = mb_strtolower($name);
-            if (!isset($catMap[$k])) { $insCat->execute([$name, ++$maxOrd]); $catMap[$k] = $name; }
-            return $catMap[$k];
-        };
-        $base = (int)$pdo->query("SELECT COALESCE(MAX(sort_order),-1) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_date=" . $pdo->quote($date))->fetchColumn() + 1;
-        $upd = $pdo->prepare("UPDATE stella_month_end_inv SET inv_year=?,inv_month=?,category=?,unit=?,supplier_cost=?,end_inv_num=?,total_amount=?,saved_by=? WHERE id=? AND store_name='Stella'");
-        $ins = $pdo->prepare("INSERT INTO stella_month_end_inv (inv_date,inv_year,inv_month,store_name,category,sort_order,item_desc,unit,supplier_cost,end_inv_num,total_amount,saved_by) VALUES (?,?,?,'Stella',?,?,?,?,?,?,?,?)");
-        $nNew = 0; $nUpd = 0; $seq = 0;
-        foreach ($plan['rows'] as $r) {
-            $m = $r['match'];
-            if ($m) {
-                $cat = $ensureCat($r['cat'] ?? $m['category']);            // Excel classification wins; otherwise keep where it already is
-                $qty = $r['qty'] ?? (float)$m['end_inv_num'];               // Excel blank → keep the count already saved
-                $upd->execute([$yr, $mo, $cat, $r['unit'], $r['cost'], $qty, round($r['cost'] * $qty, 2), $user['name'], $m['id']]);
-                $nUpd++;
-            } else {
-                $cat = $ensureCat($r['cat'] ?? 'STORAGE');
-                $qty = $r['qty'] ?? 0.0;
-                $ins->execute([$date, $yr, $mo, $cat, $base + $seq++, $r['name'], $r['unit'], $r['cost'], $qty, round($r['cost'] * $qty, 2), $user['name']]);
-                $nNew++;
-            }
-        }
-        $pdo->commit();
-        @unlink(invImportTmpPath($token));
-        echo json_encode(['ok' => true, 'new' => $nNew, 'updated' => $nUpd, 'year' => $yr, 'month' => $mo, 'day' => (int)date('j', strtotime($date))]);
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        echo json_encode(['ok' => false, 'msg' => $e->getMessage()]);
-    }
-    exit;
-}
-
 // ── Excel (.xlsx) Export ─────────────────────────────────────
 // Styled export (branch-colored title/header, bordered totals) —
 // replaces the old plain-text CSV export.
@@ -489,11 +349,387 @@ $dayCounts = array_column($dayCountStmt->fetchAll(PDO::FETCH_ASSOC), 'c', 'd');
 
 $pageTitle  = 'Month End Inv.';
 $activePage = 'stella_month_end_inv';
-$bodyClass = 'sp-stella_month_end_inv';
 include '../layout.php';
 ?>
 
-<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
+<style>
+/* ── Page header ── */
+.inv-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: var(--radius); padding: 20px 26px 16px;
+  margin-bottom: 18px; display: flex; align-items: flex-start;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.inv-header .eyebrow {
+  font-family: var(--font-m); font-size: .58rem;
+  text-transform: uppercase; letter-spacing: .14em;
+  color: rgba(255,255,255,.4); margin-bottom: 4px;
+}
+.inv-header .title {
+  font-size: 1.15rem; font-weight: 800; color: #fff; letter-spacing: -.02em;
+}
+.inv-header .subtitle {
+  font-family: var(--font-m); font-size: .67rem;
+  color: rgba(255,255,255,.45); margin-top: 3px;
+}
+
+/* ── Controls ── */
+.inv-controls {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px;
+}
+
+/* ── KPI strip ── */
+.inv-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin-bottom: 20px;
+}
+.inv-kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s;
+  user-select: none;
+}
+.inv-kpi-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15,123,92,.08);
+}
+.inv-kpi-card.active-filter {
+  border-color: var(--accent);
+  background: #f0fdf4;
+  box-shadow: 0 0 0 3px rgba(15,123,92,.12);
+}
+.inv-kpi-card.grand-card {
+  border-top: 2px solid var(--accent);
+  cursor: default;
+}
+.inv-kpi-card.grand-card:hover {
+  border-color: var(--accent); box-shadow: none;
+}
+.inv-kpi-label {
+  font-family: var(--font-m); font-size: .55rem; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--subtext); margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.inv-kpi-val {
+  font-family: var(--font-m); font-size: .95rem; font-weight: 800;
+  color: var(--accent3);
+}
+.inv-kpi-val.grand { font-size: 1.1rem; color: var(--accent); }
+.inv-kpi-hint {
+  font-family: var(--font-m); font-size: .55rem;
+  color: var(--subtext); margin-top: 3px;
+}
+
+/* ── Date banner ── */
+.inv-date-banner {
+  background: #1e3a5f; color: #fff;
+  padding: 9px 18px; border-radius: var(--radius) var(--radius) 0 0;
+  font-family: var(--font-m); font-size: .68rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+
+/* ── Table wrapper ── */
+.inv-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+
+/* ── Category header ── */
+.inv-cat-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 16px;
+  font-family: var(--font-m); font-size: .65rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .1em; color: #fff;
+  background: #0f3d2e;
+}
+.inv-cat-head.cat-0  { background: #1e3a5f; }
+.inv-cat-head.cat-1  { background: #3d1f0f; }
+.inv-cat-head.cat-2  { background: #1f0f3d; }
+.inv-cat-head.cat-3  { background: #3d0f1f; }
+.inv-cat-head.cat-4  { background: #0f3d1f; }
+.inv-cat-head.cat-5  { background: #1f3d0f; }
+.inv-cat-head.cat-6  { background: #3d2e0f; }
+.inv-cat-head.cat-7  { background: #0f2e3d; }
+.inv-cat-total-badge {
+  background: rgba(255,255,255,.15);
+  padding: 3px 10px; border-radius: 12px;
+  font-size: .62rem;
+}
+
+/* ── Column headers ── */
+.inv-col-head {
+  display: grid;
+  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
+  gap: 0;
+  background: #1e3a5f;
+  border-bottom: 1px solid #2d5480;
+}
+.inv-col-head div {
+  padding: 8px 10px;
+  font-family: var(--font-m); font-size: .58rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; color: #fff;
+  border-right: 1px solid #2d5480; text-align: center;
+}
+.inv-col-head div:first-child { text-align: left; padding-left: 14px; }
+.inv-col-head div:last-child  { border-right: none; }
+
+/* ── Data rows ── */
+.inv-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
+  gap: 0;
+  border-bottom: 1px solid #f0f2f5;
+  transition: background .1s;
+  align-items: stretch;
+}
+.inv-row:hover { background: #f8fbff; }
+
+.inv-cell {
+  border-right: 1px solid #eef0f3;
+  display: flex; align-items: center;
+}
+.inv-cell:last-child { border-right: none; }
+
+.inv-input {
+  width: 100%; padding: 7px 10px;
+  font-family: var(--font-m); font-size: .76rem; color: var(--text);
+  background: transparent; border: none; outline: none;
+  transition: background .12s, box-shadow .12s;
+}
+.inv-input:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.inv-input::placeholder { color: #a8b0ba; opacity: 1; font-weight: 400; }
+.inv-input.desc-input { font-size: .78rem; padding-left: 14px; }
+.inv-input.desc-input.desc-duplicate {
+  background: #fff5f5;
+  box-shadow: inset 0 0 0 2px #dc3545;
+}
+.inv-cell { position: relative; }
+.desc-dup-warn {
+  position: absolute; left: 14px; bottom: 1px;
+  font-family: var(--font-m); font-size: .55rem; font-weight: 700;
+  color: #dc3545; background: #fff; padding: 0 4px 0 0;
+  pointer-events: none; line-height: 1;
+}
+.inv-input.num-input  { text-align: right; }
+.inv-input.total-input {
+  background: #f0fdf4; color: var(--accent);
+  font-weight: 700; cursor: default;
+  text-align: right;
+}
+
+/* Unit select */
+.inv-unit-select {
+  width: 100%; padding: 7px 8px;
+  font-family: var(--font-m); font-size: .74rem;
+  background: transparent; border: none; outline: none;
+  color: var(--text); cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%236b7280' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 20px;
+}
+.inv-unit-select:focus {
+  background-color: #fff;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Action cell */
+.inv-action-cell {
+  display: flex; gap: 4px; align-items: center;
+  justify-content: center; padding: 4px 6px;
+}
+.btn-inv-save {
+  padding: 4px 10px; background: var(--accent); color: #fff;
+  border: none; border-radius: 5px; font-family: var(--font-m);
+  font-size: .62rem; font-weight: 600; cursor: pointer;
+  white-space: nowrap; transition: background .15s;
+}
+.btn-inv-save:hover { background: #0a6649; }
+.btn-inv-del {
+  padding: 4px 7px; background: transparent; color: var(--accent2);
+  border: 1px solid rgba(220,53,69,.2); border-radius: 5px;
+  font-size: .62rem; cursor: pointer; transition: background .15s;
+}
+.btn-inv-del:hover { background: rgba(220,53,69,.07); }
+
+/* Total row */
+.inv-total-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
+  background: #0f2d4a; border-top: 2px solid #1e3a5f;
+}
+.inv-total-row div {
+  padding: 9px 10px;
+  font-family: var(--font-m); font-size: .68rem; font-weight: 800;
+  color: #fff; border-right: 1px solid #1e3a5f; text-align: right;
+}
+.inv-total-row div:first-child  { text-align: left; padding-left: 14px; letter-spacing: .06em; text-transform: uppercase; }
+.inv-total-row div:last-child   { border-right: none; }
+.inv-total-row div.total-val    { color: #6ee7b7; font-size: .78rem; }
+
+/* Grand total */
+.inv-grand-total {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius); padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 8px;
+}
+.inv-grand-label {
+  font-family: var(--font-m); font-size: .8rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .1em; color: var(--accent);
+}
+.inv-grand-val {
+  font-family: var(--font-m); font-size: 1.4rem; font-weight: 800;
+  color: var(--accent);
+}
+
+/* Add row btn */
+.btn-add-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; background: transparent;
+  border: 1px dashed var(--border2); border-radius: 7px;
+  font-family: var(--font-m); font-size: .66rem; color: var(--subtext2);
+  cursor: pointer; transition: all .15s; width: 100%;
+  justify-content: center; margin: 4px 0;
+}
+.btn-add-row:hover {
+  background: #f0fdf4; border-color: var(--accent); color: var(--accent);
+}
+
+/* Save status */
+.row-status {
+  font-family: var(--font-m); font-size: .58rem;
+  color: var(--accent); display: none;
+  text-align: center; padding: 2px 0;
+}
+
+@media (max-width: 900px) {
+  #kpiStrip { grid-template-columns: repeat(3, 1fr) !important; }
+  .inv-col-head, .inv-row, .inv-total-row {
+    grid-template-columns: 1fr 90px 110px 100px 120px 90px;
+  }
+}
+
+/* ── Delete-section button (on category header) ── */
+.btn-inv-del-section {
+  background: rgba(255,255,255,.12); border: none; color: #fff;
+  width: 22px; height: 22px; border-radius: 6px; cursor: pointer;
+  font-size: .7rem; line-height: 1; flex-shrink: 0;
+}
+.btn-inv-del-section:hover { background: rgba(255,90,90,.4); }
+.inv-section-empty-note {
+  text-align: center; padding: 40px 20px; font-family: var(--font-m);
+  font-size: .8rem; color: var(--muted); background: var(--surface);
+  border: 1px dashed var(--border); border-radius: var(--radius);
+}
+
+/* ── Modals ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(10,12,20,.55);
+  backdrop-filter: blur(2px); display: none;
+  align-items: center; justify-content: center; z-index: 9999; padding: 16px;
+}
+.modal-overlay.active { display: flex; }
+.modal-box {
+  background: var(--surface); width: 420px; max-width: 100%;
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  animation: modalPop .15s ease;
+}
+@keyframes modalPop { from{transform:scale(.96);opacity:0} to{transform:scale(1);opacity:1} }
+.modal-header {
+  background: #1a1a2e; color: #fff; padding: 16px 20px;
+  font-family: var(--font-m); font-size: .85rem; font-weight: 800; letter-spacing: .02em;
+}
+.modal-header.danger { background: #3a1414; }
+.modal-body { padding: 20px; font-family: var(--font-m); font-size: .8rem; color: var(--text); line-height: 1.6; }
+.modal-input {
+  width: 100%; margin-top: 12px; padding: 10px 14px;
+  font-family: var(--font-m); font-size: .85rem; text-transform: uppercase;
+  border: 1px solid var(--border); border-radius: 8px; outline: none;
+  background: #fff; color: var(--text); transition: border-color .15s;
+}
+.modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,123,92,.1); }
+.modal-error { color: #b91c1c; font-size: .72rem; margin-top: 8px; display: none; }
+.modal-footer {
+  padding: 14px 20px; display: flex; justify-content: flex-end; gap: 8px;
+  border-top: 1px solid var(--border); background: #fafbfc;
+}
+.modal-btn { padding: 9px 16px; border-radius: 8px; font-family: var(--font-m); font-size: .75rem; font-weight: 700; cursor: pointer; border: none; }
+.modal-btn-cancel  { background: #eef0f3; color: var(--text); }
+.modal-btn-cancel:hover  { background: #e2e5ea; }
+.modal-btn-primary { background: var(--accent); color: #fff; }
+.modal-btn-primary:hover { background: #0a6b50; }
+.modal-btn-danger  { background: #b91c1c; color: #fff; }
+.modal-btn-danger:hover  { background: #991616; }
+
+/* ── Duplicate-to-other-days modal ── */
+.modal-box.wide { width: 480px; }
+.dup-day-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  margin: 10px 0 14px;
+}
+.dup-day-chip {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  height: 34px; border: 1px solid var(--border); border-radius: 7px;
+  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
+  cursor: pointer; user-select: none; background: #fff; color: var(--text);
+  transition: all .12s;
+}
+.dup-day-chip:hover { border-color: var(--accent); }
+.dup-day-chip.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dup-day-chip.has-data::after {
+  content: ''; position: absolute; top: 3px; right: 3px;
+  width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;
+}
+.dup-day-chip.has-data.checked::after { background: #fff; }
+.dup-day-chip.is-source { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
+.dup-month-nav {
+  display: flex; align-items: center; gap: 6px; margin-top: 12px;
+}
+.dup-nav-btn {
+  flex: none; height: 30px; padding: 0 10px; border: 1px solid var(--border);
+  border-radius: 7px; background: #fff; color: var(--text); cursor: pointer;
+  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
+}
+.dup-nav-btn:hover { border-color: var(--accent); background: #f0fdf4; }
+.dup-nav-today { margin-left: auto; color: var(--accent3); }
+.dup-month-nav .dup-select { flex: 1; }
+.dup-legend {
+  display: flex; align-items: center; gap: 14px; font-family: var(--font-m);
+  font-size: .64rem; color: var(--subtext); margin-bottom: 10px;
+}
+.dup-legend span { display: flex; align-items: center; gap: 5px; }
+.dup-legend .dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; display: inline-block; }
+.dup-quicklinks { display: flex; gap: 12px; margin-bottom: 4px; }
+.dup-quicklinks a { font-family: var(--font-m); font-size: .68rem; color: var(--accent3); cursor: pointer; text-decoration: underline; }
+.dup-option-row {
+  display: flex; align-items: flex-start; gap: 8px; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+.dup-option-row label { font-family: var(--font-m); font-size: .74rem; color: var(--text); line-height: 1.4; }
+.dup-option-row .hint { display: block; font-size: .65rem; color: var(--subtext); margin-top: 2px; }
+.dup-select {
+  width: 100%; margin-top: 6px; padding: 7px 10px;
+  font-family: var(--font-m); font-size: .76rem;
+  border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--text);
+}
+#dupSummary {
+  margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  font-family: var(--font-m); font-size: .72rem; color: #166534; display: none;
+}
+</style>
 
 <?php
 // Build unit options HTML
@@ -501,43 +737,38 @@ $unitOpts = '';
 foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
 ?>
 
-<?php if (isset($_GET['imported']) && preg_match('/^(\d+)_(\d+)$/', $_GET['imported'], $im)): ?>
-<div id="impDone" class="sx-31" style="padding:10px 14px;color:#0a5b42;font-family:var(--font-m);font-size:.75rem">
-  ✓ Excel imported into <?= htmlspecialchars($displayDate) ?> — <?= (int)$im[1] ?> new item(s), <?= (int)$im[2] ?> updated.
-</div>
-<?php endif; ?>
 <!-- Page Header -->
 <div class="inv-header">
   <div>
     <div class="eyebrow">Stella Branch · Inventory</div>
     <div class="title">Month End Inventory</div>
-    <div class="subtitle">DATE: <?= $displayDate ?> &nbsp;·&nbsp; Total auto-calculates from Supplier Cost × End Inv. Num &nbsp;·&nbsp; ✓ Auto-save on — changes save by themselves</div>
+    <div class="subtitle">DATE: <?= $displayDate ?> &nbsp;·&nbsp; Total auto-calculates from Supplier Cost × End Inv. Num</div>
   </div>
-  <span class="sx-30" style="color:#fff;padding:5px 14px;font-family:var(--font-m);font-size:.65rem">
+  <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 14px;
+               border-radius:20px;font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">
     📌 Stella
   </span>
 </div>
 
 <!-- Controls -->
 <div class="inv-controls">
-  <form method="GET" class="sx-29" style="display:flex">
-    <select name="month" class="sx-28 form-control" onchange="this.form.submit()">
+  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <select name="month" class="form-control" style="max-width:140px" onchange="this.form.submit()">
       <?php for($m=1;$m<=12;$m++): ?>
       <option value="<?=$m?>" <?=$fMonth==$m?'selected':''?>><?= $months[$m-1] ?></option>
       <?php endfor; ?>
     </select>
-    <select name="day" class="sx-27 form-control" onchange="this.form.submit()">
+    <select name="day" class="form-control" style="max-width:80px" onchange="this.form.submit()">
       <?php for($d=1;$d<=$daysInMonth;$d++): ?>
       <option value="<?=$d?>" <?=$fDay==$d?'selected':''?>><?= str_pad($d,2,'0',STR_PAD_LEFT) ?></option>
       <?php endfor; ?>
     </select>
-    <select name="year" class="sx-26 form-control" onchange="this.form.submit()">
+    <select name="year" class="form-control" style="max-width:100px" onchange="this.form.submit()">
       <?php for($y=date('Y')-5;$y<=date('Y')+10;$y++): ?>
       <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
       <?php endfor; ?>
     </select>
     <a href="stella_month_end_inv.php?export_csv=1&month=<?=$fMonth?>&day=<?=$fDay?>&year=<?=$fYear?>" class="btn btn-ghost">⬇ Download Excel</a>
-    <button type="button" class="btn btn-ghost" onclick="openImportModal()" title="Import a month-end inventory Excel into a date">⬆ Import Excel</button>
     <button type="button" class="btn btn-ghost" onclick="openDuplicateModal()"
             <?= empty($allRows) ? 'disabled title="No items on this date yet to duplicate"' : '' ?>>
       📋 Duplicate to Other Days
@@ -545,15 +776,16 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
     <button type="button" class="btn btn-primary" onclick="addSection()">+ Add Section</button>
   </form>
 
-  <div class="sx-25">
-    <input type="text" id="itemSearchInput" class="sx-24 form-control" 
+  <div style="position:relative;min-width:260px;flex:1;max-width:360px">
+    <input type="text" id="itemSearchInput" class="form-control" style="width:100%;padding-left:30px"
            placeholder="Search item description…" oninput="filterByDesc(this.value)" autocomplete="off">
-    <span class="sx-23" style="top:50%;color:var(--subtext2);font-size:.75rem">🔍</span>
+    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--subtext2);font-size:.75rem;pointer-events:none">🔍</span>
     <button type="button" id="clearSearchBtn" onclick="clearSearch()"
-            class="sx-22" style="display:none;top:50%;color:var(--subtext2);font-size:.85rem;padding:2px 4px">✕</button>
+            style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);
+                   background:none;border:none;color:var(--subtext2);cursor:pointer;font-size:.85rem;padding:2px 4px">✕</button>
   </div>
 </div>
-<div id="searchNoResults" class="sx-21" style="display:none;font-family:var(--font-m);font-size:.72rem;color:var(--subtext2)">
+<div id="searchNoResults" style="display:none;font-family:var(--font-m);font-size:.72rem;color:var(--subtext2);margin:-10px 0 16px 2px">
   No items match “<span id="searchNoResultsTerm"></span>”.
 </div>
 
@@ -591,7 +823,7 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
   <!-- Category header -->
   <div class="inv-cat-head" style="background:<?= $catColor ?>">
     <span><?= htmlspecialchars($cat) ?></span>
-    <div class="sx-20" style="display:flex">
+    <div style="display:flex;align-items:center;gap:10px">
       <span class="inv-cat-total-badge" id="cat_total_badge_<?= $catIdx ?>">
         Total: <?= $catTotal > 0 ? number_format($catTotal,2) : '—' ?>
       </span>
@@ -625,9 +857,6 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
             <?php foreach($UNITS as $u): ?>
             <option value="<?=$u?>" <?= $r['unit']===$u?'selected':'' ?>><?=$u?></option>
             <?php endforeach; ?>
-            <?php if ($r['unit'] !== '' && !in_array($r['unit'], $UNITS, true)): ?>
-            <option value="<?= htmlspecialchars($r['unit']) ?>" selected><?= htmlspecialchars($r['unit']) ?></option>
-            <?php endif; ?>
           </select>
         </div>
         <div class="inv-cell">
@@ -645,8 +874,9 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
                  value="<?= ((float)$r['total_amount'] == 0) ? '' : $r['total_amount'] ?>" placeholder="0.00" readonly tabindex="-1">
         </div>
         <div class="inv-cell inv-action-cell">
-          <div class="sx-3" style="display:flex">
-            <div class="sx-2" style="display:flex">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="display:flex;gap:3px">
+              <button class="btn-inv-save" onclick="saveRow(this,'<?= htmlspecialchars($cat) ?>',<?= $catIdx ?>)">Save</button>
               <button class="btn-inv-del"  onclick="deleteRow(this,<?= $catIdx ?>)">✕</button>
             </div>
             <div class="row-status"></div>
@@ -719,32 +949,32 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
 
       <div class="dup-month-nav">
         <button type="button" class="dup-nav-btn" onclick="dupGoToMonth(-1)" title="Previous month">◀</button>
-        <select id="dupBrowseMonth" class="sx-19 dup-select" onchange="dupBrowseSelectChange()"></select>
-        <select id="dupBrowseYear" class="sx-18 dup-select" onchange="dupBrowseSelectChange()"></select>
+        <select id="dupBrowseMonth" class="dup-select" style="margin:0" onchange="dupBrowseSelectChange()"></select>
+        <select id="dupBrowseYear" class="dup-select" style="margin:0;max-width:90px" onchange="dupBrowseSelectChange()"></select>
         <button type="button" class="dup-nav-btn" onclick="dupGoToMonth(1)" title="Next month">▶</button>
         <button type="button" class="dup-nav-btn dup-nav-today" onclick="dupBrowseTo(INV_YEAR, INV_MONTH)">This Month</button>
       </div>
 
-      <div class="sx-17 dup-legend" >
+      <div class="dup-legend" style="margin-top:10px">
         <span><span class="dot"></span> already has items</span>
-        <span class="sx-16">crossed out = current date</span>
+        <span style="opacity:.6">crossed out = current date</span>
       </div>
       <div class="dup-quicklinks">
         <a onclick="dupSelectAll()">Select all remaining days (this view)</a>
         <a onclick="dupClearAll()">Clear all selections</a>
       </div>
       <div class="dup-day-grid" id="dupDayGrid"></div>
-      <div id="dupSelectedNote" class="sx-15" style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)"></div>
+      <div id="dupSelectedNote" style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext);margin-top:2px"></div>
 
       <div class="dup-option-row">
-        <input type="checkbox" id="dupCopyQty" class="sx-14">
+        <input type="checkbox" id="dupCopyQty" style="margin-top:3px">
         <label for="dupCopyQty">
           Also copy quantities &amp; totals
           <span class="hint">Leave unchecked to copy just the item list (description, unit, cost) with blank counts — best for a fresh daily tally.</span>
         </label>
       </div>
 
-      <div class="sx-13 dup-option-row" >
+      <div class="dup-option-row" style="border-top:none;padding-top:0;flex-direction:column;align-items:stretch">
         <label for="dupMode">If a picked day already has items:</label>
         <select id="dupMode" class="dup-select">
           <option value="skip">Skip that day (safest)</option>
@@ -758,38 +988,6 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
     <div class="modal-footer">
       <button class="modal-btn modal-btn-cancel" onclick="closeModal('duplicateModal')">Cancel</button>
       <button class="modal-btn modal-btn-primary" id="dupConfirmBtn" onclick="confirmDuplicate()">Duplicate</button>
-    </div>
-  </div>
-</div>
-
-<!-- Import Excel Modal -->
-<div class="modal-overlay" id="importModal">
-  <div class="sx-12 modal-box wide" >
-    <div class="modal-header">⬆ Import Month-End Inventory (Excel)</div>
-    <div class="modal-body">
-      <div class="sx-11">Choose your month-end inventory workbook, pick the sheet and the <strong>month-end date</strong> to save it under.</div>
-
-      <input type="file" id="impFile" accept=".xlsx" class="modal-input" style="padding:8px" onchange="impUpload(this)">
-
-      <div id="impStep2" class="sx-10" style="display:none">
-        <label class="sx-9" style="font-size:.72rem">Sheet</label>
-        <select id="impSheet" class="sx-6 modal-input" onchange="impSheetChanged()"></select>
-
-        <label class="sx-8" style="font-size:.72rem;display:block">Month-end date <span class="sx-7" style="color:var(--subtext2)">(the date all these items are saved under)</span></label>
-        <input type="date" id="impDate" class="sx-6 modal-input" onchange="impPreview()">
-
-        <div id="impPreview" class="sx-5" style="padding:10px 12px;font-size:.74rem"></div>
-        <div class="sx-4" style="font-size:.66rem;color:var(--subtext2)">
-          • Items with <strong>no classification</strong> go into the section <strong>STORAGE</strong> (created automatically).<br>
-          • Items under a classification (like FRUITS&amp;VEGETABLES) go into that section — it is created if it does not exist yet.<br>
-          • An item already saved on that date with the <strong>same name is updated</strong> (unit, cost, count), not duplicated. If the Excel count is blank, the count already in the system is kept.
-        </div>
-      </div>
-      <div class="modal-error" id="impError"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-btn modal-btn-cancel" onclick="closeModal('importModal')">Cancel</button>
-      <button class="modal-btn modal-btn-primary" id="impGoBtn" onclick="impCommit()" disabled>Import</button>
     </div>
   </div>
 </div>
@@ -816,16 +1014,6 @@ const DAY_COUNTS    = <?= json_encode($dayCounts, JSON_FORCE_OBJECT) ?>; // day-
 const MONTH_NAMES   = <?= json_encode($months) ?>;
 const UNITS     = <?= json_encode($UNITS) ?>;
 
-// Keep the sticky totals strip just under the top bar when the bar is pinned, or at the very top when it scrolls away
-(function () {
-  const k = document.getElementById('kpiStrip'), tb = document.querySelector('.topbar');
-  if (!k) return;
-  const fix = () => { k.style.top = (tb ? Math.max(0, Math.round(tb.getBoundingClientRect().bottom)) : 0) + 'px'; };
-  document.addEventListener('scroll', fix, true);
-  window.addEventListener('resize', fix);
-  fix();
-})();
-
 // Build unit select options string
 const UNIT_OPTS = UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
 
@@ -843,9 +1031,7 @@ function calcTotal(el) {
 
 function markChanged(el) {
   // triggers recalc on non-numeric fields
-  const row = el.closest('.inv-row');
-  refreshCatTotal(parseInt(row.dataset.cat));
-  scheduleSave(row);            // auto-save: no Save button needed
+  refreshCatTotal(parseInt(el.closest('.inv-row').dataset.cat));
 }
 
 function refreshCatTotal(catIdx) {
@@ -995,8 +1181,9 @@ function addRow(catIdx, catName) {
       <input type="number" step="0.01" class="inv-input total-input" value="" placeholder="0.00" readonly tabindex="-1">
     </div>
     <div class="inv-cell inv-action-cell">
-      <div class="sx-3" style="display:flex">
-        <div class="sx-2" style="display:flex">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div style="display:flex;gap:3px">
+          <button class="btn-inv-save" onclick="saveRow(this,'${catName.replace(/'/g,"\\'")}',${catIdx})">Save</button>
           <button class="btn-inv-del" onclick="deleteRow(this,${catIdx})">✕</button>
         </div>
         <div class="row-status"></div>
@@ -1007,88 +1194,67 @@ function addRow(catIdx, catName) {
   div.querySelector('.desc-input').focus();
 }
 
-// ── Auto-save ──────────────────────────────────────────────
-// Every change (description, unit, cost, count) is saved by itself ~0.7s after you stop typing.
-// A row with no description yet is not saved (so empty "Add Row" lines never create blank items).
-function setRowStatus(row, text, isErr) {
-  const st = row.querySelector('.row-status');
-  if (!st) return;
-  st.textContent = text;
-  st.classList.toggle('err', !!isErr);
-  st.style.display = text ? 'block' : 'none';
-}
-function scheduleSave(row) {
-  if (!row || row._deleted) return;
-  clearTimeout(row._t);
-  setRowStatus(row, 'Saving…', false);
-  row._t = setTimeout(() => saveRow(row), 700);
-}
-async function saveRow(row) {
-  if (!row || row._deleted) return;
-  clearTimeout(row._t);
-  if (row._busy) { row._again = true; return; }        // one request at a time per row (prevents double-insert of a new row)
-
-  const desc = row.querySelector('.desc-input').value.trim();
-  if (!desc) { setRowStatus(row, '', false); return; }  // nothing to save yet
+async function saveRow(btn, catName, catIdx) {
+  const row    = btn.closest('.inv-row');
+  const status = row.querySelector('.row-status');
+  const rowId  = parseInt(row.dataset.id) || 0;
 
   const inputs  = row.querySelectorAll('.num-input');
-  const catIdx  = parseInt(row.dataset.cat);
-  const catName = row.closest('.inv-section').dataset.cat;
-  const rowId   = parseInt(row.dataset.id) || 0;
+  const desc    = row.querySelector('.desc-input').value.trim();
+  const unit    = row.querySelector('.inv-unit-select').value;
+  const suppCost= gv(inputs[0]);
+  const endInv  = gv(inputs[1]);
+  const total   = gv(row.querySelector('.total-input'));
   const sortOrd = row._sortOrder ?? Array.from(row.parentElement.children).indexOf(row);
 
-  const fd = new FormData();
-  fd.append('ajax_save',     '1');
-  fd.append('inv_date',      INV_DATE);
-  fd.append('row_id',        rowId);
-  fd.append('category',      catName);
-  fd.append('sort_order',    sortOrd);
-  fd.append('item_desc',     desc);
-  fd.append('unit',          row.querySelector('.inv-unit-select').value);
-  fd.append('supplier_cost', gv(inputs[0]));
-  fd.append('end_inv_num',   gv(inputs[1]));
+  // Warn if another row in this category already has the same description
+  const dupExists = Array.from(row.parentElement.querySelectorAll('.inv-row[data-id] .desc-input'))
+    .some(inp => inp !== row.querySelector('.desc-input') && inp.value.trim().toLowerCase() === desc.toLowerCase() && desc !== '');
+  if (dupExists && !confirm(`"${desc}" already exists in this category. Save it again anyway?`)) {
+    return;
+  }
 
-  row._busy = true; setRowStatus(row, 'Saving…', false);
+  btn.textContent = '…'; btn.disabled = true;
+
+  const fd = new FormData();
+  fd.append('ajax_save',    '1');
+  fd.append('row_id',       rowId);
+  fd.append('category',     catName);
+  fd.append('sort_order',   sortOrd);
+  fd.append('item_desc',    desc);
+  fd.append('unit',         unit);
+  fd.append('supplier_cost',suppCost);
+  fd.append('end_inv_num',  endInv);
+
   try {
-    const res  = await fetch('stella_month_end_inv.php', {method:'POST', body: fd, keepalive: true});
+    const res  = await fetch('stella_month_end_inv.php', {method:'POST', body:fd});
     const json = await res.json();
-    if (json.session_expired) { alert('You were signed out. Please log in again — your last change was not saved.'); location.reload(); return; }
     if (json.ok) {
       row.dataset.id = json.id;
-      if (row._deleted) {                                // row was removed while this save was in flight
-        const d = new FormData(); d.append('ajax_delete','1'); d.append('row_id', json.id);
-        fetch('stella_month_end_inv.php', {method:'POST', body:d}).catch(()=>{});
-      } else {
-        row.querySelector('.total-input').value = parseFloat(json.total).toFixed(2);
-        refreshCatTotal(catIdx);
-        if (!row._again) {
-          setRowStatus(row, '✓ Saved', false);
-          clearTimeout(row._hide); row._hide = setTimeout(() => { if (!row._busy) setRowStatus(row, '', false); }, 2000);
-        }
-      }
+      // Update total from server
+      row.querySelector('.total-input').value = parseFloat(json.total).toFixed(2);
+      refreshCatTotal(catIdx);
+      status.textContent = '✓';
+      status.style.color = 'var(--accent)';
+      status.style.display = 'block';
+      setTimeout(() => { status.style.display = 'none'; }, 2500);
     } else {
-      setRowStatus(row, '⚠ Not saved', true);
-      console.error('Auto-save failed:', json.msg);
+      status.textContent = '❌';
+      status.style.color = 'var(--accent2)';
+      status.style.display = 'block';
+      alert('Error: ' + json.msg);
     }
-  } catch (e) {
-    setRowStatus(row, '⚠ Not saved', true);
+  } catch(e) {
+    alert('Network error');
   }
-  row._busy = false;
-  if (row._again) { row._again = false; saveRow(row); }  // something changed during the request → save the newest values
+  btn.textContent = 'Save'; btn.disabled = false;
 }
-// Don't lose a change made in the last split second before leaving the page
-function flushPendingSaves() {
-  document.querySelectorAll('.inv-row').forEach(r => { if (r._t) { clearTimeout(r._t); r._t = null; if (r.querySelector('.row-status')?.textContent === 'Saving…') saveRow(r); } });
-}
-window.addEventListener('pagehide', flushPendingSaves);
-document.addEventListener('visibilitychange', () => { if (document.hidden) flushPendingSaves(); });
 
 async function deleteRow(btn, catIdx) {
   const row  = btn.closest('.inv-row');
   const id   = parseInt(row.dataset.id) || 0;
 
   if (id > 0 && !confirm('Delete this item?')) return;
-  row._deleted = true; clearTimeout(row._t);
 
   if (id > 0) {
     const fd = new FormData();
@@ -1133,84 +1299,6 @@ function showConfirm({title, message, btnLabel, btnClass, danger, onConfirm}) {
   btn.className = 'modal-btn ' + (btnClass || 'modal-btn-primary');
   btn.onclick = async () => { closeModal('confirmModal'); await onConfirm(); };
   openModal('confirmModal');
-}
-
-
-// ── Import Excel ───────────────────────────────────────────
-let IMP_TOKEN = '', IMP_SHEETS = [];
-function impErr(msg) { const e = document.getElementById('impError'); e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'; }
-function openImportModal() {
-  IMP_TOKEN = ''; IMP_SHEETS = [];
-  document.getElementById('impFile').value = '';
-  document.getElementById('impStep2').style.display = 'none';
-  document.getElementById('impGoBtn').disabled = true;
-  impErr('');
-  openModal('importModal');
-}
-async function impUpload(inp) {
-  impErr('');
-  if (!inp.files.length) return;
-  const fd = new FormData();
-  fd.append('ajax_import_upload', '1');
-  fd.append('xlsx', inp.files[0]);
-  document.getElementById('impGoBtn').disabled = true;
-  try {
-    const res = await fetch('stella_month_end_inv.php', {method:'POST', body: fd});
-    const j = await res.json();
-    if (!j.ok) { impErr(j.msg || 'Upload failed.'); return; }
-    IMP_TOKEN = j.token; IMP_SHEETS = j.sheets;
-    const sel = document.getElementById('impSheet');
-    sel.innerHTML = j.sheets.map(s => `<option value="${s.i}">${s.name.replace(/</g,'&lt;')}${s.date ? '  →  ' + s.date : ''}</option>`).join('');
-    // pre-select the sheet that matches the date currently shown on the page, if there is one
-    const hit = j.sheets.find(s => s.date === INV_DATE);
-    if (hit) sel.value = hit.i;
-    document.getElementById('impStep2').style.display = 'block';
-    impSheetChanged(true);
-  } catch (e) { impErr('Upload failed: ' + e.message); }
-}
-function impSheetChanged(first) {
-  const i = parseInt(document.getElementById('impSheet').value, 10);
-  const s = IMP_SHEETS.find(x => x.i === i);
-  // date = what the sheet name says (e.g. OCTOBER 31 2026), otherwise the date currently on screen
-  document.getElementById('impDate').value = (s && s.date) ? s.date : INV_DATE;
-  impPreview();
-}
-async function impPreview() {
-  impErr('');
-  const box = document.getElementById('impPreview');
-  const btn = document.getElementById('impGoBtn');
-  btn.disabled = true;
-  const date = document.getElementById('impDate').value;
-  if (!date) { box.textContent = 'Pick the month-end date.'; return; }
-  box.textContent = 'Reading the sheet…';
-  const fd = new FormData();
-  fd.append('ajax_import_preview', '1');
-  fd.append('token', IMP_TOKEN);
-  fd.append('sheet', document.getElementById('impSheet').value);
-  fd.append('date', date);
-  try {
-    const j = await (await fetch('stella_month_end_inv.php', {method:'POST', body: fd})).json();
-    if (!j.ok) { box.textContent = ''; impErr(j.msg || 'Could not read that sheet.'); return; }
-    const money = n => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-    const cats = j.cats.map(c => `<div>• <strong>${c.name.replace(/</g,'&lt;')}</strong> — ${c.count} item(s) ${c.isNew ? '<span style="color:#b45309">(new section)</span>' : '<span style="color:#0f7b5c">(existing section)</span>'}</div>`).join('');
-    box.innerHTML = `<div><strong>${j.found}</strong> items found in “${j.sheet.replace(/</g,'&lt;')}” → saving under <strong>${date}</strong></div>
-      <div>${j.new} new · ${j.updated} updated &nbsp;|&nbsp; Total ₱${money(j.total)}</div>${cats}`;
-    btn.disabled = false;
-  } catch (e) { box.textContent = ''; impErr('Could not read that sheet: ' + e.message); }
-}
-async function impCommit() {
-  const btn = document.getElementById('impGoBtn');
-  btn.disabled = true; btn.textContent = 'Importing…';
-  const fd = new FormData();
-  fd.append('ajax_import_commit', '1');
-  fd.append('token', IMP_TOKEN);
-  fd.append('sheet', document.getElementById('impSheet').value);
-  fd.append('date', document.getElementById('impDate').value);
-  try {
-    const j = await (await fetch('stella_month_end_inv.php', {method:'POST', body: fd})).json();
-    if (!j.ok) { impErr(j.msg || 'Import failed.'); btn.disabled = false; btn.textContent = 'Import'; return; }
-    window.location.href = `stella_month_end_inv.php?year=${j.year}&month=${j.month}&day=${j.day}&imported=${j.new}_${j.updated}`;
-  } catch (e) { impErr('Import failed: ' + e.message); btn.disabled = false; btn.textContent = 'Import'; }
 }
 
 function addSection() {
@@ -1348,7 +1436,7 @@ async function dupBrowseTo(year, month) {
   }
 
   const grid = document.getElementById('dupDayGrid');
-  grid.innerHTML = '<div class="sx-1" style="text-align:center;padding:14px;color:var(--subtext);font-family:var(--font-m);font-size:.72rem">Loading…</div>';
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--subtext);font-family:var(--font-m);font-size:.72rem">Loading…</div>';
 
   const fd = new FormData();
   fd.append('ajax_month_counts', '1');
@@ -1360,10 +1448,10 @@ async function dupBrowseTo(year, month) {
     if (json.ok) {
       renderDupGrid(json.counts, json.days);
     } else {
-      grid.innerHTML = '<div class="sx-1" style="text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Could not load that month.</div>';
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Could not load that month.</div>';
     }
   } catch (e) {
-    grid.innerHTML = '<div class="sx-1" style="text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Network error.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Network error.</div>';
   }
 }
 

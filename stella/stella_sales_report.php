@@ -726,7 +726,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
         <?php foreach ($secRows as $sr): ?>
         <div class="sub-row">
           <input class="sub-inp" type="text" placeholder="Enter name…" value="<?= htmlspecialchars($sr['item_name'] ?? '') ?>" oninput="subChanged('<?= $sec ?>')">
-          <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
+          <input class="sub-inp num" type="text" inputmode="decimal" data-num="1" placeholder="0.00" value="<?= (float)$sr['amount'] ?: '' ?>" oninput="subChanged('<?= $sec ?>')">
           <button class="sx-1 btn-del-row" onclick="delSubRow(this,'<?= $sec ?>')" >✕</button>
         </div>
         <?php endforeach; ?>
@@ -792,25 +792,25 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
     <tbody id="di-body">
       <?php foreach ($dineinRows as $dr): ?>
       <tr>
-        <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['cash'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['palawan_pay'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['card_swipe_qr'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['discount'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" value="<?= (float)($dr['gift_card'] ?? 0) ?: '' ?>" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['bank_transfer_cheque'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" value="<?= (float)$dr['cancelled_transactions'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" value="<?= (float)$dr['cash'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" value="<?= (float)$dr['palawan_pay'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" value="<?= (float)$dr['card_swipe_qr'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" value="<?= (float)$dr['discount'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" value="<?= (float)($dr['gift_card'] ?? 0) ?: '' ?>" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" value="<?= (float)$dr['bank_transfer_cheque'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" value="<?= (float)$dr['cancelled_transactions'] ?: '' ?>" placeholder="" oninput="diChanged()"></td>
         <td><button class="btn-del-row" onclick="delDiRow(this)">✕</button></td>
       </tr>
       <?php endforeach; ?>
       <?php if (empty($dineinRows)): ?>
       <tr>
-        <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-        <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+        <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
         <td><button class="btn-del-row" onclick="delDiRow(this)">✕</button></td>
       </tr>
       <?php endif; ?>
@@ -855,7 +855,7 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
   </div>
   <div class="sr-row green">
     <div class="sr-label">Service Charge</div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="service_charge" value="<?= $v('service_charge') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
+    <div class="sr-value-wrap"><input type="text" inputmode="decimal" data-num="1" class="sr-input" id="service_charge" value="<?= $v('service_charge') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
   </div>
   <div class="sr-row green">
     <div class="sr-label">POS Z reading <span style="font-size:.65rem;opacity:.8">(auto: Gross Sales + Marketing Pull Out)</span></div>
@@ -929,11 +929,11 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
   </div>
   <div class="sr-row pink-val">
     <div class="sr-label">PCF/Expenses <span style="font-size:.65rem;opacity:.7">(auto from Expenses)</span></div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="pcf_expenses" value="<?= $v('pcf_expenses') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
+    <div class="sr-value-wrap"><input type="text" inputmode="decimal" data-num="1" class="sr-input" id="pcf_expenses" value="<?= $v('pcf_expenses') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
   </div>
   <div class="sr-row pink-val">
     <div class="sr-label">Other Expenses</div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="other_expenses" value="<?= $v('other_expenses') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
+    <div class="sr-value-wrap"><input type="text" inputmode="decimal" data-num="1" class="sr-input" id="other_expenses" value="<?= $v('other_expenses') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
   </div>
 </div>
 <div class="sr2-hero">
@@ -943,12 +943,12 @@ $renderCol = function ($sec, $label, $cls = '') use ($details) {
   </div>
   <div class="sr-row coh">
     <div class="sr-label">COH(Cash on Hand)</div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="coh" value="<?= $v('coh') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
+    <div class="sr-value-wrap"><input type="text" inputmode="decimal" data-num="1" class="sr-input" id="coh" value="<?= $v('coh') ?: '' ?>" oninput="recalc()" placeholder="0.00"></div>
     <div class="sr-note" style="color:#cfd8ea">(cash sales only except SC)</div>
   </div>
   <div class="sr-row coh" id="replenRow" style="display:none">
     <div class="sr-label">Cash Replenishment <span style="font-weight:400;font-size:.7em">(auto when Net Sales is negative)</span></div>
-    <div class="sr-value-wrap"><input type="number" step="0.01" class="sr-input" id="cash_replenishment" value="<?= $v('cash_replenishment') ?: '' ?>" oninput="replenTyped()" placeholder="0.00" data-saved="<?= htmlspecialchars((string)($v('cash_replenishment') ?: 0)) ?>"></div>
+    <div class="sr-value-wrap"><input type="text" inputmode="decimal" data-num="1" class="sr-input" id="cash_replenishment" value="<?= $v('cash_replenishment') ?: '' ?>" oninput="replenTyped()" placeholder="0.00" data-saved="<?= htmlspecialchars((string)($v('cash_replenishment') ?: 0)) ?>"></div>
     <div class="sr-note" style="color:#cfd8ea">(cash from the vault used to cover the shortfall)</div>
   </div>
   <div class="sr-row short">
@@ -1011,6 +1011,25 @@ const FDATE  = '<?= $fDate ?>';
 const REPORT_LOCKED = <?= $restrictEdit ? 'true' : 'false' ?>;
 const REPORT_LOCKED_RAW = <?= $locked ? 'true' : 'false' ?>;
 const fmt    = n => Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+// ── Amount boxes: live thousands separators (1,200) while typing; values are read with pf() ──
+const pf = v => parseFloat(String(v ?? '').replace(/,/g, '')) || 0;
+function commaFmt(inp) {
+  const v = inp.value, pos = inp.selectionStart == null ? v.length : inp.selectionStart;
+  const left = v.slice(0, pos).replace(/[^0-9.]/g, '').length;
+  let t = v.replace(/[^0-9.\-]/g, '');
+  const neg = t.charAt(0) === '-'; t = t.replace(/-/g, '');
+  const i = t.indexOf('.');
+  let ip = i < 0 ? t : t.slice(0, i), dp = i < 0 ? '' : '.' + t.slice(i + 1).replace(/\./g, '').slice(0, 2);
+  ip = ip.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const out = (neg ? '-' : '') + ip + dp;
+  if (out === v) return;
+  inp.value = out;
+  let c = 0, np = out.length;
+  for (let k = 0; k < out.length; k++) { if (c === left) { np = k; break; } if (/[0-9.]/.test(out[k])) c++; }
+  try { inp.setSelectionRange(np, np); } catch (e) {}
+}
+document.addEventListener('input', e => { const t = e.target; if (t && t.dataset && t.dataset.num && !t.readOnly) commaFmt(t); }, true);
+document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('input[data-num]').forEach(i => { if (i.value !== '') commaFmt(i); }));
 const gv     = id => parseFloat(String(document.getElementById(id)?.value ?? '').replace(/,/g,'')) || 0;
 const setVal = (id,v) => { const el=document.getElementById(id); if(el) el.value = v; };
 
@@ -1029,7 +1048,7 @@ function diCols(tr) {
     cancelled_transactions:(float(inps[6])),
   };
 }
-function float(inp) { return parseFloat(inp?.value) || 0; }
+function float(inp) { return pf(inp?.value) || 0; }
 
 // true when the saved Cash on Hand was typed by hand (differs from the Dine In Cash total)
 let COH_MANUAL = (function () {
@@ -1041,7 +1060,7 @@ let COH_MANUAL = (function () {
   el.addEventListener('input', function () {
     let c = 0; document.querySelectorAll('#di-body tr').forEach(tr => { c += float(tr.querySelectorAll('input')[0]); });
     const v = el.value.trim();
-    COH_MANUAL = v !== '' && Math.abs((parseFloat(v) || 0) - c) > 0.005;
+    COH_MANUAL = v !== '' && Math.abs((pf(v)) - c) > 0.005;
   });
 })();
 function diChanged() {
@@ -1075,13 +1094,13 @@ function diChanged() {
 function addDiRow() {
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
-    <td><input class="di-inp" type="number" step="0.01" placeholder="" oninput="diChanged()"></td>
+    <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+    <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+    <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+    <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+    <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+    <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
+    <td><input class="di-inp" type="text" inputmode="decimal" data-num="1" placeholder="" oninput="diChanged()"></td>
     <td><button class="btn-del-row" onclick="delDiRow(this)">✕</button></td>`;
   document.getElementById('di-body').appendChild(tr);
 }
@@ -1095,7 +1114,7 @@ function delDiRow(btn) {
 function subChanged(sec) {
   const col = document.querySelector(`.sub-col[data-section="${sec}"]`);
   let tot = 0;
-  col.querySelectorAll('input[type=number]').forEach(i => tot += parseFloat(i.value)||0);
+  col.querySelectorAll('input[data-num]').forEach(i => tot += pf(i.value)||0);
   const totEl = document.getElementById(`sub-tot-${sec}`);
   if (totEl) totEl.textContent = 'P' + fmt(tot);
 
@@ -1118,7 +1137,7 @@ function recalcGiftCert() {
   let t = 0;
   ['gc_sold','gift_cert_tips'].forEach(sec => {
     const c = document.querySelector(`.sub-col[data-section="${sec}"]`);
-    if (c) c.querySelectorAll('input[type=number]').forEach(i => t += parseFloat(i.value)||0);
+    if (c) c.querySelectorAll('input[data-num]').forEach(i => t += pf(i.value)||0);
   });
   setVal('gift_cert_sold_tips', fmt(t));
 }
@@ -1127,9 +1146,9 @@ function recalcDepositSwipe() {
   // DEPOSIT SWIPE (CARD) = DEPOSIT (CARD) sub-section + GIFT CERT SOLD (TIPS) sub-section
   let depTot = 0, gcTot = 0;
   const depCol = document.querySelector('.sub-col[data-section="deposit_card"]');
-  if (depCol) depCol.querySelectorAll('input[type=number]').forEach(i => depTot += parseFloat(i.value)||0);
+  if (depCol) depCol.querySelectorAll('input[data-num]').forEach(i => depTot += pf(i.value)||0);
   const gcCol = document.querySelector('.sub-col[data-section="gift_cert_tips"]');
-  if (gcCol) gcCol.querySelectorAll('input[type=number]').forEach(i => gcTot += parseFloat(i.value)||0);
+  if (gcCol) gcCol.querySelectorAll('input[data-num]').forEach(i => gcTot += pf(i.value)||0);
   setVal('deposit_swipe_card', fmt(depTot + gcTot));
   recalc();
 }
@@ -1141,7 +1160,7 @@ function addSubRow(sec) {
   div.className = 'sub-row';
   div.innerHTML = `
     <input class="sub-inp" type="text" placeholder="Enter name…" oninput="subChanged('${sec}')">
-    <input class="sub-inp num" type="number" step="0.01" placeholder="0.00" oninput="subChanged('${sec}')">
+    <input class="sub-inp num" type="text" inputmode="decimal" data-num="1" placeholder="0.00" oninput="subChanged('${sec}')">
     <button class="sx-1 btn-del-row" onclick="delSubRow(this,'${sec}')" >✕</button>`;
   rows.appendChild(div);
 }
@@ -1235,7 +1254,7 @@ async function saveAll() {
     const rows = [];
     col.querySelectorAll('.sub-row').forEach(row => {
       const inps = row.querySelectorAll('input');
-      rows.push({ name: inps[0]?.value||'', amount: parseFloat(inps[1]?.value)||0 });
+      rows.push({ name: inps[0]?.value||'', amount: pf(inps[1]?.value)||0 });
     });
     const fd2 = new FormData();
     fd2.append('ajax_save_detail','1');
@@ -1382,7 +1401,7 @@ function dineInFixMerged(data) {
   const cellsOf = row => [...row.querySelectorAll('input,textarea')].filter(i => !['button','hidden'].includes(i.type) && !i.readOnly && !i.disabled);
   function put(inp, val) {
     val = String(val).trim();
-    if (inp.type === 'number') {
+    if (inp.dataset.num) {
       const n = parseFloat(val.replace(/[^0-9.\-]/g, ''));
       if (val === '') inp.value = ''; else if (isFinite(n)) inp.value = n; else return;
     } else inp.value = val;
@@ -1433,7 +1452,7 @@ function dineInFixMerged(data) {
   const cellAt = (g, r, c) => { const rows = g.rows(); if (r < 0 || r >= rows.length) return null; return cellsOf(rows[r])[c] || null; };
   function setVal(inp, v) {
     v = v == null ? '' : String(v).trim();
-    if (inp.type === 'number') { if (v === '') inp.value = ''; else { const neg = /^\(.*\)$/.test(v) || /^-/.test(v); const n = parseFloat(v.replace(/[^0-9.]/g,'')); if (!isFinite(n)) return; inp.value = neg ? -n : n; } }
+    if (inp.dataset.num) { if (v === '') inp.value = ''; else { const neg = /^\(.*\)$/.test(v) || /^-/.test(v); const n = parseFloat(v.replace(/[^0-9.]/g,'')); if (!isFinite(n)) return; inp.value = neg ? -n : n; } }
     else inp.value = v;
     inp.dispatchEvent(new Event('input', {bubbles:true}));
   }
