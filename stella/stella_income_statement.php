@@ -377,7 +377,7 @@ $cols = $compare ? 5 : 3;
     </tbody>
   </table>
   <div class="fs-note">Net Sales = Store Gross total of the Summary Report. Lines that exist in the Expenses Ledger are filled from it until you edit and save the month.
-    You can type sums such as <b>1000+500</b>. Everything saves automatically.</div>
+    You can type sums such as <b>1000+500</b>. Nothing is saved until you press <b>Save</b>.</div>
 </div>
 </div>
 
@@ -421,7 +421,7 @@ function recalc() {
 }
 
 // ── saving ──
-let timer = null, dirty = false;
+let dirty = false;
 function setStatus(t, c) { const s = $('#saveStatus'); s.textContent = t; s.className = 'fs-status ' + (c || ''); }
 async function saveMonth() {
   const fd = new FormData(); fd.append('ajax_save', '1'); fd.append('stmt_date', FS.date);
@@ -429,22 +429,27 @@ async function saveMonth() {
   try {
     const r = await (await fetch('stella_income_statement.php', {method: 'POST', body: fd})).json();
     if (!r.ok) throw new Error(r.msg || 'error');
-    dirty = false; setStatus('✓ Saved', 'ok'); setTimeout(() => { if ($('#saveStatus').textContent === '✓ Saved') setStatus(''); }, 3000);
     return true;
   } catch (e) { setStatus('✗ ' + e.message, 'err'); return false; }
 }
-function touch() { dirty = true; setStatus('Unsaved changes…'); clearTimeout(timer); timer = setTimeout(saveMonth, 1000); }
+function touch() { dirty = true; setStatus('Unsaved changes — press Save', 'err'); }
 async function post(data) {
   const fd = new FormData(); for (const k in data) fd.append(k, data[k]); fd.append('year', FS.year);
   return (await fetch('stella_income_statement.php', {method: 'POST', body: fd})).json();
 }
-const xTimers = {};
-function saveExtra(id) {
-  setStatus('Unsaved changes…'); clearTimeout(xTimers[id]);
-  xTimers[id] = setTimeout(async () => {
+const xDirty = {};
+function saveExtra(id) { xDirty[id] = true; dirty = true; setStatus('Unsaved changes — press Save', 'err'); }
+async function saveAll() {
+  setStatus('Saving…');
+  let ok = await saveMonth();
+  for (const id of Object.keys(xDirty)) {
+    if (!FS.X[id]) { delete xDirty[id]; continue; }
     const r = await post({ajax_extra: 'save', id: id, label: FS.X[id].label, amounts: JSON.stringify(FS.X[id].m)});
-    setStatus(r.ok ? '✓ Saved' : '✗ ' + (r.msg || 'error'), r.ok ? 'ok' : 'err');
-  }, 900);
+    if (r.ok) delete xDirty[id]; else { ok = false; setStatus('✗ ' + (r.msg || 'error'), 'err'); }
+  }
+  dirty = Object.keys(xDirty).length > 0;
+  if (ok) { setStatus('✓ Saved', 'ok'); setTimeout(() => { if ($('#saveStatus').textContent === '✓ Saved') setStatus(''); }, 3000); }
+  return ok;
 }
 
 document.addEventListener('focusin', e => {
@@ -477,11 +482,11 @@ document.addEventListener('click', async e => {
     return;
   }
   if (e.target.id === 'btnAddX') {
-    if (dirty) await saveMonth();
+    if (dirty) await saveAll();
     const r = await post({ajax_extra: 'add', label: 'NEW LINE'}); if (r.ok) location.reload();
   }
 });
-$('#btnSave').addEventListener('click', saveMonth);
+$('#btnSave').addEventListener('click', saveAll);
 $('#hideZero').addEventListener('change', function () {
   $$('#fsTable tr[data-zero="1"]').forEach(r => r.classList.toggle('hide', this.checked));
   try { sessionStorage.setItem('stellaIsHideZero', this.checked ? '1' : '0'); } catch (e) {}
