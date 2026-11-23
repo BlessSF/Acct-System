@@ -240,6 +240,7 @@ if (isset($_GET['export_csv'])) {
 
 $pageTitle  = 'Stella COGS Monitoring';
 $activePage = 'stella_cogs_monitoring';
+$bodyClass = 'sp-stella_cogs_monitoring';
 include '../layout.php';
 
 // one input cell
@@ -293,26 +294,26 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
     <div class="section-title">Stella COGS <span>Monitoring</span></div>
     <div class="section-subtitle">Daily COGS &amp; Manpower — <?=$months[$fMonth-1]?> <?=$fYear?> · same layout and formulas as the Excel</div>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
+  <div class="sx-14" style="display:flex">
     <button type="button" class="btn btn-ghost" onclick="openImport()">⬆ Import Excel</button>
-    <button type="button" class="btn btn-ghost" style="color:#dc3545;border-color:rgba(220,53,69,.35)" onclick="openClear()">🗑 Clear <?=$months[$fMonth-1]?></button>
+    <button type="button" class="sx-13 btn btn-ghost" style="color:#dc3545" onclick="openClear()">🗑 Clear <?=$months[$fMonth-1]?></button>
     <a class="btn btn-primary" href="?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>">⬇ Download Excel</a>
   </div>
 </div>
 
 <!-- Clear-month confirmation -->
 <div id="clrOverlay" class="imp-overlay" onclick="if(event.target===this)closeClear()">
-  <div class="imp-box" style="width:min(440px,100%)">
+  <div class="sx-12 imp-box" >
     <div class="imp-head"><b>Clear all <?=$months[$fMonth-1]?> <?=$fYear?> data?</b><button type="button" class="imp-x" onclick="closeClear()">✕</button></div>
     <div class="imp-body">
-      <p style="margin:0 0 8px;font-size:.85rem">This permanently deletes <b id="clrCount">0</b> row(s) of <?=$months[$fMonth-1]?> <?=$fYear?> from COGS Monitoring. It cannot be undone.</p>
-      <p style="margin:0;font-size:.74rem;color:var(--subtext)">Type <b>CLEAR</b> to confirm.</p>
-      <input type="text" id="clrWord" autocomplete="off" placeholder="CLEAR" style="margin-top:8px;width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-m)" oninput="document.getElementById('clrGo').disabled = this.value.trim().toUpperCase() !== 'CLEAR'">
+      <p class="sx-11">This permanently deletes <b id="clrCount">0</b> row(s) of <?=$months[$fMonth-1]?> <?=$fYear?> from COGS Monitoring. It cannot be undone.</p>
+      <p class="sx-10" style="color:var(--subtext)">Type <b>CLEAR</b> to confirm.</p>
+      <input type="text" id="clrWord" autocomplete="off" placeholder="CLEAR" class="sx-9" oninput="document.getElementById('clrGo').disabled = this.value.trim().toUpperCase() !== 'CLEAR'">
       <div id="clrErr" class="imp-err"></div>
     </div>
     <div class="imp-foot">
       <button type="button" class="btn btn-ghost" onclick="closeClear()">Cancel</button>
-      <button type="button" class="btn btn-primary" id="clrGo" style="background:#dc3545;border-color:#dc3545" onclick="clearMonth()" disabled>Yes, clear all</button>
+      <button type="button" class="sx-8 btn btn-primary" id="clrGo" style="background:#dc3545" onclick="clearMonth()" disabled>Yes, clear all</button>
     </div>
   </div>
 </div>
@@ -328,7 +329,7 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
         <label class="imp-lbl">2 · Which sheet (month) in the Excel?</label>
         <select id="impSheet" onchange="impPick()"></select>
         <label class="imp-lbl">3 · Import into which month?</label>
-        <div style="display:flex;gap:8px">
+        <div class="sx-7" style="display:flex">
           <select id="impMonth" onchange="impPreview()"><?php for($m=1;$m<=12;$m++): ?><option value="<?=$m?>"><?=$months[$m-1]?></option><?php endfor; ?></select>
           <select id="impYear" onchange="impPreview()"><?php for($y=2050;$y>=2020;$y--): ?><option value="<?=$y?>"><?=$y?></option><?php endfor; ?></select>
         </div>
@@ -345,12 +346,12 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
   </div>
 </div>
 
-<?php if (isset($_GET['cleared'])): ?><div class="card" style="padding:10px 18px;margin-bottom:14px;color:#dc3545;font-family:var(--font-m);font-size:.78rem;font-weight:700">🗑 Cleared <?= (int)$_GET['cleared'] ?> row(s) for <?= $months[$fMonth-1] ?> <?= $fYear ?>.</div><?php endif; ?>
-<?php if (isset($_GET['imported'])): ?><div class="card" style="padding:10px 18px;margin-bottom:14px;color:var(--accent);font-family:var(--font-m);font-size:.78rem;font-weight:700">✓ Imported <?= (int)$_GET['imported'] ?> day(s) from Excel.</div><?php endif; ?>
+<?php if (isset($_GET['cleared'])): ?><div class="sx-6 card" style="color:#dc3545">🗑 Cleared <?= (int)$_GET['cleared'] ?> row(s) for <?= $months[$fMonth-1] ?> <?= $fYear ?>.</div><?php endif; ?>
+<?php if (isset($_GET['imported'])): ?><div class="sx-6 card" style="color:var(--accent)">✓ Imported <?= (int)$_GET['imported'] ?> day(s) from Excel.</div><?php endif; ?>
 
 <!-- Month / Year tabs -->
-<div class="card" style="padding:12px 18px;margin-bottom:18px">
-  <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+<div class="sx-5 card" >
+  <div class="sx-4" style="display:flex">
     <?php for($m=1;$m<=12;$m++): ?>
     <a href="?month=<?=$m?>&year=<?=$fYear?>"
        style="padding:5px 13px;border-radius:6px;font-size:.74rem;font-weight:600;text-decoration:none;transition:all .15s;
@@ -358,10 +359,9 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
       <?=substr($months[$m-1],0,3)?>
     </a>
     <?php endfor; ?>
-    <div style="margin-left:auto">
+    <div class="sx-3">
       <select onchange="window.location='?month=<?=$fMonth?>&year='+this.value"
-              class="form-control" style="padding:5px 10px;font-size:.74rem;font-weight:600;max-width:90px;
-                     background:var(--surf2);border:1px solid rgba(34,211,165,.3);color:var(--accent)">
+              class="sx-2 form-control" style="background:var(--surf2);color:var(--accent)">
         <?php for($y=2050;$y>=2020;$y--): ?>
         <option value="<?=$y?>" <?=$fYear===$y?'selected':''?>><?=$y?></option>
         <?php endfor; ?>
@@ -370,7 +370,7 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
   </div>
 </div>
 
-<div class="card" style="padding:0">
+<div class="sx-1 card" >
   <div class="legend">
     <span><i class="lg cg"></i> COGS (counted in TOTAL COGS)</span>
     <span><i class="lg nn"></i> NON COGS</span>
@@ -456,71 +456,7 @@ $blank = array_fill_keys(array_merge($FIELDS, ['entry_date','id']), 0); $blank['
   setTimeout(fit, 300);
 })();
 </script>
-<style>
-.legend { display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 16px; font-family:var(--font-m); font-size:.66rem; color:var(--subtext); border-bottom:1px solid var(--border); }
-.legend .lg { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:4px; }
-.lg.cg { background:rgba(34,211,165,.35); } .lg.nn { background:rgba(148,163,184,.4); }
-.tblwrap { overflow:auto; max-height:72vh; }
-.cogs-tbl { border-collapse:separate; border-spacing:0; font-family:var(--font-m); font-size:.72rem; min-width:2900px; }
-.cogs-tbl thead th {
-  background:var(--surf2); color:var(--subtext); text-transform:uppercase; font-size:.58rem; letter-spacing:.03em;
-  padding:7px 6px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); text-align:center; line-height:1.3;
-  position:sticky; top:0; z-index:5; vertical-align:middle;
-}
-.cogs-tbl thead tr:nth-child(2) th { top:34px; } /* exact value is set by script below */
-.cogs-tbl thead .sub { display:block; font-size:.52rem; color:var(--subtext2); text-transform:none; font-weight:400; }
-/* Header cells must be fully solid: a tint layered over the solid surface colour, never see-through,
-   so rows scrolling underneath can never show through the headings. */
-.cogs-tbl thead th { background-color:var(--surf2); background-clip:padding-box; }
-.cogs-tbl thead th.g-commi { background-image:linear-gradient(rgba(99,102,241,.16),rgba(99,102,241,.16)); }
-.cogs-tbl thead th.g-cogs  { background-image:linear-gradient(rgba(34,211,165,.18),rgba(34,211,165,.18)); }
-.cogs-tbl thead th.g-non   { background-image:linear-gradient(rgba(148,163,184,.22),rgba(148,163,184,.22)); }
-.cogs-tbl thead th.g-tot   { background-image:linear-gradient(rgba(245,158,11,.22),rgba(245,158,11,.22)); }
-.cogs-tbl thead th { box-shadow:0 1px 0 var(--border); }
-.cogs-tbl tbody td, .cogs-tbl tbody td .ci { position:relative; z-index:0; }
-.cogs-tbl tbody td, .cogs-tbl tfoot td { padding:3px 4px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); text-align:right; min-width:92px; background:var(--surface); }
-.cogs-tbl .sticky-date { position:sticky; left:0; z-index:6; min-width:128px; text-align:center; font-weight:700; }
-.cogs-tbl thead th.sticky-date { z-index:8; }
-.cogs-tbl tbody tr:hover td { background:var(--surf2); }
-.cogs-tbl .ci { width:100%; min-width:84px; padding:5px 6px; border:1px solid transparent; border-radius:5px; background:transparent; color:var(--text); font-family:var(--font-m); font-size:.72rem; text-align:right; }
-.cogs-tbl .ci.dt { text-align:center; }
-.cogs-tbl .ci:hover { border-color:var(--border); }
-.cogs-tbl .ci:focus { outline:none; border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 2px rgba(34,211,165,.18); }
-.cogs-tbl .ci.cg { background:rgba(34,211,165,.06); } .cogs-tbl .ci.nn { background:rgba(148,163,184,.08); }
-.cogs-tbl td.calc { font-weight:600; color:var(--subtext); }
-.cogs-tbl td.calc.tot { color:var(--text); background:rgba(245,158,11,.08); }
-.cogs-tbl tfoot td { position:sticky; bottom:0; z-index:4; font-weight:800; background:var(--surf2); color:var(--text); padding:9px 8px; border-top:2px solid var(--border); }
-.cogs-tbl tfoot td.sticky-date { z-index:7; }
-.badge { display:inline-block; font-family:var(--font-m); font-size:.6rem; font-weight:700; padding:4px 8px; border-radius:20px; white-space:nowrap; }
-.badge-ok  { background:rgba(34,211,165,.14); color:var(--accent); border:1px solid rgba(34,211,165,.25); }
-.badge-bad { background:rgba(248,113,113,.14); color:var(--accent2); border:1px solid rgba(248,113,113,.25); }
-.act-td { white-space:nowrap; text-align:center !important; min-width:70px !important; }
-.btn-dl { font-family:var(--font-m); font-size:.66rem; padding:4px 8px; border-radius:6px; border:1px solid rgba(248,113,113,.25); background:rgba(248,113,113,.08); color:var(--accent2); cursor:pointer; }
-.row-st { font-size:.6rem; color:var(--accent); min-height:12px; }
-.btn-row { display:flex; gap:10px; padding:12px 16px 4px; flex-wrap:wrap; }
-.btn-add { padding:9px 14px; background:rgba(34,211,165,.06); border:1px dashed rgba(34,211,165,.3); color:var(--accent); border-radius:8px; cursor:pointer; font-family:var(--font-m); font-size:.74rem; }
-.btn-add:hover { background:rgba(34,211,165,.12); }
-.btn-add.alt { border-color:rgba(99,102,241,.35); color:#818cf8; background:rgba(99,102,241,.06); }
-.imp-overlay { display:none; position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:9999; align-items:center; justify-content:center; padding:16px; }
-.imp-overlay.open { display:flex; }
-.imp-box { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:12px; width:min(560px,100%); max-height:92vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.35); }
-.imp-head { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border); font-size:.95rem; }
-.imp-x { background:none; border:none; color:var(--subtext); font-size:1rem; cursor:pointer; }
-.imp-body { padding:14px 18px; overflow:auto; display:flex; flex-direction:column; gap:6px; font-family:var(--font-m); font-size:.76rem; }
-.imp-body select, .imp-body input[type=file] { padding:7px 8px; border:1px solid var(--border); border-radius:7px; background:var(--surface); color:var(--text); font-family:var(--font-m); font-size:.76rem; }
-#impStep2 { flex-direction:column; gap:6px; }
-.imp-lbl { display:block; font-weight:700; margin-top:8px; color:var(--subtext); text-transform:uppercase; font-size:.62rem; letter-spacing:.05em; }
-.imp-chk { display:flex; gap:7px; align-items:flex-start; margin-top:10px; color:var(--subtext); }
-.imp-info { margin-top:10px; font-weight:700; }
-.imp-prev { max-height:170px; overflow:auto; border:1px solid var(--border); border-radius:7px; display:none; }
-.imp-prev table { width:100%; border-collapse:collapse; font-size:.68rem; }
-.imp-prev th, .imp-prev td { padding:4px 8px; border-bottom:1px solid var(--border); text-align:right; }
-.imp-prev th:first-child, .imp-prev td:first-child { text-align:left; }
-.imp-err { color:var(--accent2); font-weight:700; }
-.imp-foot { display:flex; justify-content:flex-end; gap:8px; padding:12px 18px; border-top:1px solid var(--border); }
-.imp-foot .btn[disabled] { opacity:.45; cursor:not-allowed; }
-.note { padding:6px 16px 14px; font-family:var(--font-m); font-size:.64rem; color:var(--subtext2); }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <script>
 const LIMIT = <?= COGS_LIMIT ?>;

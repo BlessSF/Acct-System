@@ -138,131 +138,23 @@ function tbSection(array $rows, array $data, array $MONTHS, string &$grandTotalC
 
 $pageTitle  = 'Stella TB';
 $activePage = 'stella_disbursement';
+$bodyClass = 'sp-stella_tb';
 include '../layout.php';
 ?>
 
-<style>
-/* ── Controls ── */
-.tb-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
-.yr-btn {
-  display:inline-flex; align-items:center;
-  padding:7px 14px; border:1.5px solid #455A64;
-  border-radius:7px; background:#fff; color:#455A64;
-  font-family:var(--font-m); font-size:.75rem; font-weight:700;
-  text-decoration:none; transition:all .13s;
-}
-.yr-btn:hover { background:#ECEFF1; }
-.yr-current { font-family:var(--font-m); font-size:1rem; font-weight:800; color:#1a1d23; padding:0 6px; }
-
-.nav-btn {
-  display:inline-flex; align-items:center; gap:7px;
-  padding:9px 18px; border-radius:9px; text-decoration:none;
-  font-family:var(--font-h); font-size:.82rem; font-weight:700;
-  white-space:nowrap; transition:background .15s, transform .15s;
-  cursor:pointer; border:none;
-}
-.nav-btn:hover { transform:translateY(-1px); }
-.btn-dsb  { background:#388E3C; color:#fff; box-shadow:0 2px 8px rgba(56,142,60,.3); }
-.btn-dsb:hover  { background:#2E7D32; }
-.btn-pl   { background:#1565C0; color:#fff; box-shadow:0 2px 8px rgba(21,101,192,.3); }
-.btn-pl:hover   { background:#0D47A1; }
-.btn-sum  { background:#F9A825; color:#3E2723; box-shadow:0 2px 8px rgba(249,168,37,.3); }
-.btn-sum:hover  { background:#F57F17; }
-.btn-csv  { background:#fff; color:#455A64; border:1.5px solid #B0BEC5; }
-.btn-csv:hover  { background:#ECEFF1; }
-
-/* ── Table wrap ── */
-.tb-wrap {
-  width:100%; overflow-x:auto;
-  border:2px solid #455A64;
-  border-radius:var(--radius); background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.10);
-  scrollbar-width:thin; scrollbar-color:#c1c7d0 #f1f3f5;
-}
-.tb-wrap::-webkit-scrollbar { height:8px; }
-.tb-wrap::-webkit-scrollbar-track { background:#f1f3f5; }
-.tb-wrap::-webkit-scrollbar-thumb { background:#c1c7d0; border-radius:4px; }
-
-.scroll-hint {
-  font-family:var(--font-m); font-size:.60rem; color:#374151;
-  text-align:center; padding:4px 12px; border-bottom:1px solid #90A4AE;
-  background:#ECEFF1;
-}
-
-/* ── Table ── */
-.tb-table { border-collapse:collapse; width:100%; min-width:1400px; font-size:.74rem; }
-
-/* Company + year header rows */
-.tb-table thead tr.head-company td,
-.tb-table thead tr.head-year td {
-  background:#fff; color:#1a1a1a;
-  font-family:var(--font-m); font-size:.68rem; font-weight:700;
-  padding:5px 10px; border:1px solid #B0BEC5; text-align:left;
-}
-
-/* Column header */
-.tb-table thead tr.head-cols th {
-  background:#37474F; color:#fff;
-  font-family:var(--font-m); font-size:.58rem; font-weight:800;
-  text-transform:uppercase; letter-spacing:.07em;
-  padding:9px 8px; border:1px solid #263238;
-  white-space:nowrap; text-align:center;
-  position:sticky; top:0; z-index:20;
-}
-.tb-table thead tr.head-cols th.th-label { text-align:left; min-width:200px; width:200px; }
-.tb-table thead tr.head-cols th.th-total { background:#B71C1C; min-width:110px; }
-.tb-table thead tr.head-cols th.th-mo    { min-width:85px; }
-
-/* Section header rows */
-.tb-sec-row td {
-  background:#ECEFF1; color:#263238;
-  font-family:var(--font-m); font-size:.72rem; font-weight:800;
-  padding:7px 12px; border:1px solid #90A4AE;
-  text-transform:uppercase; letter-spacing:.1em;
-}
-
-/* Data rows */
-.tb-table tbody tr { transition:background .08s; }
-.tb-table tbody tr:hover td { background:#F5F5F5 !important; }
-.tb-table tbody td {
-  border:1px solid #ECEFF1; padding:6px 8px;
-  text-align:right; font-family:var(--font-m); font-size:.73rem;
-  color:#37474F; background:#fff;
-}
-.tb-table tbody tr:nth-child(even) td { background:#FAFAFA; }
-.tb-table tbody td.td-label {
-  text-align:left; font-weight:600;
-  font-family:var(--font-h); color:#1a1d23; padding-left:14px;
-}
-.tb-table tbody td.td-total {
-  background:#FBE9E7 !important; font-weight:800;
-  color:#B71C1C; font-size:.76rem;
-}
-.tb-table tbody td.td-zero { color:#d0d0d0; font-size:.68rem; }
-
-/* Spacer row */
-.tb-spacer td { padding:3px; background:#fff; border:none; }
-
-/* Grand total footer */
-.tb-table tfoot td {
-  background:#B71C1C; color:#fff;
-  font-family:var(--font-m); font-size:.72rem; font-weight:800;
-  padding:9px 8px; border:1px solid #7F0000; text-align:right;
-}
-.tb-table tfoot td.td-label { text-align:left; padding-left:14px; }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Header -->
-<div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+<div class="sx-4 section-header" >
   <div>
     <div class="section-title">Stella <span>Trial Balance</span></div>
     <div class="section-subtitle">MERITONI CORP · Assets, Revenue &amp; Expenses by month · <?= $YEAR ?></div>
   </div>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <div class="sx-3">
     <a href="stella_disbursement.php" class="nav-btn btn-dsb">📒 Disbursement</a>
     <a href="stella_profit_loss.php"  class="nav-btn btn-pl">📊 Profit &amp; Loss</a>
     <a href="stella_sum.php?year=<?= $YEAR ?>" class="nav-btn btn-sum">📋 Sum</a>
-    <a href="stella_acc_title.php" class="nav-btn" style="background:#6D4C41;color:#fff;box-shadow:0 2px 8px rgba(109,76,65,.3)">🏷 Account Titles</a>
+    <a href="stella_acc_title.php" class="sx-2 nav-btn" >🏷 Account Titles</a>
   </div>
 </div>
 
@@ -280,7 +172,7 @@ include '../layout.php';
   <table class="tb-table">
     <thead>
       <tr class="head-company">
-        <td colspan="14" style="font-size:.76rem;font-weight:800;letter-spacing:.04em">MERITONI CORP</td>
+        <td colspan="14" class="sx-1">MERITONI CORP</td>
       </tr>
       <tr class="head-year">
         <td colspan="14"><?= $YEAR ?></td>

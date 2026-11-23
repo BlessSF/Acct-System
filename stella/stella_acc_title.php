@@ -331,130 +331,21 @@ $EXP_OPTS_HTML = expColOptions('');
 
 $pageTitle  = 'Stella Account Titles';
 $activePage = 'stella_disbursement';
+$bodyClass = 'sp-stella_acc_title';
 include '../layout.php';
 ?>
 
-<style>
-.at-outer {
-  width: 100%; max-width: 1060px;
-  border: 2px solid #6D4C41; border-radius: var(--radius);
-  background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,.10);
-  overflow: hidden;
-}
-.at-header {
-  background: #6D4C41; color: #fff; padding: 10px 16px;
-  font-family: var(--font-m); font-size: .68rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .07em;
-}
-.at-add-row {
-  display: flex; gap: 8px; padding: 14px 16px;
-  border-bottom: 1px solid #e5e0dc; background: #FBF7F4;
-}
-.at-add-row input {
-  flex: 1; padding: 9px 12px; border: 1px solid #d7ccc8; border-radius: 8px;
-  font-family: var(--font-h); font-size: .82rem; outline: none;
-}
-.at-add-row input:focus { border-color: #6D4C41; box-shadow: 0 0 0 3px rgba(109,76,65,.12); }
-.at-sec-sel {
-  padding: 9px 10px; border: 1px solid #d7ccc8; border-radius: 8px;
-  font-family: var(--font-m); font-size: .74rem; font-weight: 700;
-  background: #fff; cursor: pointer; outline: none;
-}
-.at-sec-sel:focus { border-color: #6D4C41; }
-.at-add-btn {
-  padding: 9px 16px; background: #6D4C41; color: #fff; border: none; border-radius: 8px;
-  font-family: var(--font-h); font-size: .82rem; font-weight: 700; cursor: pointer;
-  white-space: nowrap; transition: background .15s;
-}
-.at-add-btn:hover { background: #4E342E; }
-.at-add-btn:disabled { opacity: .5; cursor: default; }
-
-.at-list { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow-y: auto; }
-.at-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; border-bottom: 1px solid #f0ece8;
-  font-family: var(--font-h); font-size: .82rem; color: #1a1d23;
-  transition: background .1s;
-}
-.at-item:hover { background: #FBF7F4; }
-.at-item:last-child { border-bottom: none; }
-.at-del {
-  padding: 4px 10px; font-size: .64rem; font-weight: 700;
-  font-family: var(--font-m); background: #fff1f2; color: #be123c;
-  border: 1px solid #fecdd3; border-radius: 6px; cursor: pointer;
-  transition: all .13s;
-}
-.at-del:hover { background: #ffe4e6; }
-.at-edit {
-  padding: 4px 10px; font-size: .64rem; font-weight: 700;
-  font-family: var(--font-m); background: #eef2ff; color: #3730a3;
-  border: 1px solid #c7d2fe; border-radius: 6px; cursor: pointer;
-  transition: all .13s; margin-right: 6px;
-}
-.at-edit:hover { background: #e0e7ff; }
-.at-item-actions { display: flex; align-items: center; gap: 0; }
-.at-sec-badge-sel {
-  padding: 3px 8px; font-size: .62rem; font-weight: 700;
-  font-family: var(--font-m); border-radius: 999px; cursor: pointer;
-  outline: none; margin-right: 10px; border: 1px solid transparent;
-  appearance: none; -webkit-appearance: none; text-align: center;
-}
-.at-sec-badge-sel.sec-assets   { background: #E3F2FD; color: #1565C0; border-color: #90CAF9; }
-.at-sec-badge-sel.sec-expenses { background: #FFF9C4; color: #E65100; border-color: #F9A825; }
-.at-sec-badge-sel.sec-other    { background: #ECEFF1; color: #455A64; border-color: #B0BEC5; }
-.at-fixnote { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
-  max-width:860px; margin:0 0 14px; padding:10px 14px; background:#FFF8E1; border:1px solid #FFE082; border-radius:10px;
-  font-family:var(--font-h); font-size:.8rem; color:#6D4C00; }
-.at-fixnote button { padding:6px 14px; background:#6D4C41; color:#fff; border:none; border-radius:8px;
-  font-family:var(--font-h); font-size:.78rem; font-weight:700; cursor:pointer; white-space:nowrap; }
-.at-fixnote button:hover { background:#4E342E; }
-/* VAT setting: does an entry under this title carry input tax? */
-.at-vat-sel {
-  padding: 3px 8px; font-size: .62rem; font-weight: 700;
-  font-family: var(--font-m); border-radius: 999px; cursor: pointer;
-  outline: none; margin-right: 8px; border: 1px solid transparent;
-  appearance: none; -webkit-appearance: none; text-align: center;
-}
-.at-vat-sel.vat-both { background: #EDE7F6; color: #4527A0; border-color: #B39DDB; }
-.at-vat-sel.vat-vat  { background: #E8F5E9; color: #2E7D32; border-color: #A5D6A7; }
-.at-vat-sel.vat-none { background: #FFEBEE; color: #C62828; border-color: #EF9A9A; }
-.at-vat-legend b { font-weight: 700; }
-.at-edit-input {
-  flex: 1; padding: 6px 10px; border: 1px solid #6D4C41; border-radius: 6px;
-  font-family: var(--font-h); font-size: .82rem; outline: none;
-  box-shadow: 0 0 0 3px rgba(109,76,65,.12);
-}
-.at-save {
-  padding: 4px 10px; font-size: .64rem; font-weight: 700;
-  font-family: var(--font-m); background: #f0fdf4; color: #15803d;
-  border: 1px solid #bbf7d0; border-radius: 6px; cursor: pointer;
-  transition: all .13s; margin-right: 6px;
-}
-.at-save:hover { background: #dcfce7; }
-.at-cancel {
-  padding: 4px 10px; font-size: .64rem; font-weight: 700;
-  font-family: var(--font-m); background: #f3f4f6; color: #374151;
-  border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;
-  transition: all .13s; margin-right: 6px;
-}
-.at-cancel:hover { background: #e5e7eb; }
-.at-empty { padding: 30px 16px; text-align: center; color: var(--subtext); font-family: var(--font-m); font-size: .78rem; }
-.toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Header -->
-<div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+<div class="sx-13 section-header" style="display:flex;align-items:center;gap:10px">
   <div>
     <div class="section-title">Account <span>Titles</span></div>
     <div class="section-subtitle">MERITONI CORP · Add, rename, or delete the Account Title options used in Stella Disbursement</div>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <a href="stella_disbursement.php"
-       style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
-              background:#4CAF50;color:#fff;border-radius:9px;text-decoration:none;
-              font-family:var(--font-h);font-size:.82rem;font-weight:700;
-              box-shadow:0 2px 8px rgba(76,175,80,.3);transition:background .15s,transform .15s;
-              white-space:nowrap"
+       class="sx-12" style="display:inline-flex;align-items:center;gap:7px;background:#4CAF50;transition:background .15s,transform .15s"
        onmouseover="this.style.background='#388E3C';this.style.transform='translateY(-1px)'"
        onmouseout="this.style.background='#4CAF50';this.style.transform=''">
       ← Back to Disbursement
@@ -471,22 +362,22 @@ include '../layout.php';
 <?php endif; ?>
 <div class="at-outer">
   <div class="at-header">Stella — Account Title List (<span id="at-count"><?= count($titles) ?></span>)</div>
-  <div style="padding:8px 16px;background:#FBF7F4;border-bottom:1px solid #e5e0dc;font-family:var(--font-m);font-size:.66rem;color:#6b7280">
-    <strong>Section</strong> controls where a title shows up: <span style="color:#1565C0;font-weight:700">Assets</span> and
-    <span style="color:#E65100;font-weight:700">Expenses</span> appear in Sum &amp; Trial Balance;
-    <span style="color:#455A64;font-weight:700">Other</span> (e.g. Accounts Payable) stays in Disbursement only.
+  <div class="sx-11" style="background:#FBF7F4">
+    <strong>Section</strong> controls where a title shows up: <span class="sx-4">Assets</span> and
+    <span class="sx-10">Expenses</span> appear in Sum &amp; Trial Balance;
+    <span class="sx-9">Other</span> (e.g. Accounts Payable) stays in Disbursement only.
   </div>
-  <div class="at-vat-legend" style="padding:8px 16px;background:#FBF7F4;border-bottom:1px solid #e5e0dc;font-family:var(--font-m);font-size:.66rem;color:#6b7280;line-height:1.6">
+  <div class="sx-5 at-vat-legend" style="background:#FBF7F4">
     <strong>VAT setting</strong> decides whether a Disbursement entry under that title carries input tax (12%):
-    <span style="color:#4527A0;font-weight:700">VAT or Non-VAT</span> follows the supplier (VAT supplier = input tax, NV supplier = none);
-    <span style="color:#2E7D32;font-weight:700">Input tax only</span> always carries input tax;
-    <span style="color:#C62828;font-weight:700">Non-VAT only</span> never carries input tax, even for a VAT-registered supplier (e.g. Purchases - Non-Vat).
+    <span class="sx-8">VAT or Non-VAT</span> follows the supplier (VAT supplier = input tax, NV supplier = none);
+    <span class="sx-7">Input tax only</span> always carries input tax;
+    <span class="sx-6">Non-VAT only</span> never carries input tax, even for a VAT-registered supplier (e.g. Purchases - Non-Vat).
   </div>
-  <div class="at-vat-legend" style="padding:8px 16px;background:#FBF7F4;border-bottom:1px solid #e5e0dc;font-family:var(--font-m);font-size:.66rem;color:#6b7280;line-height:1.6">
+  <div class="sx-5 at-vat-legend" style="background:#FBF7F4">
     <strong>Expenses column</strong> decides where the <strong>gross</strong> amount of a Disbursement entry under that title is posted in
-    <a href="stella_expenses.php" style="color:#1565C0;font-weight:700">Stella Expenses</a> (view-only, filled automatically).
+    <a href="stella_expenses.php" class="sx-4">Stella Expenses</a> (view-only, filled automatically).
     <em>— not posted —</em> means entries under that title do not appear in Expenses.
-    <button type="button" onclick="repostAll()" style="margin-left:6px;padding:3px 10px;border:1px solid #d7ccc8;border-radius:6px;background:#fff;color:#6D4C41;font-weight:700;cursor:pointer;font-size:.64rem">↻ Re-post all entries</button>
+    <button type="button" onclick="repostAll()" class="sx-3" style="background:#fff">↻ Re-post all entries</button>
   </div>
   <div class="at-add-row">
     <input type="text" id="at-new-title" placeholder="New account title…" maxlength="255"
@@ -501,7 +392,7 @@ include '../layout.php';
       <option value="vat">Input tax only</option>
       <option value="none">Non-VAT only</option>
     </select>
-    <select id="at-new-expcol" class="at-sec-sel" style="flex:0 0 170px;width:170px" title="Expenses column this title posts to">
+    <select id="at-new-expcol" class="sx-2 at-sec-sel" style="flex:0 0 170px" title="Expenses column this title posts to">
       <?= expColOptions('') ?>
     </select>
     <button class="at-add-btn" id="at-add-btn" onclick="addTitle()">+ Add</button>
@@ -519,7 +410,7 @@ include '../layout.php';
             <option value="<?= $val ?>"<?= $vm === $val ? ' selected' : '' ?>><?= $lbl ?></option>
             <?php endforeach; ?>
           </select>
-          <select class="at-vat-sel" style="width:175px" id="at-exp-<?= $t['id'] ?>" data-val="<?= htmlspecialchars((string)expSyncColClean($t['expense_col'] ?? '')) ?>"
+          <select class="sx-1 at-vat-sel" id="at-exp-<?= $t['id'] ?>" data-val="<?= htmlspecialchars((string)expSyncColClean($t['expense_col'] ?? '')) ?>"
                   title="Expenses column: where the gross of Disbursement entries under this title is posted" onchange="setExpCol(<?= $t['id'] ?>, this)">
             <?= expColOptions(expSyncColClean($t['expense_col'] ?? '')) ?>
           </select>
@@ -573,7 +464,7 @@ async function addTitle() {
             <option value="vat"${data.vat_mode==='vat'?' selected':''}>Input tax only</option>
             <option value="none"${data.vat_mode==='none'?' selected':''}>Non-VAT only</option>
           </select>
-          <select class="at-vat-sel" style="width:175px" id="at-exp-${data.id}" data-val="${data.expense_col}" title="Expenses column" onchange="setExpCol(${data.id}, this)">${EXP_OPTS.replace('value="'+data.expense_col+'"','value="'+data.expense_col+'" selected')}</select>
+          <select class="sx-1 at-vat-sel" id="at-exp-${data.id}" data-val="${data.expense_col}" title="Expenses column" onchange="setExpCol(${data.id}, this)">${EXP_OPTS.replace('value="'+data.expense_col+'"','value="'+data.expense_col+'" selected')}</select>
           <select class="at-sec-badge-sel sec-${data.section}" id="at-sec-${data.id}" onchange="setSection(${data.id}, this)">
             <option value="expenses"${data.section==='expenses'?' selected':''}>Expenses</option>
             <option value="assets"${data.section==='assets'?' selected':''}>Assets</option>

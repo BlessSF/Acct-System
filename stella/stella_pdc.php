@@ -96,208 +96,22 @@ $total = array_sum(array_column($rows, 'amount'));
 
 $pageTitle  = 'PDC';
 $activePage = 'stella_pdc';
+$bodyClass = 'sp-stella_pdc';
 include '../layout.php';
 ?>
 
-<style>
-.pdc-wrap {
-  max-width: 600px;
-}
-
-.pdc-header {
-  display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
-}
-
-.pdc-table-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-  overflow: hidden;
-}
-
-.pdc-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: .78rem;
-}
-
-.pdc-table thead th {
-  background: #1e3a5f;
-  color: #fff;
-  font-family: var(--font-m);
-  font-size: .6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  padding: 11px 14px;
-  text-align: left;
-  border: 1px solid #2d5480;
-  white-space: nowrap;
-}
-
-.pdc-table thead th.th-num   { width: 42px; text-align: center; }
-.pdc-table thead th.th-date  { width: 200px; }
-.pdc-table thead th.th-amt   { width: 180px; text-align: right; }
-.pdc-table thead th.th-act   { width: 120px; text-align: center; }
-
-.pdc-table tbody tr {
-  border-bottom: 1px solid var(--border);
-  transition: background .1s;
-}
-.pdc-table tbody tr:nth-child(even) td { background: #f8fbff; }
-.pdc-table tbody tr:hover td { background: #eef4ff !important; }
-
-.pdc-table td {
-  border: 1px solid #e3e6ea;
-  padding: 0;
-  vertical-align: middle;
-}
-
-.pdc-input {
-  width: 100%;
-  padding: 9px 12px;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text);
-  font-family: var(--font-h);
-  font-size: .78rem;
-  display: block;
-  box-sizing: border-box;
-}
-.pdc-input:focus {
-  background: rgba(15,123,92,.06);
-  outline: 1px solid rgba(15,123,92,.35);
-}
-.pdc-input[type="number"] {
-  font-family: var(--font-m);
-  text-align: right;
-}
-.pdc-input[type="date"] {
-  font-family: var(--font-m);
-  font-size: .74rem;
-  color: var(--text);
-}
-
-.td-num {
-  text-align: center;
-  font-family: var(--font-m);
-  font-size: .68rem;
-  color: var(--subtext);
-  padding: 0 8px;
-  background: #f8f9fb;
-  width: 42px;
-}
-
-.pdc-table tfoot td {
-  background: #1e3a5f;
-  color: #fff;
-  font-family: var(--font-m);
-  font-size: .7rem;
-  font-weight: 700;
-  padding: 10px 14px;
-  border: 1px solid #2d5480;
-}
-.pdc-table tfoot td.tf-total {
-  text-align: right;
-  color: #4ade80;
-  font-size: .82rem;
-}
-
-.btn-save {
-  padding: 5px 12px;
-  font-size: .65rem;
-  font-family: var(--font-m);
-  font-weight: 700;
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all .13s;
-  display: block; width: 100%; margin-bottom: 4px;
-}
-.btn-save:hover { background: #dcfce7; }
-.btn-save.saving { opacity: .5; pointer-events: none; }
-.btn-save.ok  { background: #dcfce7; color: #15803d; }
-.btn-save.err { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
-
-.btn-del {
-  padding: 5px 12px;
-  font-size: .65rem;
-  font-family: var(--font-m);
-  font-weight: 700;
-  background: #fff1f2;
-  color: #be123c;
-  border: 1px solid #fecdd3;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all .13s;
-  display: block; width: 100%;
-}
-.btn-del:hover { background: #ffe4e6; }
-
-.btn-add-row {
-  display: flex; align-items: center; gap: 7px;
-  padding: 9px 18px;
-  background: var(--accent); color: #fff;
-  border: none; border-radius: 8px;
-  font-size: .8rem; font-weight: 600;
-  cursor: pointer; font-family: var(--font-h);
-  transition: background .15s, transform .1s;
-}
-.btn-add-row:hover { background: #0a6649; transform: translateY(-1px); }
-
-.toast {
-  position: fixed; top: 68px; right: 22px;
-  z-index: 9999; max-width: 300px;
-  animation: fadeSlideDown .3s ease;
-}
-
-.pdc-kpi {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  margin-bottom: 20px;
-  display: inline-block;
-  min-width: 200px;
-}
-.pdc-kpi-label {
-  font-family: var(--font-m);
-  font-size: .62rem;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--subtext);
-  margin-bottom: 4px;
-}
-.pdc-kpi-val {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--accent);
-  font-family: var(--font-m);
-}
-.pdc-kpi-sub {
-  font-family: var(--font-m);
-  font-size: .7rem;
-  color: var(--muted);
-  margin-top: 2px;
-}
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Header -->
 <div class="section-header">
   <div>
     <div class="section-title">PDC <span>Tracker</span></div>
-    <div class="section-subtitle" style="font-family:var(--font-m);font-size:.72rem;color:var(--subtext)">
+    <div class="sx-6 section-subtitle" >
       Stella Branch · Post-Dated Checks
     </div>
   </div>
-  <a href="stella_pdc.php?export_csv=1" class="btn btn-ghost btn-sm"
-     style="color:var(--accent3);border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)">
+  <a href="stella_pdc.php?export_csv=1" class="sx-5 btn btn-ghost btn-sm"
+     >
     ⬇ Download CSV
   </a>
 </div>
@@ -334,7 +148,7 @@ include '../layout.php';
                        value="<?= htmlspecialchars($r['date_issued']) ?>"></td>
             <td><input type="number" step="0.01" min="0" class="pdc-input" data-col="amount"
                        value="<?= number_format((float)$r['amount'], 2, '.', '') ?>"></td>
-            <td style="padding:4px 6px;text-align:center">
+            <td class="sx-1">
               <button class="btn-save" onclick="saveRow(this)">Update</button>
               <button class="btn-del"  onclick="delRow(this)">Del</button>
             </td>
@@ -342,8 +156,7 @@ include '../layout.php';
           <?php endforeach; ?>
         <?php else: ?>
           <tr id="empty-row">
-            <td colspan="4" style="text-align:center;padding:40px;color:var(--muted);
-                font-family:var(--font-m);font-size:.78rem">
+            <td colspan="4" class="sx-4">
               No PDC records yet — click <strong>+ Add Row</strong> to get started
             </td>
           </tr>
@@ -351,7 +164,7 @@ include '../layout.php';
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="2" style="text-align:right;letter-spacing:.06em">TOTAL</td>
+          <td colspan="2" class="sx-3">TOTAL</td>
           <td class="tf-total" id="pdc-total">
             ₱<?= number_format($total, 2) ?>
           </td>
@@ -361,7 +174,7 @@ include '../layout.php';
     </table>
   </div>
 
-  <div style="margin-top:12px">
+  <div class="sx-2">
     <button class="btn-add-row" onclick="addRow()">+ Add Row</button>
   </div>
 </div>
@@ -381,7 +194,7 @@ function addRow() {
     <td class="td-num">${count + 1}</td>
     <td><input type="date" class="pdc-input" data-col="date_issued" value="${new Date().toISOString().slice(0,10)}"></td>
     <td><input type="number" step="0.01" min="0" class="pdc-input" data-col="amount" value="" placeholder="0.00"></td>
-    <td style="padding:4px 6px;text-align:center">
+    <td class="sx-1">
       <button class="btn-save" onclick="saveRow(this)">Save</button>
     </td>
   `;

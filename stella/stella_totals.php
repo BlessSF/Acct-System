@@ -74,70 +74,21 @@ $fmtT = function ($v) { return abs($v) < 0.005 ? '-' : number_format($v, 2); };
 
 $pageTitle  = 'Stella Totals';
 $activePage = 'stella_disbursement';
+$bodyClass = 'sp-stella_totals';
 include '../layout.php';
 ?>
-<style>
-.tt-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:14px 0; }
-.tt-kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; border-top:3px solid var(--accent); }
-.tt-kpi.b { border-top-color:#3b82f6; } .tt-kpi.v { border-top-color:#8b5cf6; } .tt-kpi.g { border-top-color:var(--accent); background:linear-gradient(135deg,#0f3d2e,#1a4a2e); border-color:#0f3d2e; }
-.tt-kpi .l { font-family:var(--font-m); font-size:.6rem; letter-spacing:.09em; text-transform:uppercase; color:var(--subtext); }
-.tt-kpi .f { font-family:var(--font-m); font-size:.58rem; color:var(--muted); margin-top:2px; }
-.tt-kpi .n { font-family:var(--font-m); font-size:1.45rem; font-weight:800; margin-top:6px; letter-spacing:-.02em; }
-.tt-kpi.b .n { color:#2563eb; } .tt-kpi.v .n { color:#7c3aed; }
-.tt-kpi.g .l, .tt-kpi.g .f { color:rgba(255,255,255,.6); } .tt-kpi.g .n { color:#6ee7b7; }
-.tt-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; }
-.tt-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:11px 18px; background:#0f3d2e; color:#fff; }
-.tt-head b { font-family:var(--font-m); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; }
-.tt-head label { font-family:var(--font-m); font-size:.62rem; color:rgba(255,255,255,.75); display:flex; gap:6px; align-items:center; cursor:pointer; }
-.tt-note { display:flex; gap:10px; align-items:center; padding:12px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; background:#fffbeb; }
-.tt-note .t { font-family:var(--font-m); font-size:.6rem; text-transform:uppercase; letter-spacing:.08em; color:#92400e; font-weight:700; }
-.tt-note input { font-family:var(--font-m); font-size:.78rem; padding:8px 12px; border:1px solid #fde68a; border-radius:8px; background:#fff; color:var(--text); outline:none; }
-.tt-note input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,.15); }
-#totLabel { flex:1; min-width:240px; } #totAmt { width:150px; text-align:right; font-weight:700; }
-.tt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); }
-.tt-grid.vert { grid-template-columns:1fr; max-width:1000px; margin:0 auto; border-left:1px solid #cbd5d0; border-right:1px solid #cbd5d0; }
-.tt-seg { display:inline-flex; border:1px solid rgba(255,255,255,.35); border-radius:8px; overflow:hidden; }
-.tt-seg button { background:transparent; color:rgba(255,255,255,.8); border:none; padding:4px 12px; font-family:var(--font-m); font-size:.62rem; font-weight:700; cursor:pointer; }
-.tt-seg button.on { background:#fff; color:#0f3d2e; }
-.tt-tools { display:flex; gap:10px; align-items:center; padding:10px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap; background:var(--bg,#f8fafb); }
-.tt-tools input[type=search] { flex:1; min-width:200px; font-family:var(--font-m); font-size:.76rem; padding:8px 12px; border:1px solid var(--border); border-radius:8px; outline:none; background:#fff; }
-.tt-tools input[type=search]:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,123,92,.12); }
-.tt-chip { font-family:var(--font-m); font-size:.62rem; font-weight:700; padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:#fff; color:var(--subtext); cursor:pointer; }
-.tt-chip.on { background:#0f3d2e; color:#fff; border-color:#0f3d2e; }
-.tt-grp { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; padding:10px 18px; background:#cfe8dc; border-bottom:1px solid var(--border); border-top:1px solid var(--border); font-family:var(--font-m); font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#0f3d2e; }
-.tt-grp .gs { font-size:.78rem; letter-spacing:0; color:#0f3d2e; }
-.tt-row { position:relative; display:grid; grid-template-columns:28px 1fr auto 56px; align-items:center; gap:10px; padding:10px 18px; border-bottom:1px solid var(--border); font-size:.8rem; transition:background .12s; overflow:hidden; }
-.tt-row:nth-of-type(even) { background:#f6faf8; }
-.tt-row:hover { background:#dcfce7; }
-.tt-row .ix { font-family:var(--font-m); font-size:.62rem; color:#6b7280; text-align:right; }
-.tt-row .nm { color:#111827; font-weight:700; z-index:1; font-size:.84rem; }
-.tt-row .a { font-family:var(--font-m); font-weight:800; color:#111827; font-size:.86rem; text-align:right; z-index:1; min-width:120px; }
-.tt-row .pc { font-family:var(--font-m); font-size:.66rem; font-weight:700; color:#374151; text-align:right; z-index:1; }
-.tt-row .bar { position:absolute; left:0; bottom:0; height:5px; border-radius:0 3px 3px 0; background:linear-gradient(90deg,#10b981,#34d399); width:0; transition:width .3s; }
-.tt-row.pur .bar { background:linear-gradient(90deg,#3b82f6,#60a5fa); } .tt-row.dff .bar { background:linear-gradient(90deg,#8b5cf6,#a78bfa); }
-.tt-row.zero .nm { color:#6b7280; font-weight:500; } .tt-row.zero .a { color:#9ca3af; font-weight:500; } .tt-row.zero .pc { visibility:hidden; }
-.tt-row.pur { background:#eff6ff !important; } .tt-row.dff { background:#f5f3ff !important; }
-.tt-row.pur:hover { background:#dbeafe !important; } .tt-row.dff:hover { background:#ede9fe !important; }
-.tt-legend { display:flex; gap:16px; flex-wrap:wrap; padding:9px 18px; font-family:var(--font-m); font-size:.64rem; color:#374151; border-bottom:1px solid var(--border); background:#fff; }
-.tt-legend i { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; margin-right:6px; }
-.tt-tag { font-family:var(--font-m); font-size:.5rem; font-weight:700; letter-spacing:.05em; padding:1px 6px; border-radius:8px; margin-left:8px; vertical-align:middle; }
-.tt-tag.p { background:#2563eb; color:#fff; } .tt-tag.d { background:#7c3aed; color:#fff; }
-.tt-foot { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#0f3d2e; color:#fff; font-family:var(--font-m); }
-.tt-foot .l { font-size:.66rem; letter-spacing:.09em; text-transform:uppercase; color:rgba(255,255,255,.7); }
-.tt-foot .n { font-size:1.2rem; font-weight:800; color:#6ee7b7; }
-@media (max-width:760px) { .tt-kpis { grid-template-columns:1fr; } }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
-<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:2px">
+<div class="sx-9" style="display:flex">
   <div>
     <div class="section-title">Stella <span>Totals</span></div>
     <div class="section-subtitle">Gross per Account Title for the month · read live from the Disbursement</div>
   </div>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <form method="GET" style="display:flex;gap:6px;align-items:center;margin:0">
-      <input type="month" name="month" class="form-control" value="<?= htmlspecialchars($fMonth) ?>" onchange="this.form.submit()" style="max-width:170px">
+  <div class="sx-8" style="display:flex">
+    <form method="GET" class="sx-7" style="display:flex">
+      <input type="month" name="month" class="sx-6 form-control" value="<?= htmlspecialchars($fMonth) ?>" onchange="this.form.submit()" >
     </form>
-    <a href="stella_disbursement.php?month=<?= urlencode($fMonth) ?>" class="btn btn-ghost btn-sm" style="font-weight:600">← Disbursement</a>
+    <a href="stella_disbursement.php?month=<?= urlencode($fMonth) ?>" class="sx-5 btn btn-ghost btn-sm" >← Disbursement</a>
   </div>
 </div>
 
@@ -150,7 +101,7 @@ include '../layout.php';
 <div class="tt-card" id="totBox">
   <div class="tt-head">
     <b>Account Titles · <?= htmlspecialchars(date('F Y', strtotime($mStart))) ?></b>
-    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <div class="sx-4" style="display:flex">
       <div class="tt-seg" role="group" aria-label="Layout">
         <button type="button" id="lyV" onclick="setLayout('vert')">☰ Vertical</button>
         <button type="button" id="lyH" onclick="setLayout('horiz')">▦ Horizontal</button>
@@ -161,11 +112,11 @@ include '../layout.php';
     <span class="t">Note / less expense</span>
     <input type="text" id="totLabel" placeholder="e.g. LESS EXPENSES BREAKAGE REIMB." value="<?= htmlspecialchars($totalNote['note_label']) ?>" oninput="saveTotNote()">
     <input type="text" id="totAmt" placeholder="0.00" value="<?= (float)$totalNote['note_amount'] == 0 ? '' : number_format((float)$totalNote['note_amount'], 2) ?>" oninput="saveTotNote()">
-    <span id="totSt" style="font-family:var(--font-m);font-size:.64rem;color:#92400e"></span>
+    <span id="totSt" class="sx-3"></span>
   </div>
   <div class="tt-legend">
-    <span><i style="background:#2563eb"></i><b>Blue rows</b> = counted in PURCHASES TOTAL</span>
-    <span><i style="background:#7c3aed"></i><b>Purple rows</b> = counted in DF, FARE, FUEL</span>
+    <span><i class="sx-2"></i><b>Blue rows</b> = counted in PURCHASES TOTAL</span>
+    <span><i class="sx-1"></i><b>Purple rows</b> = counted in DF, FARE, FUEL</span>
     <span><b>%</b> = its share of all titles this month</span>
   </div>
   <div class="tt-tools">

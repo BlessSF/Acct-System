@@ -283,155 +283,11 @@ $months = ['January','February','March','April','May','June','July','August','Se
 
 $pageTitle  = 'COGS';
 $activePage = 'stella_cogs';
+$bodyClass = 'sp-stella_cogs';
 include '../layout.php';
 ?>
 
-<style>
-/* ── Header strip ── */
-.cogs-header {
-  background: linear-gradient(135deg, #1a2e1a 0%, #0f3d2e 100%);
-  border-radius: var(--radius);
-  padding: 20px 26px 16px;
-  margin-bottom: 18px;
-  display: flex; align-items: flex-start; justify-content: space-between;
-  flex-wrap: wrap; gap: 12px;
-}
-.cogs-header-left .eyebrow {
-  font-family: var(--font-m); font-size: .58rem;
-  text-transform: uppercase; letter-spacing: .12em;
-  color: rgba(255,255,255,.45); margin-bottom: 4px;
-}
-.cogs-header-left .title {
-  font-size: 1.1rem; font-weight: 800;
-  color: #fff; letter-spacing: -.02em;
-}
-.cogs-header-left .subtitle {
-  font-family: var(--font-m); font-size: .68rem;
-  color: rgba(255,255,255,.5); margin-top: 3px;
-}
-
-/* ── KPI cards ── */
-.cogs-kpi {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px; margin-bottom: 18px;
-}
-.kpi-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-}
-.kpi-label {
-  font-family: var(--font-m); font-size: .58rem;
-  text-transform: uppercase; letter-spacing: .08em;
-  color: var(--subtext); margin-bottom: 5px;
-}
-.kpi-val {
-  font-family: var(--font-m); font-size: 1.15rem;
-  font-weight: 800;
-}
-.kpi-val.green { color: var(--accent); }
-.kpi-val.red   { color: var(--accent2); }
-.kpi-val.gold  { color: var(--accent3); }
-.kpi-val.blue  { color: #3b82f6; }
-.kpi-val.purple{ color: #8b5cf6; }
-
-/* ── Controls ── */
-.cogs-controls {
-  display: flex; gap: 10px; align-items: center;
-  flex-wrap: wrap; margin-bottom: 16px;
-}
-
-/* ── Table ── */
-.cogs-tbl { width: 100%; border-collapse: collapse; }
-.cogs-tbl thead th {
-  background: #1e3a5f; color: #fff;
-  font-family: var(--font-m); font-size: .58rem;
-  font-weight: 700; text-transform: uppercase;
-  letter-spacing: .08em; padding: 10px 12px;
-  border: 1px solid #2d5480; text-align: center;
-  white-space: nowrap;
-}
-.cogs-tbl thead th.col-date  { min-width: 140px; text-align: left; }
-.cogs-tbl thead th.col-num   { min-width: 130px; }
-.cogs-tbl thead th.col-cos   { background: #1a4a2e; }
-.cogs-tbl thead th.col-act   { min-width: 80px; background: #374151; }
-
-.cogs-tbl tbody tr { transition: background .1s; }
-.cogs-tbl tbody tr:hover { background: #f8fafb; }
-.cogs-tbl tbody td {
-  border: 1px solid var(--border);
-  padding: 0; vertical-align: middle;
-}
-.cogs-tbl tbody td.td-date { padding: 6px 10px; }
-
-.cogs-input {
-  width: 100%; padding: 8px 10px;
-  text-align: right;
-  font-family: var(--font-m); font-size: .78rem;
-  color: var(--text); background: transparent;
-  border: none; outline: none;
-  transition: background .15s, box-shadow .15s;
-}
-.cogs-input:focus {
-  background: #fff;
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-.cogs-input.cos-field {
-  background: #f0fdf4; color: var(--accent);
-  font-weight: 700; cursor: default;
-}
-.cogs-input.mktg-field { background: #fffbeb; color: var(--accent3); font-weight: 600; }
-
-/* Date input */
-.date-input {
-  width: 100%; padding: 7px 10px;
-  font-family: var(--font-m); font-size: .76rem;
-  border: none; outline: none; background: transparent;
-  color: var(--text);
-}
-.date-input:focus { background: #f8f9fb; }
-
-/* Totals row */
-.cogs-tbl tfoot td {
-  background: #1e3a5f; color: #fff;
-  font-family: var(--font-m); font-size: .72rem;
-  font-weight: 800; padding: 10px 12px;
-  border: 1px solid #2d5480; text-align: right;
-  white-space: nowrap;
-}
-.cogs-tbl tfoot td.lbl { text-align: left; text-transform: uppercase; letter-spacing: .06em; }
-.cogs-tbl tfoot td.cos-tot { background: #1a4a2e; color: #6ee7b7; font-size: .82rem; }
-.cogs-tbl tfoot td.mktg-tot { background: #78350f; color: #fde68a; }
-
-/* Save / delete btns */
-.btn-save-row {
-  padding: 5px 12px;
-  background: var(--accent); color: #fff;
-  border: none; border-radius: 6px;
-  font-family: var(--font-m); font-size: .65rem;
-  font-weight: 600; cursor: pointer;
-  transition: background .15s;
-}
-.btn-save-row:hover { background: #0a6649; }
-.btn-del-row {
-  padding: 5px 8px;
-  background: transparent; color: var(--accent2);
-  border: 1px solid rgba(220,53,69,.2);
-  border-radius: 6px; font-size: .65rem;
-  cursor: pointer; transition: background .15s;
-}
-.btn-del-row:hover { background: rgba(220,53,69,.07); }
-.row-status {
-  font-family: var(--font-m); font-size: .62rem;
-  color: var(--accent); display: none; margin-top: 3px;
-}
-
-@media (max-width: 700px) {
-  .cogs-kpi { grid-template-columns: 1fr 1fr; }
-}
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Header -->
 <div class="cogs-header">
@@ -440,9 +296,8 @@ include '../layout.php';
     <div class="title">Cost of Goods Sold</div>
     <div class="subtitle">BEG auto-suggests from prior month's END · END auto-suggests from Month End Inventory (editable) · COS = BEG + PURC − MKTG COST − END · one BEG. and one END. per month · auto-saves</div>
   </div>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 12px;border-radius:20px;
-                 font-family:var(--font-m);font-size:.65rem;font-weight:600">
+  <div class="sx-21" style="display:flex">
+    <span class="sx-27" style="background:rgba(255,255,255,.1);color:#fff">
       📌 Stella
     </span>
   </div>
@@ -450,23 +305,23 @@ include '../layout.php';
 
 <!-- KPI Strip -->
 <div class="cogs-kpi">
-  <div class="kpi-card" style="border-top:2px solid #3b82f6">
+  <div class="sx-26 kpi-card" >
     <div class="kpi-label">Beg. Inventory</div>
     <div class="kpi-val blue" id="kpi_beg"><?= number_format($totals['beg'],2) ?></div>
   </div>
-  <div class="kpi-card" style="border-top:2px solid #8b5cf6">
+  <div class="sx-25 kpi-card" >
     <div class="kpi-label">Purchases</div>
     <div class="kpi-val purple" id="kpi_purc"><?= number_format($rows ? $totals['purc'] : $purcAuto,2) ?></div>
   </div>
-  <div class="kpi-card" style="border-top:2px solid var(--accent2)">
+  <div class="sx-24 kpi-card" >
     <div class="kpi-label">End. Inventory</div>
     <div class="kpi-val red" id="kpi_end"><?= number_format($totals['end_inv'],2) ?></div>
   </div>
-  <div class="kpi-card" style="border-top:2px solid var(--accent)">
+  <div class="sx-23 kpi-card" >
     <div class="kpi-label">COS (Total)</div>
     <div class="kpi-val green" id="kpi_cos"><?= number_format($totals['cos'],2) ?></div>
   </div>
-  <div class="kpi-card" style="border-top:2px solid var(--accent3)">
+  <div class="sx-22 kpi-card" >
     <div class="kpi-label">Marketing Cost</div>
     <div class="kpi-val gold" id="kpi_mktg"><?= number_format($totals['mktg_cost'],2) ?></div>
   </div>
@@ -474,13 +329,13 @@ include '../layout.php';
 
 <!-- Controls -->
 <div class="cogs-controls">
-  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" id="filterForm">
-    <select name="month" class="form-control" style="max-width:140px" onchange="this.form.submit()">
+  <form method="GET" class="sx-21" style="display:flex" id="filterForm">
+    <select name="month" class="sx-20 form-control" onchange="this.form.submit()">
       <?php for($m=1;$m<=12;$m++): ?>
       <option value="<?=$m?>" <?=$fMonth==$m?'selected':''?>><?= $months[$m-1] ?></option>
       <?php endfor; ?>
     </select>
-    <select name="year" class="form-control" style="max-width:100px" onchange="this.form.submit()">
+    <select name="year" class="sx-19 form-control" onchange="this.form.submit()">
       <?php for($y=date('Y');$y>=date('Y')-4;$y--): ?>
       <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
       <?php endfor; ?>
@@ -491,12 +346,11 @@ include '../layout.php';
 </div>
 
 <!-- Column Totals Banner -->
-<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">
-  <div style="background:#0f3d2e;padding:7px 16px;font-family:var(--font-m);font-size:.58rem;
-              text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.5)">
+<div class="sx-18 card" >
+  <div class="sx-17" style="background:#0f3d2e;color:rgba(255,255,255,.5)">
     COLUMN TOTALS — <?= strtoupper($months[$fMonth-1]) ?> <?= $fYear ?>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0">
+  <div class="sx-16" style="display:grid">
     <?php
     $totCols = [
       ['BEG.',        'beg',       '#3b82f6'],
@@ -508,9 +362,8 @@ include '../layout.php';
     foreach($totCols as [$lbl,$key,$color]):
       $val = $totals[$key] ?? 0;
     ?>
-    <div style="padding:12px 16px;border-right:1px solid var(--border)">
-      <div style="font-family:var(--font-m);font-size:.55rem;text-transform:uppercase;
-                  letter-spacing:.08em;color:var(--subtext);margin-bottom:4px"><?= $lbl ?></div>
+    <div class="sx-15">
+      <div class="sx-14" style="color:var(--subtext)"><?= $lbl ?></div>
       <div style="font-family:var(--font-m);font-size:1.05rem;font-weight:800;
                   color:<?= $color ?>">
         <?= (float)$val == 0 ? '<span style="color:var(--muted)">—</span>' : number_format((float)$val,2) ?>
@@ -521,10 +374,8 @@ include '../layout.php';
 </div>
 
 <!-- MEI Auto-fill Notice -->
-<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 16px;
-            margin-bottom:12px;display:flex;align-items:center;gap:10px;
-            font-family:var(--font-m);font-size:.72rem;color:#92400e">
-  <span style="font-size:1rem">📦</span>
+<div class="sx-13" style="background:#fffbeb;display:flex;color:#92400e">
+  <span class="sx-10">📦</span>
   <span>
     <strong>END. Inventory</strong> is auto-suggested from the
     <strong>Month End Inventory grand total</strong> for
@@ -538,10 +389,8 @@ include '../layout.php';
 </div>
 
 <!-- BEG Auto-suggest Notice -->
-<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 16px;
-            margin-bottom:12px;display:flex;align-items:center;gap:10px;
-            font-family:var(--font-m);font-size:.72rem;color:#1e40af">
-  <span style="font-size:1rem">🔗</span>
+<div class="sx-12" style="background:#eff6ff;display:flex;color:#1e40af">
+  <span class="sx-10">🔗</span>
   <span>
     <strong>BEG. Inventory</strong> for a new row is auto-suggested from
     <strong><?= $months[$prevMonth-1] . ' ' . $prevYear ?></strong>'s Ending Inventory
@@ -555,10 +404,8 @@ include '../layout.php';
 </div>
 
 <!-- PURC Auto-suggest Notice -->
-<div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:10px 16px;
-            margin-bottom:12px;display:flex;align-items:center;gap:10px;
-            font-family:var(--font-m);font-size:.72rem;color:#5b21b6">
-  <span style="font-size:1rem">🧾</span>
+<div class="sx-11" style="background:#f5f3ff;display:flex;color:#5b21b6">
+  <span class="sx-10">🧾</span>
   <span>
     <strong>PURC.</strong> for a new row is auto-filled from the
     <strong>Stella Expenses ledger's Purchases total</strong> for
@@ -572,14 +419,14 @@ include '../layout.php';
 </div>
 
 <!-- Table -->
-<div class="card" style="padding:0;overflow-x:auto">
+<div class="sx-9 card" >
   <table class="cogs-tbl" id="cogsTable">
     <thead>
       <tr>
         <th class="col-date">Date</th>
         <th class="col-num">BEG.</th>
-        <th class="col-num" title="Auto-suggested from the Stella Expenses ledger's Purchases total total — editable">PURC. <span style="font-size:.5rem;background:rgba(139,92,246,.25);padding:1px 5px;border-radius:8px;color:#c4b5fd">SUGGESTED</span></th>
-        <th class="col-num" title="Auto-suggested from Month End Inventory — editable">END. <span style="font-size:.5rem;background:rgba(255,200,0,.2);padding:1px 5px;border-radius:8px;color:#fbbf24">SUGGESTED</span></th>
+        <th class="col-num" title="Auto-suggested from the Stella Expenses ledger's Purchases total total — editable">PURC. <span class="sx-8" style="background:rgba(139,92,246,.25);color:#c4b5fd">SUGGESTED</span></th>
+        <th class="col-num" title="Auto-suggested from Month End Inventory — editable">END. <span class="sx-8" style="background:rgba(255,200,0,.2);color:#fbbf24">SUGGESTED</span></th>
         <th class="col-num col-cos">COS</th>
         <th class="col-num" style="background:#78350f">MKTG COST</th>
         <th class="col-act">Action</th>
@@ -590,25 +437,25 @@ include '../layout.php';
         <?php foreach ($rows as $r): ?>
         <tr data-id="<?= $r['id'] ?>">
           <td class="td-date">
-            <input type="date" class="date-input" value="<?= htmlspecialchars($r['cogs_date']) ?>"
-                   readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
+            <input type="date" class="sx-5 date-input" value="<?= htmlspecialchars($r['cogs_date']) ?>"
+                   readonly tabindex="-1" title="Month-end date (one row per month)" >
           </td>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input" value="<?= number_format((float)$r['beg'],2) ?>"
                      placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
-          <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="<?= number_format((float)$r['purc'],2) ?>"
-                     placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700"></td>
+          <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input purc-auto-field" value="<?= number_format((float)$r['purc'],2) ?>"
+                     placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9"></td>
           <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
-            <input type="text" inputmode="decimal" autocomplete="off" class="cogs-input end-auto-field"
+            <input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input end-auto-field"
                    value="<?= number_format((float)$r['end_inv'],2) ?>"
                    oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"
-                   style="background:#fff8e1;color:#b45309;font-weight:700">
+                   style="background:#fff8e1;color:#b45309">
           </td>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input cos-field" value="<?= number_format((float)$r['cos'],2) ?>"
                      readonly tabindex="-1"></td>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="<?= number_format((float)$r['mktg_cost'],2) ?>"
                      placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
-          <td style="padding:6px 8px;text-align:center">
-            <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
+          <td class="sx-3">
+            <div class="sx-2" style="display:flex">
               <button class="btn-del-row"  onclick="deleteRow(this)">✕</button>
               <div class="row-status" style="display:block">✓ Saved</div>
             </div>
@@ -617,8 +464,7 @@ include '../layout.php';
         <?php endforeach; ?>
       <?php else: ?>
       <tr id="emptyRow">
-        <td colspan="7" style="text-align:center;padding:48px;color:var(--muted);
-                                font-family:var(--font-m);font-size:.78rem">
+        <td colspan="7" class="sx-1" style="color:var(--muted)">
           No COGS entries for <?= $months[$fMonth-1] ?> <?= $fYear ?> — click <strong>+ Add <?= $months[$fMonth-1] ?> COGS</strong>
         </td>
       </tr>
@@ -638,9 +484,9 @@ include '../layout.php';
   </table>
 </div>
 
-<div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<div class="sx-7" style="display:flex">
   <button class="btn btn-primary addMonthBtn" onclick="addRow()" style="<?= $rows ? 'display:none' : '' ?>">+ Add <?= $months[$fMonth-1] ?> COGS</button>
-  <span style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)">One BEG. and one END. per month · changes save automatically · PURC. = this month's purchases from the Disbursement</span>
+  <span class="sx-6" style="color:var(--subtext)">One BEG. and one END. per month · changes save automatically · PURC. = this month's purchases from the Disbursement</span>
 </div>
 
   </div></div>
@@ -665,15 +511,15 @@ function dateFor(kind) {
 
 const ROW_HTML = (d) => `
     <td class="td-date">
-      <input type="date" class="date-input" value="${d}" readonly tabindex="-1" title="Month-end date (one row per month)" style="pointer-events:none;opacity:.85">
+      <input type="date" class="sx-5 date-input" value="${d}" readonly tabindex="-1" title="Month-end date (one row per month)" >
     </td>
-    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#eff6ff;color:#1d4ed8;font-weight:700" title="Auto: previous row's END (or last month's END)"></td>
-    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9;font-weight:700" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
-    <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#fff8e1;color:#b45309;font-weight:700"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input beg-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#eff6ff;color:#1d4ed8" title="Auto: previous row's END (or last month's END)"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input purc-auto-field" value="" placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9" title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"></td>
+    <td><input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input end-auto-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)" style="background:#fff8e1;color:#b45309"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input cos-field" value="0.00" readonly tabindex="-1"></td>
     <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="" placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
-    <td style="padding:6px 8px;text-align:center">
-      <div style="display:flex;flex-direction:column;gap:3px;align-items:center">
+    <td class="sx-3">
+      <div class="sx-2" style="display:flex">
         <button class="btn-del-row" onclick="deleteRow(this)">✕</button>
         <div class="row-status" style="display:block;color:var(--subtext)">not saved yet</div>
       </div>
@@ -834,7 +680,7 @@ async function deleteRow(btn) {
   tr.remove();
   if (!document.querySelector('#cogsBody tr')) {
     const tbody = document.getElementById('cogsBody');
-    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" style="text-align:center;padding:48px;color:var(--muted);font-family:var(--font-m);font-size:.78rem">No COGS entry — click <strong>+ Add COGS</strong></td></tr>`;
+    tbody.innerHTML = `<tr id="emptyRow"><td colspan="7" class="sx-1" style="color:var(--muted)">No COGS entry — click <strong>+ Add COGS</strong></td></tr>`;
   }
   refreshFooter();
   updateKPIs();

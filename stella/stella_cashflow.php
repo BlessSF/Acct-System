@@ -521,150 +521,11 @@ $fmt = fn($n) => number_format((float)$n, 2);
 
 $pageTitle  = 'Cashflow';
 $activePage = 'stella_cashflow';
+$bodyClass = 'sp-stella_cashflow';
 include '../layout.php';
 ?>
 
-<style>
-.cf-wrap { max-width: 760px; margin: 0 auto; }
-
-.cf-header-card {
-  background: linear-gradient(135deg, #1e3060 0%, #0f2045 100%);
-  border-radius: var(--radius); padding: 20px 26px 16px;
-  margin-bottom: 18px; display: flex; align-items: flex-start;
-  justify-content: space-between; flex-wrap: wrap; gap: 12px;
-}
-.cf-header-card .eyebrow {
-  font-family: var(--font-m); font-size: .58rem; text-transform: uppercase;
-  letter-spacing: .14em; color: rgba(255,255,255,.45); margin-bottom: 4px;
-}
-.cf-header-card .title { font-size: 1.2rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
-.cf-header-card .subtitle { font-family: var(--font-m); font-size: .67rem; color: rgba(255,255,255,.5); margin-top: 4px; }
-
-.cf-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; max-width: 760px; margin-left: auto; margin-right: auto; }
-
-.cf-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: 0 2px 12px rgba(0,0,0,.06);
-  overflow: hidden;
-}
-
-.cf-title-row { background: #1e3060; padding: 14px 28px; text-align: center; }
-.cf-title-row .cf-main-title {
-  font-size: 1rem; font-weight: 800; color: #fff;
-  letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-m);
-}
-.cf-title-row .cf-sub-title {
-  font-size: .68rem; color: rgba(255,255,255,.6); font-family: var(--font-m);
-  letter-spacing: .08em; margin-top: 2px;
-}
-
-.cf-row {
-  display: flex; align-items: center; padding: 0 28px;
-  border-bottom: 1px solid #f0f2f5; min-height: 44px; transition: background .1s;
-  gap: 10px;
-}
-.cf-row:hover { background: #fafbfc; }
-.cf-row.indent { padding-left: 52px; }
-
-.cf-label { flex: 1; font-size: .82rem; color: var(--text); font-weight: 500; }
-.cf-label.bold { font-weight: 700; }
-
-.cf-input-wrap { display: flex; align-items: center; gap: 6px; }
-.cf-input {
-  width: 150px; padding: 7px 12px; text-align: right;
-  font-family: var(--font-m); font-size: .82rem; color: var(--text);
-  background: #fff; border: 1px solid var(--border); border-radius: 7px;
-  outline: none; transition: border-color .15s, box-shadow .15s;
-}
-.cf-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,123,92,.08); }
-.cf-input.manual-field { background: #fffbeb; border-color: rgba(217,119,6,.25); }
-.cf-input.auto-field {
-  background: #f0f4ff; color: #3b5bdb; font-weight: 700;
-  cursor: default; border-color: rgba(59,91,219,.2);
-}
-.cf-label-input {
-  flex: 1; padding: 6px 10px; font-size: .82rem; color: var(--text);
-  background: #fff; border: 1px solid var(--border); border-radius: 7px; outline: none;
-}
-.cf-label-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,123,92,.08); }
-
-.auto-badge {
-  font-family: var(--font-m); font-size: .58rem;
-  color: var(--accent); margin-left: 8px;
-  background: rgba(15,123,92,.08); padding: 2px 7px;
-  border-radius: 10px; border: 1px solid rgba(15,123,92,.15);
-  white-space: nowrap;
-}
-
-.cf-remove-btn {
-  border: none; background: transparent; color: #b91c1c; cursor: pointer;
-  font-size: .95rem; line-height: 1; padding: 4px 6px; border-radius: 6px;
-}
-.cf-remove-btn:hover { background: #fef2f2; }
-
-.cf-section-band {
-  background: #eef2f9; padding: 8px 28px; font-weight: 800; font-size: .78rem;
-  color: #1e3060; text-transform: uppercase; letter-spacing: .04em; font-family: var(--font-m);
-  border-top: 2px solid #dbe3f0; border-bottom: 1px solid #dbe3f0;
-}
-.cf-subsection-label {
-  padding: 10px 28px 4px;
-  font-style: italic; font-size: .8rem; color: var(--text);
-  display: flex; align-items: center; justify-content: space-between;
-}
-.cf-add-btn {
-  font-family: var(--font-m); font-size: .65rem; font-weight: 700;
-  color: var(--accent); background: rgba(15,123,92,.08);
-  border: 1px solid rgba(15,123,92,.2); border-radius: 8px;
-  padding: 3px 10px; cursor: pointer; white-space: nowrap;
-}
-.cf-add-btn:hover { background: rgba(15,123,92,.15); }
-
-.cf-restore-link {
-  font-family: var(--font-m); font-size: .62rem; font-weight: 600;
-  color: var(--subtext); text-decoration: none; white-space: nowrap;
-}
-.cf-restore-link:hover { color: var(--accent); text-decoration: underline; }
-
-.cf-subtotal {
-  display: flex; align-items: center; padding: 10px 28px;
-  border-top: 1px solid var(--border2); border-bottom: 1px solid #f0f2f5;
-  background: #fbfcfe;
-}
-.cf-subtotal-label { flex: 1; font-size: .8rem; font-weight: 700; font-style: italic; color: var(--text); }
-.cf-subtotal-val { font-family: var(--font-m); font-size: .88rem; font-weight: 800; min-width: 150px; text-align: right; }
-
-.cf-total {
-  display: flex; align-items: center; padding: 12px 28px;
-  border-top: 2px solid var(--border2); border-bottom: 1px solid var(--border);
-  background: #f8f9fb;
-}
-.cf-total-label { flex: 1; font-size: .85rem; font-weight: 700; font-style: italic; color: var(--text); }
-.cf-total-val { font-family: var(--font-m); font-size: 1rem; font-weight: 800; min-width: 150px; text-align: right; }
-
-.cf-summary-block { background: #eef3fb; }
-.cf-summary-row { display: flex; align-items: center; padding: 10px 28px; border-bottom: 1px solid #dce5f2; }
-.cf-summary-row:last-child { border-bottom: none; }
-.cf-summary-label { flex: 1; font-size: .82rem; font-weight: 700; color: var(--text); }
-.cf-summary-val { font-family: var(--font-m); font-size: .9rem; font-weight: 800; min-width: 150px; text-align: right; color: var(--text); }
-
-.cf-save-status { font-family: var(--font-m); font-size: .72rem; color: var(--subtext); }
-.toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
-
-.cf-debug-box {
-  max-width: 760px; margin: 0 auto 16px; padding: 10px 16px;
-  border-radius: 8px; font-family: var(--font-m); font-size: .68rem;
-  line-height: 1.6;
-}
-.cf-debug-box.ok    { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
-.cf-debug-box.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-
-@media (max-width: 640px) {
-  .cf-row, .cf-section-band, .cf-subsection-label, .cf-subtotal, .cf-total, .cf-summary-row { padding-left: 16px; padding-right: 16px; }
-  .cf-row.indent { padding-left: 28px; }
-  .cf-input { width: 110px; }
-}
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Page Header -->
 <div class="cf-header-card">
@@ -673,21 +534,20 @@ include '../layout.php';
     <div class="title">Cashflow Statement</div>
     <div class="subtitle">Format follows the standard branch cashflow worksheet — Operations / Investing / Financing</div>
   </div>
-  <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 14px;border-radius:20px;
-               font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">
+  <span class="sx-6" style="color:#fff">
     📌 Stella
   </span>
 </div>
 
 <!-- Controls -->
 <div class="cf-controls">
-  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <select name="month" class="form-control" style="max-width:140px" onchange="this.form.submit()">
+  <form method="GET" class="sx-5">
+    <select name="month" class="sx-4 form-control" onchange="this.form.submit()">
       <?php for($m=1;$m<=12;$m++): ?>
       <option value="<?=$m?>" <?=$fMonth==$m?'selected':''?>><?= $months[$m-1] ?></option>
       <?php endfor; ?>
     </select>
-    <select name="year" class="form-control" style="max-width:100px" onchange="this.form.submit()">
+    <select name="year" class="sx-3 form-control" onchange="this.form.submit()">
       <?php for($y=date('Y')-5;$y<=date('Y')+10;$y++): ?>
       <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
       <?php endfor; ?>
@@ -723,7 +583,7 @@ include '../layout.php';
   <div class="cf-row">
     <div class="cf-label">For the month Ending</div>
     <div class="cf-input-wrap">
-      <span class="cf-input" style="background:#f8f9fb;color:var(--subtext2);font-weight:700;text-align:right;border-color:transparent"><?= $displayDate ?></span>
+      <span class="sx-2 cf-input" style="color:var(--subtext2)"><?= $displayDate ?></span>
     </div>
   </div>
 
@@ -767,7 +627,7 @@ include '../layout.php';
 
   <div class="cf-subsection-label">
     <span><em>Cash paid for</em></span>
-    <span style="display:flex;gap:8px;align-items:center">
+    <span class="sx-1">
       <a href="javascript:void(0)" class="cf-restore-link" onclick="restoreDefaults('<?= $section ?>')" title="Bring back any removed default rows in this section">↺ Restore removed</a>
       <button type="button" class="cf-add-btn" onclick="addCustomRow('<?= $section ?>','paid')">+ Add line item</button>
     </span>

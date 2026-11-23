@@ -481,238 +481,45 @@ $acctVatModes = vatModeMap($pdo, 'stella_acc_titles');
 
 $pageTitle  = 'Stella Disbursement';
 $activePage = 'stella_disbursement';
+$bodyClass = 'sp-stella_disbursement';
 include '../layout.php';
 ?>
 
-<style>
-/* ── Outer wrapper ── */
-.dsb-outer {
-  width: 100%; overflow: auto; max-height: calc(100vh - 150px);   /* scrolls inside, so header + TOTAL stay visible */
-  border: 2px solid #217346;
-  border-radius: var(--radius);
-  background: var(--surface);
-  scrollbar-width: thin; scrollbar-color: #c1c7d0 #f1f3f5;
-  box-shadow: 0 2px 8px rgba(0,0,0,.10);
-}
-.dsb-outer::-webkit-scrollbar { height: 8px; }
-.dsb-outer::-webkit-scrollbar-track { background: #f1f3f5; }
-.dsb-outer::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 4px; }
-
-/* ── Table ── */
-.dsb-table { border-collapse: collapse; width: 100%; min-width: 1300px; font-size: .74rem; }
-
-/* Header row — green Excel style */
-.dsb-table thead tr.head-company td {
-  background: #ffffff; color: #1a1a1a;
-  font-family: var(--font-m); font-size: .68rem; font-weight: 700;
-  padding: 5px 10px; border: 1px solid #c6d9b0; text-align: left;
-}
-.dsb-table thead tr.head-month td {
-  background: #ffffff; color: #1a1a1a;
-  font-family: var(--font-m); font-size: .68rem; font-weight: 700;
-  padding: 4px 10px; border: 1px solid #c6d9b0;
-}
-.dsb-table thead tr.head-cols th {
-  background: #4CAF50; color: #fff;
-  font-family: var(--font-m); font-size: .58rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .07em;
-  padding: 9px 8px; border: 1px solid #388E3C;
-  white-space: nowrap; text-align: center;
-  position: sticky; top: 0; z-index: 20;
-}
-
-/* Column widths */
-.th-date { width: 90px;  min-width: 90px; }
-.th-tin  { width: 140px; min-width: 140px; }
-.th-name { width: 200px; min-width: 200px; }
-.th-type { width: 60px;  min-width: 60px; }
-.th-addr { width: 180px; min-width: 180px; }
-.th-inv  { width: 110px; min-width: 110px; }
-.th-acct { width: 160px; min-width: 160px; }
-.th-gross{ width: 110px; min-width: 110px; }
-.th-itax { width: 100px; min-width: 100px; }
-.th-nvat { width: 110px; min-width: 110px; }
-.th-part { width: 160px; min-width: 160px; }
-.th-act  { width: 80px;  min-width: 80px; position: sticky; right: 0; z-index: 5; box-shadow: -2px 0 4px rgba(0,0,0,.08); }
-.td-act-sticky { position: sticky; right: 0; z-index: 4; background: #fff; box-shadow: -2px 0 4px rgba(0,0,0,.08); }
-
-/* Row styling */
-.dsb-table tbody tr { border-bottom: 1px solid #d0d8e0; transition: background .1s; }
-.dsb-table tbody tr td { background: #fff; }
-.dsb-table tbody tr:nth-child(even) td { background: #EBF5E0; }
-.dsb-table tbody tr:nth-child(even) td.td-act-sticky { background: #EBF5E0; }
-.dsb-table tbody tr:hover td { background: #d6efc0 !important; }
-.dsb-table td { border: 1px solid #c8d4df; padding: 0; vertical-align: middle; }
-
-/* Inline inputs */
-.di {
-  width: 100%; padding: 6px 7px;
-  background: transparent; border: none; outline: none;
-  color: #1a1d23; font-family: var(--font-h); font-size: .74rem;
-  display: block; box-sizing: border-box;
-}
-.di:focus { background: rgba(15,123,92,.06); outline: 1px solid #4CAF50; }
-.di.mono  { font-family: var(--font-m); font-size: .70rem; }
-.di.num   { font-family: var(--font-m); font-size: .70rem; text-align: right; }
-.di.center{ text-align: center; }
-
-.td-no {
-  text-align: center; font-family: var(--font-m); font-size: .64rem;
-  color: #555; padding: 0 5px; background: #f5f8f2 !important; font-weight: 600;
-}
-
-/* VAT select */
-.di-sel {
-  width: 100%; padding: 5px 4px;
-  background: transparent; border: none; outline: none;
-  font-family: var(--font-m); font-size: .70rem; font-weight: 700;
-  text-align: center; cursor: pointer;
-  appearance: none; -webkit-appearance: none;
-}
-.di-sel:focus { background: rgba(15,123,92,.06); }
-
-/* Account title dropdown */
-.acct-sel {
-  width: 100%; padding: 6px 4px;
-  font-size: .72rem; font-weight: 500; color: #1a1d23;
-  text-align: left;
-}
-
-/* ghost zero */
-.di::placeholder { color: #a8b0ba; opacity: 1; font-weight: 400; }
-
-/* Totals row */
-.dsb-table tfoot td {
-  background: #C6EFCE; color: #1a1a1a;
-  font-family: var(--font-m); font-size: .65rem; font-weight: 800;
-  padding: 8px 8px; border: 1px solid #388E3C;
-  position: sticky; bottom: 0; z-index: 21; box-shadow: 0 -2px 4px rgba(0,0,0,.12);
-}
-.dsb-table tfoot td.num { text-align: right; }
-
-/* Action buttons */
-.bsv {
-  padding: 3px 7px; font-size: .58rem;
-  font-family: var(--font-m); font-weight: 700;
-  background: #f0fdf4; color: #15803d;
-  border: 1px solid #bbf7d0; border-radius: 4px;
-  cursor: pointer; white-space: nowrap;
-  transition: all .13s; display: block; width: 100%; margin-bottom: 3px;
-}
-.bsv:hover { background: #dcfce7; }
-.bsv.saving { opacity:.5; pointer-events:none; }
-.bsv.ok  { background:#dcfce7; color:#15803d; }
-.bsv.err { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
-.rs { display:block; font-family:var(--font-m); font-size:.56rem; font-weight:700; margin-bottom:3px; white-space:nowrap; }
-.rs-ok    { color:#15803d; }
-.rs-dirty { color:#b45309; }
-.rs-new   { color:#6b7280; }
-.rs-err   { color:#be123c; }
-.bdel {
-  padding: 3px 7px; font-size: .58rem;
-  font-family: var(--font-m); font-weight: 700;
-  background: #fff1f2; color: #be123c;
-  border: 1px solid #fecdd3; border-radius: 4px;
-  cursor: pointer; white-space: nowrap;
-  transition: all .13s; display: block; width: 100%;
-}
-.bdel:hover { background: #ffe4e6; }
-
-/* Controls */
-.dsb-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-.btn-add-row {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 14px; background: #4CAF50; color: #fff;
-  border: none; border-radius: 8px; font-size: .78rem; font-weight: 600;
-  cursor: pointer; font-family: var(--font-h);
-  transition: background .15s, transform .1s;
-}
-.btn-add-row:hover { background: #388E3C; transform: translateY(-1px); }
-
-/* Autocomplete dropdown */
-.ac-wrap { position: relative; width: 100%; }
-.ac-list {
-  display: none; position: fixed; z-index: 99999;
-  background: #fff; border: 1px solid #c8d4df; border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.12);
-  max-height: 220px; overflow-y: auto; min-width: 280px;
-}
-.ac-list.open { display: block; }
-.ac-item {
-  padding: 8px 12px; cursor: pointer; font-size: .74rem;
-  font-family: var(--font-h); border-bottom: 1px solid #f0f2f5;
-  transition: background .1s;
-}
-.ac-item:hover { background: #f0fdf4; }
-.ac-item .ac-name { font-weight: 600; color: #1a1d23; }
-.ac-item .ac-tin  { font-family: var(--font-m); font-size: .64rem; color: #6b7280; margin-top: 1px; }
-.ac-item .ac-addr { font-family: var(--font-m); font-size: .62rem; color: #9ca3af; margin-top: 1px; font-style: italic; }
-
-.scroll-hint {
-  font-family: var(--font-m); font-size: .60rem; color: #374151;
-  text-align: center; padding: 4px 12px; border-bottom: 1px solid #c6d9b0;
-  background: #f0fff0;
-}
-.toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
-.empty-state {
-  text-align: center; padding: 50px 20px;
-  font-family: var(--font-m); font-size: .78rem; color: var(--subtext);
-}
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Header -->
-<div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+<div class="sx-34 section-header" style="display:flex;align-items:center;justify-content:space-between">
   <div>
     <div class="section-title">Stella <span>Disbursement</span></div>
     <div class="section-subtitle">MERITONI CORP · Auto-fills vendor details from Vendor Masterlist</div>
   </div>
-  <div style="display:flex;gap:8px;align-items:center">
+  <div class="sx-1" style="display:flex;align-items:center">
   <a href="stella_totals.php?month=<?= urlencode($fMonth) ?>"
-     style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
-            background:#E65100;color:#fff;border-radius:9px;text-decoration:none;
-            font-family:var(--font-h);font-size:.82rem;font-weight:700;
-            box-shadow:0 2px 8px rgba(230,81,0,.3);transition:background .15s,transform .15s;
-            white-space:nowrap"
+     class="sx-33" style="display:inline-flex;align-items:center;background:#E65100;transition:background .15s,transform .15s"
      onmouseover="this.style.background='#BF360C';this.style.transform='translateY(-1px)'"
      onmouseout="this.style.background='#E65100';this.style.transform=''">
     🧮 Totals
   </a>
   <a href="stella_acc_title.php"
-     style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
-            background:#6D4C41;color:#fff;border-radius:9px;text-decoration:none;
-            font-family:var(--font-h);font-size:.82rem;font-weight:700;
-            box-shadow:0 2px 8px rgba(109,76,65,.3);transition:background .15s,transform .15s;
-            white-space:nowrap"
+     class="sx-32" style="display:inline-flex;align-items:center;background:#6D4C41;transition:background .15s,transform .15s"
      onmouseover="this.style.background='#4E342E';this.style.transform='translateY(-1px)'"
      onmouseout="this.style.background='#6D4C41';this.style.transform=''">
     🏷 Account Titles
   </a>
   <a href="stella_profit_loss.php"
-     style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
-            background:#1565C0;color:#fff;border-radius:9px;text-decoration:none;
-            font-family:var(--font-h);font-size:.82rem;font-weight:700;
-            box-shadow:0 2px 8px rgba(21,101,192,.3);transition:background .15s,transform .15s;
-            white-space:nowrap"
+     class="sx-31" style="display:inline-flex;align-items:center;background:#1565C0;transition:background .15s,transform .15s"
      onmouseover="this.style.background='#0D47A1';this.style.transform='translateY(-1px)'"
      onmouseout="this.style.background='#1565C0';this.style.transform=''">
     📊 Profit &amp; Loss
   </a>
   <a href="stella_sum.php?year=<?= date('Y') ?>"
-     style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
-            background:#F9A825;color:#3E2723;border-radius:9px;text-decoration:none;
-            font-family:var(--font-h);font-size:.82rem;font-weight:700;
-            box-shadow:0 2px 8px rgba(249,168,37,.3);transition:background .15s,transform .15s;
-            white-space:nowrap"
+     class="sx-30" style="display:inline-flex;align-items:center;background:#F9A825;transition:background .15s,transform .15s"
      onmouseover="this.style.background='#F57F17';this.style.transform='translateY(-1px)'"
      onmouseout="this.style.background='#F9A825';this.style.transform=''">
     📋 Sum
   </a>
   <a href="stella_tb.php?year=<?= date('Y') ?>"
-     style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;
-            background:#37474F;color:#fff;border-radius:9px;text-decoration:none;
-            font-family:var(--font-h);font-size:.82rem;font-weight:700;
-            box-shadow:0 2px 8px rgba(55,71,79,.3);transition:background .15s,transform .15s;
-            white-space:nowrap"
+     class="sx-29" style="display:inline-flex;align-items:center;background:#37474F;transition:background .15s,transform .15s"
      onmouseover="this.style.background='#263238';this.style.transform='translateY(-1px)'"
      onmouseout="this.style.background='#37474F';this.style.transform=''">
     🗂 TB
@@ -722,41 +529,41 @@ include '../layout.php';
 
 <!-- Controls -->
 <form method="GET" class="dsb-controls" id="filterForm">
-  <input type="month" name="month" class="form-control" value="<?= htmlspecialchars($fMonth) ?>"
-         style="max-width:160px" onchange="this.form.submit()">
-  <input type="text" name="q" class="form-control" placeholder="Search supplier, TIN, invoice…"
-         value="<?= htmlspecialchars($fSearch) ?>" style="max-width:240px">
+  <input type="month" name="month" class="sx-28 form-control" value="<?= htmlspecialchars($fMonth) ?>"
+         onchange="this.form.submit()">
+  <input type="text" name="q" class="sx-27 form-control" placeholder="Search supplier, TIN, invoice…"
+         value="<?= htmlspecialchars($fSearch) ?>" >
   <button type="submit" class="btn btn-ghost btn-sm">Search</button>
   <?php if ($fSearch): ?>
   <a href="stella_disbursement.php?month=<?= urlencode($fMonth) ?>" class="btn btn-ghost btn-sm">Reset</a>
   <?php endif; ?>
-  <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('impFile').click()"
-     style="color:#6A1B9A;border-color:rgba(106,27,154,.3);background:rgba(106,27,154,.06);font-weight:600" title="Import an Excel file in the same layout (DATE, TIN, NAME OF SUPPLIER, TYPE, ADDRESS, INVOICE #, ACCOUNT TITLE, GROSS, INPUT TAX, NET OF VAT, PARTICULAR)">
+  <button type="button" class="sx-26 btn btn-ghost btn-sm" onclick="document.getElementById('impFile').click()"
+     style="background:rgba(106,27,154,.06)" title="Import an Excel file in the same layout (DATE, TIN, NAME OF SUPPLIER, TYPE, ADDRESS, INVOICE #, ACCOUNT TITLE, GROSS, INPUT TAX, NET OF VAT, PARTICULAR)">
     ⬆ Import Excel
   </button>
   <input type="file" id="impFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importExcelFile(this)">
-  <button type="button" class="btn btn-ghost btn-sm" onclick="clearMonth()"
-     style="color:#c62828;border-color:rgba(198,40,40,.35);background:rgba(198,40,40,.06);font-weight:600" title="Delete every disbursement entry of the month shown">🗑 Clear All</button>
+  <button type="button" class="sx-25 btn btn-ghost btn-sm" onclick="clearMonth()"
+     style="background:rgba(198,40,40,.06)" title="Delete every disbursement entry of the month shown">🗑 Clear All</button>
   <a href="stella_disbursement.php?export_csv=1&month=<?= urlencode($fMonth) ?>"
-     class="btn btn-ghost btn-sm" style="color:#388E3C;border-color:rgba(76,175,80,.3);background:rgba(76,175,80,.06)">
+     class="sx-24 btn btn-ghost btn-sm" style="background:rgba(76,175,80,.06)">
     ⬇ Export XLSX
   </a>
-  <a href="stella_profit_loss.php" class="btn btn-ghost btn-sm" style="color:#1565C0;border-color:rgba(21,101,192,.3);background:rgba(21,101,192,.06);font-weight:600">
+  <a href="stella_profit_loss.php" class="sx-23 btn btn-ghost btn-sm" style="background:rgba(21,101,192,.06)">
     📊 Profit &amp; Loss
   </a>
-  <a href="stella_sum.php?year=<?= date('Y') ?>" class="btn btn-ghost btn-sm" style="color:#5D4037;border-color:rgba(249,168,37,.4);background:rgba(249,168,37,.08);font-weight:600">
+  <a href="stella_sum.php?year=<?= date('Y') ?>" class="sx-22 btn btn-ghost btn-sm" style="background:rgba(249,168,37,.08)">
     📋 Sum
   </a>
-  <a href="stella_tb.php?year=<?= date('Y') ?>" class="btn btn-ghost btn-sm" style="color:#37474F;border-color:rgba(55,71,79,.3);background:rgba(55,71,79,.06);font-weight:600">
+  <a href="stella_tb.php?year=<?= date('Y') ?>" class="sx-21 btn btn-ghost btn-sm" style="background:rgba(55,71,79,.06)">
     🗂 TB
   </a>
-  <a href="stella_totals.php?month=<?= urlencode($fMonth) ?>" class="btn btn-ghost btn-sm" style="color:#E65100;border-color:rgba(230,81,0,.3);background:rgba(230,81,0,.06);font-weight:600">
+  <a href="stella_totals.php?month=<?= urlencode($fMonth) ?>" class="sx-20 btn btn-ghost btn-sm" style="background:rgba(230,81,0,.06)">
     🧮 Totals
   </a>
-  <a href="stella_acc_title.php" class="btn btn-ghost btn-sm" style="color:#6D4C41;border-color:rgba(109,76,65,.3);background:rgba(109,76,65,.06);font-weight:600">
+  <a href="stella_acc_title.php" class="sx-19 btn btn-ghost btn-sm" style="background:rgba(109,76,65,.06)">
     🏷 Account Titles
   </a>
-  <span style="font-family:var(--font-m);font-size:.72rem;color:var(--subtext)">
+  <span class="sx-18">
     <strong><?= count($rows) ?></strong> entr<?= count($rows) !== 1 ? 'ies' : 'y' ?>
   </span>
 </form>
@@ -768,16 +575,16 @@ $__unposted = [];
 foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($__expMap[$t] ?? '') === '') $__unposted[$t] = ($__unposted[$t] ?? 0) + 1; }
 ?>
 <?php if (!$expSyncReady): ?>
-<div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;font-family:var(--font-m);font-size:.68rem;color:#991B1B">
+<div class="sx-17" style="background:#FEF2F2">
   ⚠ Auto-posting to Expenses is OFF: <strong>lib/expense_sync.php</strong> is missing or failed to load on this server. Entries still save here, but are not posted to Expenses.
 </div>
 <?php endif; ?>
-<div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#EFF6FF;border:1px solid #BFDBFE;font-family:var(--font-m);font-size:.68rem;color:#1E3A8A;line-height:1.6">
+<div class="sx-16" style="background:#EFF6FF">
   🔗 Entries are posted <strong>automatically to Stella Expenses</strong> (gross amount, into the column set for each Account Title).
   Expenses is view-only — edit here.
   <?php if ($__unposted): ?>
-  <br><span style="color:#92400E">⚠ Not posted (no Expenses column): <strong><?= htmlspecialchars(implode(', ', array_map(fn($t,$n)=>"$t ($n)", array_keys($__unposted), $__unposted))) ?></strong>
-  — <a href="stella_acc_title.php" style="color:#92400E;font-weight:700">set one in Account Titles</a>.</span>
+  <br><span class="sx-15">⚠ Not posted (no Expenses column): <strong><?= htmlspecialchars(implode(', ', array_map(fn($t,$n)=>"$t ($n)", array_keys($__unposted), $__unposted))) ?></strong>
+  — <a href="stella_acc_title.php" class="sx-14">set one in Account Titles</a>.</span>
   <?php endif; ?>
 </div>
 
@@ -789,7 +596,7 @@ foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($_
   <table class="dsb-table" id="dsbt">
     <thead>
       <tr class="head-company">
-        <td colspan="11" style="font-size:.76rem;font-weight:800;letter-spacing:.04em">MERITONI CORP</td>
+        <td colspan="11" class="sx-13">MERITONI CORP</td>
       </tr>
       <tr class="head-month">
         <td colspan="11"><?= strtoupper(date('F', strtotime($fMonth . '-01'))) ?></td>
@@ -825,7 +632,7 @@ foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($_
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="7" style="text-align:right;padding:8px 12px;font-weight:800;font-family:var(--font-m);font-size:.65rem;">
+        <td colspan="7" class="sx-12">
           TOTAL (<span id="dsb-count"><?= count($rows) ?></span> entries)
         </td>
         <td class="num" id="tfoot-gross"><?= number_format((float)$totals['g'], 2) ?></td>
@@ -837,8 +644,8 @@ foreach ($rows as $__r) { $t = $__r['account_title'] ?? ''; if ($t !== '' && ($_
   </table>
 </div>
 
-<div style="margin-top:10px;font-family:var(--font-m);font-size:.68rem;color:var(--subtext2)">
-  ⏎ Fill in the last (blank) row and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd> — the entry is saved and a new blank row opens. To change a saved entry, edit it and press <kbd style="border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#f8fafc">Enter</kbd>.
+<div class="sx-11">
+  ⏎ Fill in the last (blank) row and press <kbd class="sx-10" style="background:#f8fafc">Enter</kbd> — the entry is saved and a new blank row opens. To change a saved entry, edit it and press <kbd class="sx-10" style="background:#f8fafc">Enter</kbd>.
 </div>
 
 <?php
@@ -870,7 +677,7 @@ function renderRow(array $r, array $acctOpts): string {
              <input type="text" class="di" data-col="company_name" value="' . $d('company_name') . '" placeholder="—"
                     oninput="markDirty(this);triggerAC(this)" autocomplete="off">
              <div class="ac-list"></div></div></td>';
-    $h .= '<td style="text-align:center">
+    $h .= '<td class="sx-8">
              <select class="di-sel" data-col="vat_status" onchange="markDirty(this);calcRow(this)">
                <option value="VAT"' . ($vat==='VAT' ? ' selected' : '') . '>VAT</option>
                <option value="NV"'  . ($vat==='NV'  ? ' selected' : '') . '>NV</option>
@@ -879,10 +686,10 @@ function renderRow(array $r, array $acctOpts): string {
     $h .= '<td><input type="text" class="di mono" data-col="invoice_no"    value="' . $d('invoice_no')    . '" placeholder="—" oninput="markDirty(this)"></td>';
     $h .= '<td>' . $acctSel . '</td>';
     $h .= '<td><input type="text" class="di num" data-col="gross"      value="' . ((float)$r['gross'] == 0 ? '' : $fmt($r['gross'])) . '" placeholder="0.00" oninput="markDirty(this);calcRow(this)"></td>';
-    $h .= '<td><input type="text" class="di num" data-col="input_tax" data-raw="' . (float)$r['input_tax'] . '" value="' . $fmt($r['input_tax']) . '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
-    $h .= '<td><input type="text" class="di num" data-col="net_of_vat" data-raw="' . (float)$r['net_of_vat'] . '" value="' . $fmt($r['net_of_vat']). '" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>';
+    $h .= '<td><input type="text" class="sx-7 di num" data-col="input_tax" data-raw="' . (float)$r['input_tax'] . '" value="' . $fmt($r['input_tax']) . '" readonly style="background:rgba(76,175,80,.07)" tabindex="-1"></td>';
+    $h .= '<td><input type="text" class="sx-7 di num" data-col="net_of_vat" data-raw="' . (float)$r['net_of_vat'] . '" value="' . $fmt($r['net_of_vat']). '" readonly style="background:rgba(76,175,80,.07)" tabindex="-1"></td>';
     $h .= '<td><input type="text" class="di" data-col="particular"     value="' . $d('particular')      . '" placeholder="—" oninput="markDirty(this)"></td>';
-    $h .= '<td class="td-act-sticky" style="padding:4px 5px;text-align:center">
+    $h .= '<td class="sx-6 td-act-sticky" >
              <span class="rs rs-ok">✓ saved</span>
              <button class="bdel" onclick="deleteRow(this)">Del</button></td>';
     return $h;
@@ -955,7 +762,7 @@ async function doAC(inp) {
         const res  = await fetch('stella_disbursement.php?vendor_lookup=1&q=' + encodeURIComponent(q));
         const data = await res.json();
         if (!data.length) {
-            list.innerHTML = '<div class="ac-item" style="color:#6b7280;cursor:default"><div class="ac-name">No vendor found</div><div class="ac-tin">Add to Vendor Masterlist first</div></div>';
+            list.innerHTML = '<div class="sx-9 ac-item" ><div class="ac-name">No vendor found</div><div class="ac-tin">Add to Vendor Masterlist first</div></div>';
             positionAC(inp, list);
             list.classList.add('open'); return;
         }
@@ -1054,15 +861,15 @@ function addRow(focus = true, dateVal = '') {
       <td><input type="date" class="di mono" data-col="entry_date" value="${today}" oninput="markDirty(this)"></td>
       <td><div class="ac-wrap"><input type="text" class="di mono" data-col="tin" value="" placeholder="—" oninput="markDirty(this);triggerAC(this)" autocomplete="off"><div class="ac-list"></div></div></td>
       <td><div class="ac-wrap"><input type="text" class="di" data-col="company_name" value="" placeholder="Type to search…" oninput="markDirty(this);triggerAC(this)" autocomplete="off"><div class="ac-list"></div></div></td>
-      <td style="text-align:center"><select class="di-sel" data-col="vat_status" onchange="markDirty(this);calcRow(this)"><option value="VAT">VAT</option><option value="NV">NV</option></select></td>
+      <td class="sx-8"><select class="di-sel" data-col="vat_status" onchange="markDirty(this);calcRow(this)"><option value="VAT">VAT</option><option value="NV">NV</option></select></td>
       <td><input type="text" class="di" data-col="address"       value="" placeholder="—" oninput="markDirty(this)"></td>
       <td><input type="text" class="di mono" data-col="invoice_no"    value="" placeholder="—" oninput="markDirty(this)"></td>
       <td><select class="di-sel acct-sel" data-col="account_title" onchange="markDirty(this)">${acctOptionsHtml()}</select></td>
       <td><input type="text" class="di num" data-col="gross"      value="" placeholder="" oninput="markDirty(this);calcRow(this)"></td>
-      <td><input type="text" class="di num" data-col="input_tax"  value="" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
-      <td><input type="text" class="di num" data-col="net_of_vat" value="" readonly style="background:rgba(76,175,80,.07);cursor:default" tabindex="-1"></td>
+      <td><input type="text" class="sx-7 di num" data-col="input_tax"  value="" readonly style="background:rgba(76,175,80,.07)" tabindex="-1"></td>
+      <td><input type="text" class="sx-7 di num" data-col="net_of_vat" value="" readonly style="background:rgba(76,175,80,.07)" tabindex="-1"></td>
       <td><input type="text" class="di" data-col="particular"     value="" placeholder="—" oninput="markDirty(this)"></td>
-      <td class="td-act-sticky" style="padding:4px 5px;text-align:center">
+      <td class="sx-6 td-act-sticky" >
         <span class="rs rs-new">Enter to save</span>
       </td>`;
     tbody.appendChild(tr);
@@ -1322,11 +1129,11 @@ function pickSheet(names, preferred) {
     return new Promise(resolve => {
         const wrap = document.createElement('div');
         wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center';
-        wrap.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px 22px;min-width:300px;box-shadow:0 10px 40px rgba(0,0,0,.3);font-family:inherit">' +
-            '<div style="font-weight:700;margin-bottom:6px">Which sheet should be imported?</div>' +
-            '<div style="font-size:.78rem;color:#667;margin-bottom:12px">This file has several disbursement sheets.</div>' +
-            '<select id="shSel" style="width:100%;padding:8px;font-size:.9rem;margin-bottom:14px">' + names.map(n => '<option' + (n === preferred ? ' selected' : '') + '>' + escHtml(n) + '</option>').join('') + '</select>' +
-            '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-ghost btn-sm" id="shNo">Cancel</button><button class="btn btn-primary btn-sm" id="shOk">Import this sheet</button></div></div>';
+        wrap.innerHTML = '<div class="sx-5" style="background:#fff">' +
+            '<div class="sx-4">Which sheet should be imported?</div>' +
+            '<div class="sx-3">This file has several disbursement sheets.</div>' +
+            '<select id="shSel" class="sx-2" style="width:100%">' + names.map(n => '<option' + (n === preferred ? ' selected' : '') + '>' + escHtml(n) + '</option>').join('') + '</select>' +
+            '<div class="sx-1" style="display:flex;justify-content:flex-end"><button class="btn btn-ghost btn-sm" id="shNo">Cancel</button><button class="btn btn-primary btn-sm" id="shOk">Import this sheet</button></div></div>';
         document.body.appendChild(wrap);
         wrap.querySelector('#shOk').onclick = () => { const v = wrap.querySelector('#shSel').value; wrap.remove(); resolve(v); };
         wrap.querySelector('#shNo').onclick = () => { wrap.remove(); resolve(null); };

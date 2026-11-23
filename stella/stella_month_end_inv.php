@@ -489,395 +489,11 @@ $dayCounts = array_column($dayCountStmt->fetchAll(PDO::FETCH_ASSOC), 'c', 'd');
 
 $pageTitle  = 'Month End Inv.';
 $activePage = 'stella_month_end_inv';
+$bodyClass = 'sp-stella_month_end_inv';
 include '../layout.php';
 ?>
 
-<style>
-/* ── Page header ── */
-.inv-header {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border-radius: var(--radius); padding: 20px 26px 16px;
-  margin-bottom: 18px; display: flex; align-items: flex-start;
-  justify-content: space-between; flex-wrap: wrap; gap: 12px;
-}
-.inv-header .eyebrow {
-  font-family: var(--font-m); font-size: .58rem;
-  text-transform: uppercase; letter-spacing: .14em;
-  color: rgba(255,255,255,.4); margin-bottom: 4px;
-}
-.inv-header .title {
-  font-size: 1.15rem; font-weight: 800; color: #fff; letter-spacing: -.02em;
-}
-.inv-header .subtitle {
-  font-family: var(--font-m); font-size: .67rem;
-  color: rgba(255,255,255,.45); margin-top: 3px;
-}
-
-/* ── Controls ── */
-.inv-controls {
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px;
-}
-
-/* ── KPI strip ── */
-.inv-kpi {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px; margin-bottom: 20px;
-  /* Sticky: the section totals + Grand Total stay in view under the top bar while you scroll / type */
-  position: sticky; top: 0; z-index: 60;
-  padding: 10px 0 10px; margin-top: -4px;
-  background: linear-gradient(to bottom, var(--bg, #f3f5f7) 88%, rgba(243,245,247,0));
-}
-/* the layout's wrapper uses overflow-x:hidden, which would stop "sticky" from working — clip does the same job without that side effect */
-.main-wrapper { overflow-x: clip !important; }
-.inv-kpi .inv-kpi-card { box-shadow: 0 2px 8px rgba(15,23,42,.08); }
-.inv-kpi-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 12px 14px;
-  cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s;
-  user-select: none;
-}
-.inv-kpi-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(15,123,92,.08);
-}
-.inv-kpi-card.active-filter {
-  border-color: var(--accent);
-  background: #f0fdf4;
-  box-shadow: 0 0 0 3px rgba(15,123,92,.12);
-}
-.inv-kpi-card.grand-card {
-  border-top: 2px solid var(--accent);
-  cursor: default;
-}
-.inv-kpi-card.grand-card:hover {
-  border-color: var(--accent); box-shadow: none;
-}
-.inv-kpi-label {
-  font-family: var(--font-m); font-size: .55rem; text-transform: uppercase;
-  letter-spacing: .07em; color: var(--subtext); margin-bottom: 4px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.inv-kpi-val {
-  font-family: var(--font-m); font-size: .95rem; font-weight: 800;
-  color: var(--accent3);
-}
-.inv-kpi-val.grand { font-size: 1.1rem; color: var(--accent); }
-.inv-kpi-hint {
-  font-family: var(--font-m); font-size: .55rem;
-  color: var(--subtext); margin-top: 3px;
-}
-
-/* ── Date banner ── */
-.inv-date-banner {
-  background: #1e3a5f; color: #fff;
-  padding: 9px 18px; border-radius: var(--radius) var(--radius) 0 0;
-  font-family: var(--font-m); font-size: .68rem; font-weight: 700;
-  letter-spacing: .08em; text-transform: uppercase;
-}
-
-/* ── Table wrapper ── */
-.inv-section {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.05);
-}
-
-/* ── Category header ── */
-.inv-cat-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 16px;
-  font-family: var(--font-m); font-size: .65rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .1em; color: #fff;
-  background: #0f3d2e;
-}
-.inv-cat-head.cat-0  { background: #1e3a5f; }
-.inv-cat-head.cat-1  { background: #3d1f0f; }
-.inv-cat-head.cat-2  { background: #1f0f3d; }
-.inv-cat-head.cat-3  { background: #3d0f1f; }
-.inv-cat-head.cat-4  { background: #0f3d1f; }
-.inv-cat-head.cat-5  { background: #1f3d0f; }
-.inv-cat-head.cat-6  { background: #3d2e0f; }
-.inv-cat-head.cat-7  { background: #0f2e3d; }
-.inv-cat-total-badge {
-  background: rgba(255,255,255,.15);
-  padding: 3px 10px; border-radius: 12px;
-  font-size: .62rem;
-}
-
-/* ── Column headers ── */
-.inv-col-head {
-  display: grid;
-  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
-  gap: 0;
-  background: #1e3a5f;
-  border-bottom: 1px solid #2d5480;
-}
-.inv-col-head div {
-  padding: 8px 10px;
-  font-family: var(--font-m); font-size: .58rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .07em; color: #fff;
-  border-right: 1px solid #2d5480; text-align: center;
-}
-.inv-col-head div:first-child { text-align: left; padding-left: 14px; }
-.inv-col-head div:last-child  { border-right: none; }
-
-/* ── Data rows ── */
-.inv-row {
-  display: grid;
-  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
-  gap: 0;
-  border-bottom: 1px solid #f0f2f5;
-  transition: background .1s;
-  align-items: stretch;
-}
-.inv-row:hover { background: #f8fbff; }
-
-.inv-cell {
-  border-right: 1px solid #eef0f3;
-  display: flex; align-items: center;
-}
-.inv-cell:last-child { border-right: none; }
-
-.inv-input {
-  width: 100%; padding: 7px 10px;
-  font-family: var(--font-m); font-size: .76rem; color: var(--text);
-  background: transparent; border: none; outline: none;
-  transition: background .12s, box-shadow .12s;
-}
-.inv-input:focus {
-  background: #fff;
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-.inv-input::placeholder { color: #a8b0ba; opacity: 1; font-weight: 400; }
-.inv-input.desc-input { font-size: .78rem; padding-left: 14px; }
-.inv-input.desc-input.desc-duplicate {
-  background: #fff5f5;
-  box-shadow: inset 0 0 0 2px #dc3545;
-}
-.inv-cell { position: relative; }
-.desc-dup-warn {
-  position: absolute; left: 14px; bottom: 1px;
-  font-family: var(--font-m); font-size: .55rem; font-weight: 700;
-  color: #dc3545; background: #fff; padding: 0 4px 0 0;
-  pointer-events: none; line-height: 1;
-}
-.inv-input.num-input  { text-align: right; }
-.inv-input.total-input {
-  background: #f0fdf4; color: var(--accent);
-  font-weight: 700; cursor: default;
-  text-align: right;
-}
-
-/* Unit select */
-.inv-unit-select {
-  width: 100%; padding: 7px 8px;
-  font-family: var(--font-m); font-size: .74rem;
-  background: transparent; border: none; outline: none;
-  color: var(--text); cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%236b7280' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  padding-right: 20px;
-}
-.inv-unit-select:focus {
-  background-color: #fff;
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-
-/* Action cell */
-.inv-action-cell {
-  display: flex; gap: 4px; align-items: center;
-  justify-content: center; padding: 4px 6px;
-}
-.btn-inv-save {
-  padding: 4px 10px; background: var(--accent); color: #fff;
-  border: none; border-radius: 5px; font-family: var(--font-m);
-  font-size: .62rem; font-weight: 600; cursor: pointer;
-  white-space: nowrap; transition: background .15s;
-}
-.btn-inv-save:hover { background: #0a6649; }
-.btn-inv-del {
-  padding: 4px 7px; background: transparent; color: var(--accent2);
-  border: 1px solid rgba(220,53,69,.2); border-radius: 5px;
-  font-size: .62rem; cursor: pointer; transition: background .15s;
-}
-.btn-inv-del:hover { background: rgba(220,53,69,.07); }
-
-/* Total row */
-.inv-total-row {
-  display: grid;
-  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
-  background: #0f2d4a; border-top: 2px solid #1e3a5f;
-}
-.inv-total-row div {
-  padding: 9px 10px;
-  font-family: var(--font-m); font-size: .68rem; font-weight: 800;
-  color: #fff; border-right: 1px solid #1e3a5f; text-align: right;
-}
-.inv-total-row div:first-child  { text-align: left; padding-left: 14px; letter-spacing: .06em; text-transform: uppercase; }
-.inv-total-row div:last-child   { border-right: none; }
-.inv-total-row div.total-val    { color: #6ee7b7; font-size: .78rem; }
-
-/* Grand total */
-.inv-grand-total {
-  background: var(--surface);
-  border: 2px solid var(--accent);
-  border-radius: var(--radius); padding: 16px 24px;
-  display: flex; align-items: center; justify-content: space-between;
-  margin-top: 8px;
-}
-.inv-grand-label {
-  font-family: var(--font-m); font-size: .8rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .1em; color: var(--accent);
-}
-.inv-grand-val {
-  font-family: var(--font-m); font-size: 1.4rem; font-weight: 800;
-  color: var(--accent);
-}
-
-/* Add row btn */
-.btn-add-row {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 14px; background: transparent;
-  border: 1px dashed var(--border2); border-radius: 7px;
-  font-family: var(--font-m); font-size: .66rem; color: var(--subtext2);
-  cursor: pointer; transition: all .15s; width: 100%;
-  justify-content: center; margin: 4px 0;
-}
-.btn-add-row:hover {
-  background: #f0fdf4; border-color: var(--accent); color: var(--accent);
-}
-
-/* Save status */
-.row-status {
-  font-family: var(--font-m); font-size: .58rem;
-  color: var(--accent); display: none;
-  text-align: center; padding: 2px 0; white-space: nowrap;
-}
-.row-status.err { color: #b91c1c; font-weight: 700; }
-
-@media (max-width: 900px) {
-  #kpiStrip { grid-template-columns: repeat(3, 1fr) !important; }
-  .inv-col-head, .inv-row, .inv-total-row {
-    grid-template-columns: 1fr 90px 110px 100px 120px 90px;
-  }
-}
-
-/* ── Delete-section button (on category header) ── */
-.btn-inv-del-section {
-  background: rgba(255,255,255,.12); border: none; color: #fff;
-  width: 22px; height: 22px; border-radius: 6px; cursor: pointer;
-  font-size: .7rem; line-height: 1; flex-shrink: 0;
-}
-.btn-inv-del-section:hover { background: rgba(255,90,90,.4); }
-.inv-section-empty-note {
-  text-align: center; padding: 40px 20px; font-family: var(--font-m);
-  font-size: .8rem; color: var(--muted); background: var(--surface);
-  border: 1px dashed var(--border); border-radius: var(--radius);
-}
-
-/* ── Modals ── */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(10,12,20,.55);
-  backdrop-filter: blur(2px); display: none;
-  align-items: center; justify-content: center; z-index: 9999; padding: 16px;
-}
-.modal-overlay.active { display: flex; }
-.modal-box {
-  background: var(--surface); width: 420px; max-width: 100%;
-  border-radius: 14px; overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,.35);
-  animation: modalPop .15s ease;
-}
-@keyframes modalPop { from{transform:scale(.96);opacity:0} to{transform:scale(1);opacity:1} }
-.modal-header {
-  background: #1a1a2e; color: #fff; padding: 16px 20px;
-  font-family: var(--font-m); font-size: .85rem; font-weight: 800; letter-spacing: .02em;
-}
-.modal-header.danger { background: #3a1414; }
-.modal-body { padding: 20px; font-family: var(--font-m); font-size: .8rem; color: var(--text); line-height: 1.6; }
-.modal-input {
-  width: 100%; margin-top: 12px; padding: 10px 14px;
-  font-family: var(--font-m); font-size: .85rem; text-transform: uppercase;
-  border: 1px solid var(--border); border-radius: 8px; outline: none;
-  background: #fff; color: var(--text); transition: border-color .15s;
-}
-.modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,123,92,.1); }
-.modal-error { color: #b91c1c; font-size: .72rem; margin-top: 8px; display: none; }
-.modal-footer {
-  padding: 14px 20px; display: flex; justify-content: flex-end; gap: 8px;
-  border-top: 1px solid var(--border); background: #fafbfc;
-}
-.modal-btn { padding: 9px 16px; border-radius: 8px; font-family: var(--font-m); font-size: .75rem; font-weight: 700; cursor: pointer; border: none; }
-.modal-btn-cancel  { background: #eef0f3; color: var(--text); }
-.modal-btn-cancel:hover  { background: #e2e5ea; }
-.modal-btn-primary { background: var(--accent); color: #fff; }
-.modal-btn-primary:hover { background: #0a6b50; }
-.modal-btn-danger  { background: #b91c1c; color: #fff; }
-.modal-btn-danger:hover  { background: #991616; }
-
-/* ── Duplicate-to-other-days modal ── */
-.modal-box.wide { width: 480px; }
-.dup-day-grid {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
-  margin: 10px 0 14px;
-}
-.dup-day-chip {
-  position: relative; display: flex; align-items: center; justify-content: center;
-  height: 34px; border: 1px solid var(--border); border-radius: 7px;
-  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
-  cursor: pointer; user-select: none; background: #fff; color: var(--text);
-  transition: all .12s;
-}
-.dup-day-chip:hover { border-color: var(--accent); }
-.dup-day-chip.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
-.dup-day-chip.has-data::after {
-  content: ''; position: absolute; top: 3px; right: 3px;
-  width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;
-}
-.dup-day-chip.has-data.checked::after { background: #fff; }
-.dup-day-chip.is-source { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
-.dup-month-nav {
-  display: flex; align-items: center; gap: 6px; margin-top: 12px;
-}
-.dup-nav-btn {
-  flex: none; height: 30px; padding: 0 10px; border: 1px solid var(--border);
-  border-radius: 7px; background: #fff; color: var(--text); cursor: pointer;
-  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
-}
-.dup-nav-btn:hover { border-color: var(--accent); background: #f0fdf4; }
-.dup-nav-today { margin-left: auto; color: var(--accent3); }
-.dup-month-nav .dup-select { flex: 1; }
-.dup-legend {
-  display: flex; align-items: center; gap: 14px; font-family: var(--font-m);
-  font-size: .64rem; color: var(--subtext); margin-bottom: 10px;
-}
-.dup-legend span { display: flex; align-items: center; gap: 5px; }
-.dup-legend .dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; display: inline-block; }
-.dup-quicklinks { display: flex; gap: 12px; margin-bottom: 4px; }
-.dup-quicklinks a { font-family: var(--font-m); font-size: .68rem; color: var(--accent3); cursor: pointer; text-decoration: underline; }
-.dup-option-row {
-  display: flex; align-items: flex-start; gap: 8px; margin-top: 12px;
-  padding-top: 12px; border-top: 1px solid var(--border);
-}
-.dup-option-row label { font-family: var(--font-m); font-size: .74rem; color: var(--text); line-height: 1.4; }
-.dup-option-row .hint { display: block; font-size: .65rem; color: var(--subtext); margin-top: 2px; }
-.dup-select {
-  width: 100%; margin-top: 6px; padding: 7px 10px;
-  font-family: var(--font-m); font-size: .76rem;
-  border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--text);
-}
-#dupSummary {
-  margin-top: 12px; padding: 10px 12px; border-radius: 8px;
-  background: #f0fdf4; border: 1px solid #bbf7d0;
-  font-family: var(--font-m); font-size: .72rem; color: #166534; display: none;
-}
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <?php
 // Build unit options HTML
@@ -886,7 +502,7 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
 ?>
 
 <?php if (isset($_GET['imported']) && preg_match('/^(\d+)_(\d+)$/', $_GET['imported'], $im)): ?>
-<div id="impDone" style="margin:0 0 12px;padding:10px 14px;border-radius:8px;background:#e7f6ef;border:1px solid #9fd8bd;color:#0a5b42;font-family:var(--font-m);font-size:.75rem;font-weight:700">
+<div id="impDone" class="sx-31" style="padding:10px 14px;color:#0a5b42;font-family:var(--font-m);font-size:.75rem">
   ✓ Excel imported into <?= htmlspecialchars($displayDate) ?> — <?= (int)$im[1] ?> new item(s), <?= (int)$im[2] ?> updated.
 </div>
 <?php endif; ?>
@@ -897,26 +513,25 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
     <div class="title">Month End Inventory</div>
     <div class="subtitle">DATE: <?= $displayDate ?> &nbsp;·&nbsp; Total auto-calculates from Supplier Cost × End Inv. Num &nbsp;·&nbsp; ✓ Auto-save on — changes save by themselves</div>
   </div>
-  <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 14px;
-               border-radius:20px;font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">
+  <span class="sx-30" style="color:#fff;padding:5px 14px;font-family:var(--font-m);font-size:.65rem">
     📌 Stella
   </span>
 </div>
 
 <!-- Controls -->
 <div class="inv-controls">
-  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <select name="month" class="form-control" style="max-width:140px" onchange="this.form.submit()">
+  <form method="GET" class="sx-29" style="display:flex">
+    <select name="month" class="sx-28 form-control" onchange="this.form.submit()">
       <?php for($m=1;$m<=12;$m++): ?>
       <option value="<?=$m?>" <?=$fMonth==$m?'selected':''?>><?= $months[$m-1] ?></option>
       <?php endfor; ?>
     </select>
-    <select name="day" class="form-control" style="max-width:80px" onchange="this.form.submit()">
+    <select name="day" class="sx-27 form-control" onchange="this.form.submit()">
       <?php for($d=1;$d<=$daysInMonth;$d++): ?>
       <option value="<?=$d?>" <?=$fDay==$d?'selected':''?>><?= str_pad($d,2,'0',STR_PAD_LEFT) ?></option>
       <?php endfor; ?>
     </select>
-    <select name="year" class="form-control" style="max-width:100px" onchange="this.form.submit()">
+    <select name="year" class="sx-26 form-control" onchange="this.form.submit()">
       <?php for($y=date('Y')-5;$y<=date('Y')+10;$y++): ?>
       <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
       <?php endfor; ?>
@@ -930,16 +545,15 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
     <button type="button" class="btn btn-primary" onclick="addSection()">+ Add Section</button>
   </form>
 
-  <div style="position:relative;min-width:260px;flex:1;max-width:360px">
-    <input type="text" id="itemSearchInput" class="form-control" style="width:100%;padding-left:30px"
+  <div class="sx-25">
+    <input type="text" id="itemSearchInput" class="sx-24 form-control" 
            placeholder="Search item description…" oninput="filterByDesc(this.value)" autocomplete="off">
-    <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--subtext2);font-size:.75rem;pointer-events:none">🔍</span>
+    <span class="sx-23" style="top:50%;color:var(--subtext2);font-size:.75rem">🔍</span>
     <button type="button" id="clearSearchBtn" onclick="clearSearch()"
-            style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);
-                   background:none;border:none;color:var(--subtext2);cursor:pointer;font-size:.85rem;padding:2px 4px">✕</button>
+            class="sx-22" style="display:none;top:50%;color:var(--subtext2);font-size:.85rem;padding:2px 4px">✕</button>
   </div>
 </div>
-<div id="searchNoResults" style="display:none;font-family:var(--font-m);font-size:.72rem;color:var(--subtext2);margin:-10px 0 16px 2px">
+<div id="searchNoResults" class="sx-21" style="display:none;font-family:var(--font-m);font-size:.72rem;color:var(--subtext2)">
   No items match “<span id="searchNoResultsTerm"></span>”.
 </div>
 
@@ -977,7 +591,7 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
   <!-- Category header -->
   <div class="inv-cat-head" style="background:<?= $catColor ?>">
     <span><?= htmlspecialchars($cat) ?></span>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div class="sx-20" style="display:flex">
       <span class="inv-cat-total-badge" id="cat_total_badge_<?= $catIdx ?>">
         Total: <?= $catTotal > 0 ? number_format($catTotal,2) : '—' ?>
       </span>
@@ -1031,8 +645,8 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
                  value="<?= ((float)$r['total_amount'] == 0) ? '' : $r['total_amount'] ?>" placeholder="0.00" readonly tabindex="-1">
         </div>
         <div class="inv-cell inv-action-cell">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="display:flex;gap:3px">
+          <div class="sx-3" style="display:flex">
+            <div class="sx-2" style="display:flex">
               <button class="btn-inv-del"  onclick="deleteRow(this,<?= $catIdx ?>)">✕</button>
             </div>
             <div class="row-status"></div>
@@ -1105,32 +719,32 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
 
       <div class="dup-month-nav">
         <button type="button" class="dup-nav-btn" onclick="dupGoToMonth(-1)" title="Previous month">◀</button>
-        <select id="dupBrowseMonth" class="dup-select" style="margin:0" onchange="dupBrowseSelectChange()"></select>
-        <select id="dupBrowseYear" class="dup-select" style="margin:0;max-width:90px" onchange="dupBrowseSelectChange()"></select>
+        <select id="dupBrowseMonth" class="sx-19 dup-select" onchange="dupBrowseSelectChange()"></select>
+        <select id="dupBrowseYear" class="sx-18 dup-select" onchange="dupBrowseSelectChange()"></select>
         <button type="button" class="dup-nav-btn" onclick="dupGoToMonth(1)" title="Next month">▶</button>
         <button type="button" class="dup-nav-btn dup-nav-today" onclick="dupBrowseTo(INV_YEAR, INV_MONTH)">This Month</button>
       </div>
 
-      <div class="dup-legend" style="margin-top:10px">
+      <div class="sx-17 dup-legend" >
         <span><span class="dot"></span> already has items</span>
-        <span style="opacity:.6">crossed out = current date</span>
+        <span class="sx-16">crossed out = current date</span>
       </div>
       <div class="dup-quicklinks">
         <a onclick="dupSelectAll()">Select all remaining days (this view)</a>
         <a onclick="dupClearAll()">Clear all selections</a>
       </div>
       <div class="dup-day-grid" id="dupDayGrid"></div>
-      <div id="dupSelectedNote" style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext);margin-top:2px"></div>
+      <div id="dupSelectedNote" class="sx-15" style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext)"></div>
 
       <div class="dup-option-row">
-        <input type="checkbox" id="dupCopyQty" style="margin-top:3px">
+        <input type="checkbox" id="dupCopyQty" class="sx-14">
         <label for="dupCopyQty">
           Also copy quantities &amp; totals
           <span class="hint">Leave unchecked to copy just the item list (description, unit, cost) with blank counts — best for a fresh daily tally.</span>
         </label>
       </div>
 
-      <div class="dup-option-row" style="border-top:none;padding-top:0;flex-direction:column;align-items:stretch">
+      <div class="sx-13 dup-option-row" >
         <label for="dupMode">If a picked day already has items:</label>
         <select id="dupMode" class="dup-select">
           <option value="skip">Skip that day (safest)</option>
@@ -1150,22 +764,22 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
 
 <!-- Import Excel Modal -->
 <div class="modal-overlay" id="importModal">
-  <div class="modal-box wide" style="width:540px;max-width:94vw">
+  <div class="sx-12 modal-box wide" >
     <div class="modal-header">⬆ Import Month-End Inventory (Excel)</div>
     <div class="modal-body">
-      <div style="margin-bottom:10px">Choose your month-end inventory workbook, pick the sheet and the <strong>month-end date</strong> to save it under.</div>
+      <div class="sx-11">Choose your month-end inventory workbook, pick the sheet and the <strong>month-end date</strong> to save it under.</div>
 
       <input type="file" id="impFile" accept=".xlsx" class="modal-input" style="padding:8px" onchange="impUpload(this)">
 
-      <div id="impStep2" style="display:none;margin-top:12px">
-        <label style="font-weight:700;font-size:.72rem">Sheet</label>
-        <select id="impSheet" class="modal-input" style="margin-top:4px" onchange="impSheetChanged()"></select>
+      <div id="impStep2" class="sx-10" style="display:none">
+        <label class="sx-9" style="font-size:.72rem">Sheet</label>
+        <select id="impSheet" class="sx-6 modal-input" onchange="impSheetChanged()"></select>
 
-        <label style="font-weight:700;font-size:.72rem;display:block;margin-top:10px">Month-end date <span style="font-weight:400;color:var(--subtext2)">(the date all these items are saved under)</span></label>
-        <input type="date" id="impDate" class="modal-input" style="margin-top:4px" onchange="impPreview()">
+        <label class="sx-8" style="font-size:.72rem;display:block">Month-end date <span class="sx-7" style="color:var(--subtext2)">(the date all these items are saved under)</span></label>
+        <input type="date" id="impDate" class="sx-6 modal-input" onchange="impPreview()">
 
-        <div id="impPreview" style="margin-top:12px;padding:10px 12px;border:1px solid #d8dde3;border-radius:8px;background:#f7f9fb;font-size:.74rem;line-height:1.7"></div>
-        <div style="font-size:.66rem;color:var(--subtext2);margin-top:8px;line-height:1.5">
+        <div id="impPreview" class="sx-5" style="padding:10px 12px;font-size:.74rem"></div>
+        <div class="sx-4" style="font-size:.66rem;color:var(--subtext2)">
           • Items with <strong>no classification</strong> go into the section <strong>STORAGE</strong> (created automatically).<br>
           • Items under a classification (like FRUITS&amp;VEGETABLES) go into that section — it is created if it does not exist yet.<br>
           • An item already saved on that date with the <strong>same name is updated</strong> (unit, cost, count), not duplicated. If the Excel count is blank, the count already in the system is kept.
@@ -1381,8 +995,8 @@ function addRow(catIdx, catName) {
       <input type="number" step="0.01" class="inv-input total-input" value="" placeholder="0.00" readonly tabindex="-1">
     </div>
     <div class="inv-cell inv-action-cell">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <div style="display:flex;gap:3px">
+      <div class="sx-3" style="display:flex">
+        <div class="sx-2" style="display:flex">
           <button class="btn-inv-del" onclick="deleteRow(this,${catIdx})">✕</button>
         </div>
         <div class="row-status"></div>
@@ -1734,7 +1348,7 @@ async function dupBrowseTo(year, month) {
   }
 
   const grid = document.getElementById('dupDayGrid');
-  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:14px;color:var(--subtext);font-family:var(--font-m);font-size:.72rem">Loading…</div>';
+  grid.innerHTML = '<div class="sx-1" style="text-align:center;padding:14px;color:var(--subtext);font-family:var(--font-m);font-size:.72rem">Loading…</div>';
 
   const fd = new FormData();
   fd.append('ajax_month_counts', '1');
@@ -1746,10 +1360,10 @@ async function dupBrowseTo(year, month) {
     if (json.ok) {
       renderDupGrid(json.counts, json.days);
     } else {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Could not load that month.</div>';
+      grid.innerHTML = '<div class="sx-1" style="text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Could not load that month.</div>';
     }
   } catch (e) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Network error.</div>';
+    grid.innerHTML = '<div class="sx-1" style="text-align:center;padding:14px;color:#b91c1c;font-family:var(--font-m);font-size:.72rem">Network error.</div>';
   }
 }
 

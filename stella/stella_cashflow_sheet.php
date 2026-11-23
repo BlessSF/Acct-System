@@ -71,97 +71,10 @@ $lastInfo = $st ? ($st['updated_by'] . ' · ' . date('M j, Y g:i A', strtotime($
 
 $pageTitle  = 'CashFlow';
 $activePage = 'stella_cashflow_sheet';
+$bodyClass = 'sp-stella_cashflow_sheet';
 include '../layout.php';
 ?>
-<style>
-.cf{--ink:#111827;--mut:#6b7280;--line:#e5e8ec;--line2:#d9dee5;--soft:#f8f9fb;--ac:var(--accent);--acs:#eef6f1;--acl:#cfe6da;color:var(--ink)}
-/* ── tabs: underline style, like sheet tabs ── */
-.cf-top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:22px}
-.cf-tabs{display:flex;gap:2px;flex-wrap:wrap}
-.cf th,.cf td{font-family:inherit}
-.cf-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
-.cf-intro .cf-sub{margin:0}
-.cf-tab{border:0;background:none;color:var(--mut);padding:12px 15px;font-size:12.5px;font-weight:600;letter-spacing:.04em;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:0;transition:color .12s,border-color .12s}
-.cf-tab:hover{color:var(--ink)}
-.cf-tab.on{color:var(--ink);border-bottom-color:var(--ac)}
-.cf-pen{margin-left:7px;opacity:.45;font-size:12px}.cf-pen:hover{opacity:1;color:var(--ac)}
-.cf-tabedit{border:1px solid var(--ac)!important;background:#fff!important;border-radius:8px;padding:7px 11px!important;font-size:12.5px;font-weight:600;width:auto!important;margin-bottom:6px}
-.cf-save{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:7px;padding:0 2px 12px}
-.cf-save i{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block}
-.cf-save.busy i{background:#f59e0b}.cf-save.err i{background:#dc3545}
-/* ── cards ── */
-.cf-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:20px}
-.cf-h{font-size:15px;font-weight:700;margin:0 0 3px;letter-spacing:-.01em}
-.cf-sub{font-size:12.5px;color:var(--mut);margin:0 0 16px;line-height:1.5}
-.cf-ttl{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
-.cf-note{font-size:12px;color:var(--mut);margin-top:16px;line-height:1.65;padding-top:14px;border-top:1px dashed var(--line2)}
-.cf-pill{font-size:12px;color:var(--mut);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin-left:6px;white-space:nowrap}
-.cf-pill b{color:var(--ink);font-variant-numeric:tabular-nums;margin-left:4px}
-/* ── KPI strip ── */
-.cf-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:18px}
-.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff}
-.kpi span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:600;margin-bottom:6px}
-.kpi b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.2}
-.kpi.hi{background:var(--acs);border-color:var(--acl)}.kpi.hi b{color:var(--ac)}
-.kpi.warn{background:#fff8ec;border-color:#f3d9a4}.kpi.warn b{color:#b45309}
-.kpi b.cf-neg{color:#dc3545}
-/* ── grid table ── */
-.cf-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;width:fit-content;max-width:100%}
-.cf-tbl{border-collapse:separate;border-spacing:0;font-size:13px;width:max-content}
-.cf-tbl th,.cf-tbl td{padding:2px 10px;border-bottom:1px solid #f0f2f5;vertical-align:middle;background:#fff;height:36px}
-.cf-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);text-align:left;white-space:nowrap;padding:10px;border-bottom:1px solid var(--line2);background:var(--soft);height:auto}
-.cf-tbl td.lab,.cf-tbl th.lab{position:sticky;left:0;z-index:2;width:262px;min-width:262px;max-width:262px;border-right:1px solid var(--line);font-weight:500;color:#1f2937;padding-left:16px;background:#fff}
-.cf-tbl thead th.lab{background:var(--soft);z-index:3}
-.cf-tbl .c{width:230px;min-width:230px}
-.cf-tbl tbody tr:not(.sec):not(.tot):not(.big):not(.sub):hover td{background:#fbfcfd}
-.cf-tbl tr.sec td{background:var(--soft);color:var(--ac);font-weight:700;font-size:10.5px;letter-spacing:.12em;height:auto;padding:14px 10px 8px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
-.cf-tbl tr.sec td.lab{background:var(--soft);padding-left:16px}
-.cf-tbl tr.tot td{font-weight:700;background:#fff;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2)}
-.cf-tbl tr.tot td.lab{background:#fff}
-.cf-tbl tr.tot td>div,.cf-tbl tr.big td>div{padding-right:10px}
-.cf-tbl tr.sub td{background:#fbfcfd;color:#374151;font-weight:600}
-.cf-tbl tr.sub td.lab{background:#fbfcfd}
-.cf-tbl tr.big td{background:var(--acs);font-weight:700;font-size:14px;border-top:1px solid var(--acl);border-bottom:1px solid var(--acl);height:44px}
-.cf-tbl tr.big td.lab{background:var(--acs)}
-.cf-tbl tr.big td>div{color:var(--ac)}
-.cf-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.cf-tbl td>div[data-c]{text-align:right;font-variant-numeric:tabular-nums}
-/* ── inputs ── */
-.cf input[type=text],.cf input[type=date],.cf input[type=month],.cf textarea{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;padding:6px 9px;border-radius:7px;font:inherit;font-size:13px;color:inherit;transition:border-color .12s,box-shadow .12s,background .12s}
-.cf input.n{text-align:right;font-variant-numeric:tabular-nums;background:#fafbfc;border-color:#edf0f3}
-.cf input:hover,.cf textarea:hover{border-color:#cdd3db;background:#fff}
-.cf input:focus,.cf textarea:focus{outline:0;border-color:var(--ac);background:#fff;box-shadow:0 0 0 3px rgba(15,123,92,.13)}
-.cf input.n::placeholder{color:#b3bac4;font-style:normal;font-size:12.5px}
-.cf input[type=date],.cf input[type=month]{color:#374151}
-.cf-tbl thead input[type=date]{background:#fff;border-color:var(--line);font-weight:600;color:var(--ink)}
-.cf textarea{min-height:72px;resize:vertical;background:#fafbfc;border-color:#edf0f3}
-.cf-item{display:flex;gap:4px;align-items:center;margin-bottom:3px}
-.cf-item input:first-child{flex:1;min-width:0}.cf-item input.n{width:100px;flex:none}
-.cf-x{border:0;background:transparent;color:#a3acb9;cursor:pointer;font-size:15px;line-height:1;padding:3px 6px;border-radius:6px;font-family:inherit}
-.cf-x:hover{background:#fde8ea;color:#dc3545}
-.cf-add{border:1px dashed #c3cad5;background:transparent;color:var(--ac);font-weight:600;font-size:12px;padding:5px 11px;border-radius:7px;cursor:pointer;font-family:inherit}
-.cf-add:hover{background:var(--acs);border-color:var(--ac)}
-.cf-btn{border:1px solid var(--ac);background:var(--ac);color:#fff;font-weight:600;font-size:13px;padding:8px 15px;border-radius:8px;cursor:pointer;font-family:inherit}
-.cf-btn:hover{filter:brightness(.94)}
-.cf-mini{font-size:11px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--ac);font-weight:600;font-family:inherit}
-.cf-mini:hover{background:var(--acs)}
-.cf-pos{color:#0f7b5c}.cf-neg{color:#dc3545}
-/* ── month blocks (CASHFLOW/FS) ── */
-.cf-fsgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px 28px;align-items:start}
-.cf-fsgrid>div:nth-child(3){grid-column:1/-1}
-@media(max-width:1000px){.cf-fsgrid{grid-template-columns:1fr}}
-.cf-mini-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.cf-mini-tbl td,.cf-mini-tbl th{padding:2px 10px;border-bottom:1px solid #f0f2f5;background:#fff;height:36px}
-.cf-mini-tbl tr:last-child td{border-bottom:0}
-.cf-mini-tbl th{background:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ac);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line2);height:auto;font-weight:700}
-.cf-mini-tbl td.k{font-weight:500;font-size:12.5px;color:#374151;white-space:nowrap;padding-left:14px}
-.cf-mini-tbl tr.tot td{background:#fff;font-weight:700;border-top:1px solid var(--line2)}
-.cf-mini-tbl tr.big td{background:var(--acs);font-weight:700;color:var(--ac);border-top:1px solid var(--acl);height:42px}
-.cf-mini-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-right:16px}
-.cf-mini-tbl input.n{min-width:150px}
-.cf-mini-tbl thead th input,.cf-mini-tbl input[type=date]{font-size:12.5px}
-.cf-badge{font-size:10px;background:#e7f3ee;color:#0f7b5c;border-radius:5px;padding:1px 6px;margin-left:5px;font-weight:700}
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <div class="cf" id="cf">
   <div class="cf-top">
@@ -274,14 +187,14 @@ include '../layout.php';
   // ── render: balance sheet (MARCH 30 / CASH-FLOW) ────────
   function renderBs(key, title, sub) {
     var cols = S[key].cols, h = '';
-    h += '<div class="cf-card"><div class="cf-ttl"><div><div class="cf-h" style="margin-left:-8px;min-width:520px">' + inp('names.' + key + 't', '', title) .replace('<input ', '<input style="font-size:15px;font-weight:700" ') + '</div><div class="cf-sub">' + sub + '</div></div><button class="cf-btn" data-act="bsaddcol" data-k="' + key + '">+ Add column</button></div>';
+    h += '<div class="cf-card"><div class="cf-ttl"><div><div class="sx-15 cf-h" >' + inp('names.' + key + 't', '', title) .replace('<input ', '<input class="sx-10" ') + '</div><div class="cf-sub">' + sub + '</div></div><button class="cf-btn" data-act="bsaddcol" data-k="' + key + '">+ Add column</button></div>';
     h += '<div class="cf-kpis">' + kpi('Bank balances', 'kpi:' + key + ':bt') + kpi('Receivables', 'kpi:' + key + ':at') + kpi('Payables', 'kpi:' + key + ':pt') + kpi('Extra fund', 'kpi:' + key + ':ef', 'hi') + kpi('Increase in cash', 'kpi:' + key + ':inc') + '</div>';
     h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">DATE</th>';
-    cols.forEach(function (c, i) { h += '<th class="c" style="min-width:270px"><div style="display:flex;gap:4px;align-items:center">' + inp(key + '.cols.' + i + '.date', '', '', 'date') + '<button class="cf-x" title="Remove column" data-act="bsdelcol" data-k="' + key + '" data-i="' + i + '">×</button></div></th>'; });
+    cols.forEach(function (c, i) { h += '<th class="sx-14 c" ><div class="sx-6">' + inp(key + '.cols.' + i + '.date', '', '', 'date') + '<button class="cf-x" title="Remove column" data-act="bsdelcol" data-k="' + key + '" data-i="' + i + '">×</button></div></th>'; });
     h += '</tr></thead><tbody>';
     function sec(t) { h += '<tr class="sec"><td class="lab">' + t + '</td>' + cols.map(function () { return '<td></td>'; }).join('') + '</tr>'; }
     function line(label, fn, cls) { h += '<tr class="' + (cls || '') + '"><td class="lab">' + label + '</td>' + cols.map(function (c, i) { return '<td>' + fn(c, i) + '</td>'; }).join('') + '</tr>'; }
-    function calcRow(label, id, cls) { line(label, function (c, i) { return '<div class="num" style="text-align:right" data-c="' + key + ':' + i + ':' + id + '"></div>'; }, cls); }
+    function calcRow(label, id, cls) { line(label, function (c, i) { return '<div class="sx-5 num" data-c="' + key + ':' + i + ':' + id + '"></div>'; }, cls); }
 
     sec('BANK BALANCES');
     BANK.forEach(function (b) { line(b[1], function (c, i) { return numIn(key + '.cols.' + i + '.v.' + b[0]); }); });
@@ -292,12 +205,12 @@ include '../layout.php';
     sec('ACCOUNTS PAYABLE');
     line('ADV. DEP (MEDREP/CORP.)', function (c, i) { return numIn(key + '.cols.' + i + '.v.advdep'); });
     calcRow('RELEASED CHECK (total of list)', 'rel', 'sub');
-    line('<span style="color:#6b7280;font-size:12px">Released check list</span>', function (c, i) {
+    line('<span class="sx-13" style="color:#6b7280">Released check list</span>', function (c, i) {
       return c.rel.map(function (r, j) { return '<div class="cf-item">' + inp(key + '.cols.' + i + '.rel.' + j + '.l', '', 'Particulars') + numIn(key + '.cols.' + i + '.rel.' + j + '.v') + '<button class="cf-x" data-act="bsdelitem" data-k="' + key + '" data-i="' + i + '" data-g="rel" data-j="' + j + '">×</button></div>'; }).join('') +
         '<button class="cf-add" data-act="bsadditem" data-k="' + key + '" data-i="' + i + '" data-g="rel">+ Add row</button>';
     });
     calcRow('ACCNT PAYABLES (AS OF NOW) (total of list)', 'pay', 'sub');
-    line('<span style="color:#6b7280;font-size:12px">Accounts payable list</span>', function (c, i) {
+    line('<span class="sx-13" style="color:#6b7280">Accounts payable list</span>', function (c, i) {
       return c.pay.map(function (r, j) { return '<div class="cf-item">' + inp(key + '.cols.' + i + '.pay.' + j + '.l', '', 'Particulars') + numIn(key + '.cols.' + i + '.pay.' + j + '.v') + '<button class="cf-x" data-act="bsdelitem" data-k="' + key + '" data-i="' + i + '" data-g="pay" data-j="' + j + '">×</button></div>'; }).join('') +
         '<button class="cf-add" data-act="bsadditem" data-k="' + key + '" data-i="' + i + '" data-g="pay">+ Add row</button>';
     });
@@ -305,7 +218,7 @@ include '../layout.php';
     sec('EXTRA FUND');
     calcRow('EXTRA FUND END OF MONTH', 'ef', 'tot');
     line('OP BEGINNING FUND', function (c, i) { return numIn(key + '.cols.' + i + '.begin', i > 0 ? 'auto = previous extra fund' : 'enter beginning fund').replace('data-p', 'data-bsb="1" data-p'); });
-    line('PULL-OUT (added back) <button class="cf-mini" style="margin-left:6px" title="Fill from Withdrawals Monitoring (same month as the date)" data-act="bspull" data-hint="1">↧ use Withdrawals</button>', function (c, i) { return numIn(key + '.cols.' + i + '.pull'); });
+    line('PULL-OUT (added back) <button class="sx-12 cf-mini" title="Fill from Withdrawals Monitoring (same month as the date)" data-act="bspull" data-hint="1">↧ use Withdrawals</button>', function (c, i) { return numIn(key + '.cols.' + i + '.pull'); });
     calcRow('INCREASE IN CASH (end of month)', 'inc', 'big');
     line('REMARKS', function (c, i) { return '<textarea data-p="' + key + '.cols.' + i + '.remarks" placeholder="e.g. PULL OUT: 500K DEPO TO SECBANK …">' + esc(c.remarks) + '</textarea>'; });
     h += '</tbody></table></div>';
@@ -327,7 +240,7 @@ include '../layout.php';
 
   // ── render: BREAKDOWN VS FS ─────────────────────────────
   function renderBd() {
-    var h = '<div class="cf-card"><div class="cf-ttl"><div style="flex:1">' + inp('bd.title', '', 'Title').replace('<input ', '<input style="font-size:15px;font-weight:700" ') + '<div class="cf-sub" style="padding-left:8px">Monthly inventory, bank balance, expenses and pull-out used for the Income Statement.</div></div></div>';
+    var h = '<div class="cf-card"><div class="cf-ttl"><div class="sx-11">' + inp('bd.title', '', 'Title').replace('<input ', '<input  ') + '<div class="sx-10 sx-9 cf-sub" >Monthly inventory, bank balance, expenses and pull-out used for the Income Statement.</div></div></div>';
     h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">DATE</th><th>INVENTORY</th><th>BANK BALANCE</th><th>EXPENSES</th><th>PULL-OUT</th></tr></thead><tbody>';
     S.bd.rows.forEach(function (r, i) {
       h += '<tr><td class="lab">' + MONTHS[i] + '</td>' +
@@ -344,13 +257,13 @@ include '../layout.php';
     s.rows.forEach(function (r, j) {
       h += '<tr><td>' + inp('wd.secs.' + si + '.rows.' + j + '.d', '', '', 'date') + '</td><td>' + inp('wd.secs.' + si + '.rows.' + j + '.p', '', 'Particulars') + '</td><td>' + numIn('wd.secs.' + si + '.rows.' + j + '.a') + '</td><td>' + inp('wd.secs.' + si + '.rows.' + j + '.r', '', '') + '</td><td><button class="cf-x" data-act="wddelrow" data-si="' + si + '" data-j="' + j + '">×</button></td></tr>';
     });
-    h += '<tr class="tot"><td></td><td style="text-align:right">TOTAL</td><td class="num" data-c="wd:' + si + ':tot"></td><td colspan="2"><button class="cf-add" data-act="wdaddrow" data-si="' + si + '">+ Add row</button></td></tr></tbody></table>';
+    h += '<tr class="tot"><td></td><td class="sx-5">TOTAL</td><td class="num" data-c="wd:' + si + ':tot"></td><td colspan="2"><button class="cf-add" data-act="wdaddrow" data-si="' + si + '">+ Add row</button></td></tr></tbody></table>';
     return h;
   }
   function renderWd() {
-    var h = '<div class="cf-intro"><div><div class="cf-h">WITHDRAWALS MONITORING</div><div class="cf-sub" style="margin:0">One block per month — the totals feed CF Statement/Cash-Flow pull-out and the CASHFLOW/FS tab.</div></div><button class="cf-btn" data-act="wdaddsec">+ Add month</button></div>';
+    var h = '<div class="cf-intro"><div><div class="cf-h">WITHDRAWALS MONITORING</div><div class="sx-4 cf-sub" >One block per month — the totals feed CF Statement/Cash-Flow pull-out and the CASHFLOW/FS tab.</div></div><button class="cf-btn" data-act="wdaddsec">+ Add month</button></div>';
     S.wd.secs.forEach(function (s, si) {
-      h += '<div class="cf-card"><div class="cf-ttl"><div style="display:flex;align-items:center;gap:8px"><b style="font-size:13px">AS OF</b><div style="width:170px">' + inp('wd.secs.' + si + '.asof', '', '', 'date') + '</div><span class="cf-sub" style="margin:0">WITHDRAWALS BREAKDOWN</span><span class="cf-pill">Total<b data-c="wd:' + si + ':tot"></b></span></div><button class="cf-x" title="Remove this month" data-act="wddelsec" data-si="' + si + '">Remove ×</button></div>' + wdTable(si) + '</div>';
+      h += '<div class="cf-card"><div class="cf-ttl"><div class="sx-8"><b class="sx-7">AS OF</b><div style="width:170px">' + inp('wd.secs.' + si + '.asof', '', '', 'date') + '</div><span class="sx-4 cf-sub" >WITHDRAWALS BREAKDOWN</span><span class="cf-pill">Total<b data-c="wd:' + si + ':tot"></b></span></div><button class="cf-x" title="Remove this month" data-act="wddelsec" data-si="' + si + '">Remove ×</button></div>' + wdTable(si) + '</div>';
     });
     return h;
   }
@@ -398,7 +311,7 @@ include '../layout.php';
     var cols = S.cs.cols, h = '';
     h += '<div class="cf-card"><div class="cf-ttl"><div><div class="cf-h">CASHFLOW STATEMENT — STELLA FUSION BUFFET</div><div class="cf-sub">Enter every amount as a positive number — “Cash paid for” rows are subtracted automatically.</div></div><button class="cf-btn" data-act="csaddcol">+ Add month</button></div>';
     h += '<div class="cf-kpis">' + kpi('Operations', 'kpi:cs:nops') + kpi('Investing', 'kpi:cs:ninv') + kpi('Financing', 'kpi:cs:nfin') + kpi('Cash at end of month', 'kpi:cs:end', 'hi') + kpi('Variance vs actual', 'kpi:cs:vari') + '</div>';
-    h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">For the month ending</th>' + cols.map(function (c, i) { return '<th class="c"><div style="display:flex;gap:4px;align-items:center">' + inp('cs.cols.' + i + '.date', '', '', 'date') + '<button class="cf-x" data-act="csdelcol" data-i="' + i + '">×</button></div></th>'; }).join('') + '</tr></thead><tbody>';
+    h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">For the month ending</th>' + cols.map(function (c, i) { return '<th class="c"><div class="sx-6">' + inp('cs.cols.' + i + '.date', '', '', 'date') + '<button class="cf-x" data-act="csdelcol" data-i="' + i + '">×</button></div></th>'; }).join('') + '</tr></thead><tbody>';
     function line(label, fn, cls) { h += '<tr class="' + (cls || '') + '"><td class="lab">' + label + '</td>' + cols.map(function (c, i) { return '<td>' + fn(c, i) + '</td>'; }).join('') + '</tr>'; }
     line('Cash at Beginning of Month', function (c, i) { return numIn('cs.cols.' + i + '.begin', i > 0 ? 'auto' : 'enter beginning cash'); }, 'sub');
     CS_ROWS.forEach(function (r) {
@@ -407,12 +320,12 @@ include '../layout.php';
       else if (t === 's') h += '<tr class="sub"><td class="lab">' + r[1] + '</td>' + cols.map(function () { return '<td></td>'; }).join('') + '</tr>';
       else if (t === 'r' || t === 'p') line(r[2], function (c, i) { return numIn('cs.cols.' + i + '.v.' + r[1]); });
       else if (t === 'pc' || t === 'rc') line('<input type="text" data-p="cs.lab.' + r[1] + '" value="' + esc((S.cs.lab || {})[r[1]] || '') + '" placeholder="' + r[2] + '">', function (c, i) { return numIn('cs.cols.' + i + '.v.' + r[1]); });
-      else if (t === 't') line(r[2], function (c, i) { return '<div style="text-align:right" data-c="cs:' + i + ':' + r[1] + '"></div>'; }, 'tot');
+      else if (t === 't') line(r[2], function (c, i) { return '<div class="sx-5" data-c="cs:' + i + ':' + r[1] + '"></div>'; }, 'tot');
     });
-    line('Net Increase in Cash', function (c, i) { return '<div style="text-align:right" data-c="cs:' + i + ':inc"></div>'; }, 'tot');
-    line('Cash at End of Month', function (c, i) { return '<div style="text-align:right" data-c="cs:' + i + ':end"></div>'; }, 'big');
+    line('Net Increase in Cash', function (c, i) { return '<div class="sx-5" data-c="cs:' + i + ':inc"></div>'; }, 'tot');
+    line('Cash at End of Month', function (c, i) { return '<div class="sx-5" data-c="cs:' + i + ':end"></div>'; }, 'big');
     line('Actual cash at end of month (per bank / records)', function (c, i) { return numIn('cs.cols.' + i + '.actual', 'optional'); });
-    line('Variance (Actual − Computed)', function (c, i) { return '<div style="text-align:right" data-c="cs:' + i + ':vari"></div>'; }, 'tot');
+    line('Variance (Actual − Computed)', function (c, i) { return '<div class="sx-5" data-c="cs:' + i + ':vari"></div>'; }, 'tot');
     h += '</tbody></table></div><div class="cf-note">Formulas — Operations = Sales + Other Sales − Inventory − G&amp;A · Investing = Receipts − Purchases · Financing = Depreciation − loan/investment − Profit pull-out − car loan − DND taxes − Owners pull-out · Cash at End = Beginning + Operations + Investing + Financing. Beginning cash follows the previous month’s actual (or computed) end unless you type one.</div></div>';
     return h;
   }
@@ -453,12 +366,12 @@ include '../layout.php';
     return res;
   }
   function renderFs() {
-    var h = '<div class="cf-intro"><div><div class="cf-h">CASHFLOW / FS — Income Statement vs Cashflow</div><div class="cf-sub" style="margin:0">One block per month. Bank, receivables and payables fill in from the CASH-FLOW tab (same month) and the pull-out from WITHDRAWALS MONITORING, unless you type over them.</div></div><button class="cf-btn" data-act="fsaddblk">+ Add month</button></div>';
+    var h = '<div class="cf-intro"><div><div class="cf-h">CASHFLOW / FS — Income Statement vs Cashflow</div><div class="sx-4 cf-sub" >One block per month. Bank, receivables and payables fill in from the CASH-FLOW tab (same month) and the pull-out from WITHDRAWALS MONITORING, unless you type over them.</div></div><button class="cf-btn" data-act="fsaddblk">+ Add month</button></div>';
     S.fs.blocks.forEach(function (b, i) {
       var p = 'fs.blocks.' + i + '.v.';
       function row(label, key, ph) { return '<tr><td class="k">' + label + '</td><td>' + numIn(p + key, ph || '') + '</td></tr>'; }
       function calc(label, id, cls) { return '<tr class="' + (cls || 'tot') + '"><td class="k">' + label + '</td><td class="num" data-c="fs:' + i + ':' + id + '"></td></tr>'; }
-      h += '<div class="cf-card"><div class="cf-ttl"><div style="display:flex;align-items:center;gap:10px"><b>STELLA — FOR THE MONTH OF</b><div style="width:170px">' + inp('fs.blocks.' + i + '.month', '', '', 'month') + '</div><b data-c="fs:' + i + ':lbl" style="color:var(--accent)"></b></div><button class="cf-x" data-act="fsdelblk" data-i="' + i + '">Remove ×</button></div>';
+      h += '<div class="cf-card"><div class="cf-ttl"><div class="sx-3"><b>STELLA — FOR THE MONTH OF</b><div style="width:170px">' + inp('fs.blocks.' + i + '.month', '', '', 'month') + '</div><b data-c="fs:' + i + ':lbl" style="color:var(--accent)"></b></div><button class="cf-x" data-act="fsdelblk" data-i="' + i + '">Remove ×</button></div>';
       h += '<div class="cf-kpis">' + kpi('Net sale', 'fs:' + i + ':k_netSale') + kpi('Total net', 'fs:' + i + ':k_totalNet2') + kpi('Extra fund', 'fs:' + i + ':k_extra') + kpi('Net income', 'fs:' + i + ':k_netInc') + kpi('Variance', 'fs:' + i + ':k_vari', 'hi') + '</div>';
       h += '<div class="cf-fsgrid">';
       h += '<div><table class="cf-mini-tbl"><thead><tr><th colspan="2">INCOME STATEMENT</th></tr></thead><tbody>' +
@@ -472,8 +385,8 @@ include '../layout.php';
         '</tbody></table></div>';
       h += '<div><table class="cf-mini-tbl"><thead><tr><th>WITHDRAWALS BREAKDOWN' + (b.month ? ' — AS OF ' + monthLabel(b.month) : '') + '</th></tr></thead></table>';
       var any = false;
-      S.wd.secs.forEach(function (s, si) { if (b.month && ym(s.asof) === b.month) { any = true; h += '<div style="margin-top:6px">' + wdTable(si) + '</div>'; } });
-      if (!any) h += '<div class="cf-note">' + (b.month ? 'No withdrawals entered for this month yet.' : 'Pick the month first.') + '</div>' + (b.month ? '<button class="cf-add" style="margin-top:8px" data-act="fsaddwd" data-i="' + i + '">+ Add withdrawals for this month</button>' : '');
+      S.wd.secs.forEach(function (s, si) { if (b.month && ym(s.asof) === b.month) { any = true; h += '<div class="sx-2">' + wdTable(si) + '</div>'; } });
+      if (!any) h += '<div class="cf-note">' + (b.month ? 'No withdrawals entered for this month yet.' : 'Pick the month first.') + '</div>' + (b.month ? '<button class="sx-1 cf-add" data-act="fsaddwd" data-i="' + i + '">+ Add withdrawals for this month</button>' : '');
       h += '</div></div></div>';
     });
     h += '<div class="cf-note">Formulas — Net Sale = Net Sales − COGS − Sales Discount − Operating Exp − General Exp − Extra Exp − Other · Total Net = Net Sale + Depreciation · Extra Fund = Bank + Receivables − Payables · Net Income = Extra Fund − Beginning Balance · Total Net if No Pull-out = Net Income + Pull-out · Variance = Total Net − Total Net if No Pull-out.</div>';

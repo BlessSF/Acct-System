@@ -127,79 +127,11 @@ $fmt = fn($n) => number_format((float)$n,2);
 
 $pageTitle  = 'Cashflow Balance';
 $activePage = 'stella_cashflow_balance';
+$bodyClass = 'sp-stella_cashflow_balance';
 include '../layout.php';
 ?>
 
-<style>
-.cb-wrap { max-width: 960px; margin: 0 auto; }
-
-.cb-header-card {
-  background: linear-gradient(135deg, #1e3060 0%, #0f2045 100%);
-  border-radius: var(--radius); padding: 20px 26px 16px;
-  margin-bottom: 18px; display: flex; align-items: flex-start;
-  justify-content: space-between; flex-wrap: wrap; gap: 12px;
-}
-.cb-header-card .eyebrow {
-  font-family: var(--font-m); font-size: .58rem; text-transform: uppercase;
-  letter-spacing: .14em; color: rgba(255,255,255,.45); margin-bottom: 4px;
-}
-.cb-header-card .title  { font-size: 1.2rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
-.cb-header-card .subtitle { font-family: var(--font-m); font-size: .67rem; color: rgba(255,255,255,.5); margin-top: 4px; }
-
-.cb-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
-.cb-controls select { font-family: var(--font-m); font-size: .8rem; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
-
-/* KPI cards */
-.cb-kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 20px; }
-.cb-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; }
-.cb-kpi .kpi-label { font-family: var(--font-m); font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--subtext); margin-bottom: 6px; }
-.cb-kpi .kpi-val   { font-family: var(--font-m); font-size: 1.3rem; font-weight: 800; }
-.cb-kpi.in  .kpi-val { color: #166534; }
-.cb-kpi.out .kpi-val { color: #991b1b; }
-.cb-kpi.net .kpi-val { color: var(--text); }
-
-/* Table */
-.cb-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-.cb-table { width: 100%; border-collapse: collapse; }
-.cb-table thead th {
-  background: #1e3060; color: #fff; padding: 10px 14px;
-  font-family: var(--font-m); font-size: .65rem; text-transform: uppercase;
-  letter-spacing: .08em; text-align: left; white-space: nowrap;
-}
-.cb-table thead th.num { text-align: right; }
-.cb-table tbody tr { border-bottom: 1px solid #f0f2f5; transition: background .1s; }
-.cb-table tbody tr:hover { background: #fafbfc; }
-.cb-table tbody td { padding: 8px 14px; font-size: .8rem; color: var(--text); vertical-align: middle; }
-.cb-table tbody td.num { text-align: right; font-family: var(--font-m); }
-.cb-table tfoot td {
-  padding: 10px 14px; font-family: var(--font-m); font-size: .8rem;
-  font-weight: 700; border-top: 2px solid var(--border2); background: #f8f9fb;
-}
-.cb-table tfoot td.num { text-align: right; }
-
-/* Inline inputs in table */
-.cb-inp { width: 100%; border: none; background: transparent; font-family: var(--font-m); font-size: .8rem; color: var(--text); outline: none; }
-.cb-inp:focus { background: #f0fdf4; border-radius: 4px; padding: 2px 4px; }
-.cb-inp.num { text-align: right; }
-.cb-inp.date-inp { width: 120px; }
-td.running { font-weight: 700; font-family: var(--font-m); }
-td.running.pos { color: #166534; }
-td.running.neg { color: #991b1b; }
-td.net-pos { color: #166534; font-family: var(--font-m); }
-td.net-neg { color: #991b1b; font-family: var(--font-m); }
-
-.btn-del { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 5px; padding: 3px 8px; font-size: .68rem; cursor: pointer; }
-.btn-del:hover { background: #fee2e2; }
-.cb-save {
-  background: #ecfdf5; border: 1px solid #a7f3d0; color: #166534;
-  border-radius: 5px; padding: 3px 9px; font-size: .68rem; font-weight: 700;
-  cursor: pointer; margin-right: 4px; min-width: 52px;
-}
-.cb-save:hover  { background: #d1fae5; }
-.cb-save.saving { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; cursor: wait; }
-.cb-save.ok     { background: #dcfce7; border-color: #86efac; color: #15803d; }
-.cb-save.err    { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <div class="cb-wrap">
 
@@ -210,15 +142,14 @@ td.net-neg { color: #991b1b; font-family: var(--font-m); }
       <div class="title">Cashflow Balance</div>
       <div class="subtitle">Date · Description · Cash In / Out · Running Balance</div>
     </div>
-    <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 14px;border-radius:20px;
-                 font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">
+    <span class="sx-9" style="color:#fff">
       📌 Stella
     </span>
   </div>
 
   <!-- Controls -->
   <div class="cb-controls">
-    <form method="GET" style="display:flex;gap:8px;align-items:center">
+    <form method="GET" class="sx-8">
       <select name="month" onchange="this.form.submit()">
         <?php for($m=1;$m<=12;$m++): ?>
           <option value="<?=$m?>" <?=$m===$fMonth?'selected':''?>><?=$monthNames[$m]?></option>
@@ -231,7 +162,7 @@ td.net-neg { color: #991b1b; font-family: var(--font-m); }
       </select>
     </form>
     <button onclick="addRow()" class="btn btn-primary btn-sm">+ Add Row</button>
-    <a href="stella_cashflow_balance.php?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>" class="btn btn-ghost btn-sm" style="color:var(--accent3);border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)">⬇ Download CSV</a>
+    <a href="stella_cashflow_balance.php?export_csv=1&month=<?=$fMonth?>&year=<?=$fYear?>" class="sx-7 btn btn-ghost btn-sm" style="color:var(--accent3)">⬇ Download CSV</a>
   </div>
 
   <!-- KPI cards -->
@@ -255,13 +186,13 @@ td.net-neg { color: #991b1b; font-family: var(--font-m); }
     <table class="cb-table" id="cb-table">
       <thead>
         <tr>
-          <th style="width:120px">Date</th>
+          <th class="sx-6">Date</th>
           <th>Description</th>
-          <th class="num" style="width:130px">Cash In</th>
-          <th class="num" style="width:130px">Cash Out</th>
-          <th class="num" style="width:130px">Net Cash Flow</th>
-          <th class="num" style="width:140px">Running Balance</th>
-          <th style="width:110px">Action</th>
+          <th class="sx-5 num" >Cash In</th>
+          <th class="sx-5 num" >Cash Out</th>
+          <th class="sx-5 num" >Net Cash Flow</th>
+          <th class="sx-4 num" >Running Balance</th>
+          <th class="sx-3">Action</th>
         </tr>
       </thead>
       <tbody id="cb-body">
@@ -286,7 +217,7 @@ td.net-neg { color: #991b1b; font-family: var(--font-m); }
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="2" style="font-weight:700;font-size:.78rem">TOTAL</td>
+          <td colspan="2" class="sx-2">TOTAL</td>
           <td class="num" id="foot-in"><?= $fmt($totalIn) ?></td>
           <td class="num" id="foot-out"><?= $fmt($totalOut) ?></td>
           <td class="num" id="foot-net" style="color:<?= $netTotal >= 0 ? '#166534' : '#991b1b' ?>"><?= $fmt($netTotal) ?></td>
@@ -297,7 +228,7 @@ td.net-neg { color: #991b1b; font-family: var(--font-m); }
     </table>
   </div>
 
-  <div style="margin-top:14px">
+  <div class="sx-1">
     <button onclick="addRow()" class="btn btn-primary btn-sm">+ Add Row</button>
   </div>
 

@@ -292,179 +292,11 @@ try {
 
 $pageTitle  = 'Stella Expenses';
 $activePage = 'stella_expenses';
+$bodyClass = 'sp-stella_expenses';
 include '../layout.php';
 ?>
 
-<style>
-.page-content { padding: 20px 24px !important; overflow-x: hidden; }
-
-.se-outer {
-  width: 100%; overflow-x: auto; overflow-y: visible;
-  border-radius: var(--radius); border: 1px solid var(--border);
-  background: var(--surface);
-  scrollbar-width: thin; scrollbar-color: #c1c7d0 #f1f3f5;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-}
-.se-outer::-webkit-scrollbar { height: 8px; }
-.se-outer::-webkit-scrollbar-track { background: #f1f3f5; }
-.se-outer::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 4px; }
-
-.se-table { border-collapse: collapse; width: max-content; font-size: .68rem; table-layout: fixed; }
-
-.se-table thead th {
-  background: #1e3a5f; color: #fff;
-  font-family: var(--font-m); font-size: .52rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .05em;
-  padding: 8px 5px; border: 1px solid #2d5480;
-  white-space: normal; text-align: center; line-height: 1.3;
-  position: sticky; top: 0; z-index: 20;
-}
-.se-table thead tr.grp-row th {
-  font-size: .55rem; padding: 5px 6px;
-  background: #162d4a; letter-spacing: .06em;
-}
-
-.th-chk  { position: sticky !important; left: 0; z-index: 31 !important; width: 32px; min-width: 32px; background: #162d4a !important; text-align: center; }
-.th-date { position: sticky !important; left: 32px; z-index: 30 !important; width: 80px; min-width: 80px; background: #162d4a !important; }
-.th-act  { position: sticky !important; right: 0; z-index: 30 !important; width: 80px; min-width: 80px; background: #162d4a !important; }
-
-.td-chk {
-  position: sticky; left: 0; z-index: 6;
-  background: #f8f9fb !important;
-  text-align: center; padding: 0; width: 32px; min-width: 32px;
-}
-.se-table tbody tr:nth-child(even) .td-chk { background: #f9fafb !important; }
-.se-table tbody tr:hover .td-chk { background: #eef4ff !important; }
-.se-table tbody tr.row-selected td { background: #fff8e1 !important; }
-.se-table tbody tr.row-selected .td-chk,
-.se-table tbody tr.row-selected .td-date { background: #fef3c7 !important; }
-.row-chk, #selectAllChk { width: 14px; height: 14px; cursor: pointer; accent-color: #b45309; vertical-align: middle; }
-
-.td-date {
-  position: sticky; left: 32px; z-index: 5;
-  background: #f8f9fb !important; box-shadow: 2px 0 5px rgba(0,0,0,.06);
-  font-family: var(--font-m); font-size: .67rem;
-  color: var(--accent); font-weight: 600;
-  text-align: center; padding: 0 4px;
-  white-space: nowrap; width: 80px; min-width: 80px;
-}
-
-.c-check-cell { position: sticky; right: 80px; z-index: 9; background: #fff; }
-.se-table tbody tr:nth-child(even) .c-check-cell { background: #f8fbff; }
-.se-table tbody tr:hover .c-check-cell { background: #eef4ff !important; }
-.se-table tfoot .c-check-cell { background: #1e3a5f !important; color: #4ade80; }
-.td-act {
-  position: sticky; right: 0; z-index: 10;
-  width: 80px; min-width: 80px;
-  background: #f8f9fb !important;
-  box-shadow: -2px 0 5px rgba(0,0,0,.06);
-  text-align: center; padding: 3px 4px;
-  border-left: 2px solid #d1d5db;
-}
-
-/* Column group colors */
-.g-info   { background: #1e3a5f !important; }
-.g-vat    { background: #1a4a2e !important; }
-.g-cat    { background: #3d1a00 !important; }
-
-/* Cell background tints */
-.c-info   { background: #f0f4ff; }
-.c-vat    { background: #f0fdf4; }
-.c-cat    { background: #fff9f0; }
-.c-total  { background: #fffbeb; }
-
-.col-txt-sm  { width: 80px;  min-width: 80px; }
-.col-txt-md  { width: 140px; min-width: 140px; }
-.col-txt-lg  { width: 190px; min-width: 190px; }
-.col-num     { width: 88px;  min-width: 88px; }
-.col-num-sm  { width: 78px;  min-width: 78px; }
-
-.se-table tbody tr { border-bottom: 1px solid #e8eaed; transition: background .1s; }
-.se-table tbody tr:hover td { filter: brightness(.97); }
-.se-table td { border: 1px solid #e3e6ea; padding: 0; vertical-align: middle; }
-
-.sei {
-  width: 100%; padding: 5px 5px;
-  background: transparent; border: none; outline: none;
-  color: #1a1d23; font-family: var(--font-m); font-size: .67rem;
-  text-align: right; display: block; box-sizing: border-box;
-}
-.sei:focus { background: rgba(15,123,92,.07); outline: 1px solid rgba(15,123,92,.4); }
-.sei.txt   { text-align: left; font-family: var(--font-h); font-size: .67rem; }
-.sei.calc  { color: #1d4ed8; background: rgba(37,99,235,.04); font-weight: 700; cursor: default; }
-.sei.bold  { font-weight: 700; color: #0f7b5c; }
-
-.se-table tfoot td {
-  padding: 7px 5px; font-family: var(--font-m); font-size: .67rem; font-weight: 700;
-  text-align: right; border: 1px solid #d1d5db;
-  background: #1e3a5f; color: #fff;
-}
-.se-table tfoot td.tfl {
-  text-align: center; font-size: .58rem;
-  text-transform: uppercase; letter-spacing: .07em;
-  position: sticky; left: 32px; z-index: 5;
-}
-.se-table tfoot td.tfr { position: sticky; right: 0; z-index: 15; background: #1e3a5f !important; min-width: 80px; width: 80px; border-left: 2px solid #2d5480; }
-
-.btn-add-row {
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 16px; background: var(--accent); color: #fff;
-  border: none; border-radius: 8px; font-size: .8rem; font-weight: 600;
-  cursor: pointer; font-family: var(--font-h);
-  transition: background .15s, transform .1s;
-}
-.btn-add-row:hover { background: #0a6649; transform: translateY(-1px); }
-
-.bsv {
-  padding: 3px 7px; font-size: .58rem;
-  font-family: var(--font-m); font-weight: 700;
-  background: #f0fdf4; color: #15803d;
-  border: 1px solid #bbf7d0; border-radius: 5px;
-  cursor: pointer; white-space: nowrap;
-  transition: all .13s; display: block; width: 100%; margin-bottom: 3px;
-}
-.bsv:hover { background: #dcfce7; }
-.bsv.saving { opacity:.5; pointer-events:none; }
-.bsv.ok { background:#dcfce7; color:#15803d; }
-.bsv.err { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
-
-.bdel {
-  padding: 3px 7px; font-size: .58rem;
-  font-family: var(--font-m); font-weight: 700;
-  background: #fff1f2; color: #be123c;
-  border: 1px solid #fecdd3; border-radius: 5px;
-  cursor: pointer; white-space: nowrap;
-  transition: all .13s; display: block; width: 100%;
-}
-.bdel:hover { background: #ffe4e6; }
-
-.se-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-.scroll-hint {
-  font-family: var(--font-m); font-size: .62rem; color: var(--subtext);
-  text-align: center; padding: 5px 12px; border-bottom: 1px solid var(--border);
-  background: #f8f9fb;
-}
-.toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
-
-/* ── Vendor Autocomplete ── */
-.ac-wrap { position: relative; width: 100%; }
-.ac-list {
-  display: none; position: absolute; top: 100%; left: 0; z-index: 999;
-  background: #fff; border: 1px solid #c8d4df; border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.12);
-  max-height: 220px; overflow-y: auto; min-width: 260px;
-}
-.ac-list.open { display: block; }
-.ac-item {
-  padding: 8px 12px; cursor: pointer; font-size: .74rem;
-  font-family: var(--font-h); border-bottom: 1px solid #f0f2f5;
-  transition: background .1s;
-}
-.ac-item:hover { background: #f0fdf4; }
-.ac-item .ac-name { font-weight: 600; color: #1a1d23; }
-.ac-item .ac-tin  { font-family: var(--font-m); font-size: .64rem; color: #6b7280; margin-top: 1px; }
-.ac-item .ac-addr { font-family: var(--font-m); font-size: .62rem; color: #9ca3af; margin-top: 1px; font-style: italic; }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Header -->
 <div class="section-header">
@@ -476,20 +308,20 @@ include '../layout.php';
 
 <!-- Controls -->
 <form method="GET" class="se-controls" id="filterForm">
-  <div style="font-family:var(--font-m);font-size:.76rem;color:var(--accent);padding:7px 13px;background:var(--accent-dim);border-radius:8px;border:1px solid rgba(34,211,165,.2)">
+  <div class="sx-41" style="color:var(--accent)">
     📍 Stella
   </div>
-  <select name="month" class="form-control" style="max-width:130px" onchange="this.form.submit()">
+  <select name="month" class="sx-40 form-control" onchange="this.form.submit()">
     <?php for ($m=1;$m<=12;$m++): ?>
     <option value="<?=$m?>" <?=$fMonth===$m?'selected':''?>><?=$monthNames[$m]?></option>
     <?php endfor; ?>
   </select>
-  <select name="year" class="form-control" style="max-width:100px" onchange="this.form.submit()">
+  <select name="year" class="sx-39 form-control" onchange="this.form.submit()">
     <?php for ($y=2050;$y>=2023;$y--): ?>
     <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
     <?php endfor; ?>
   </select>
-  <a href="#" class="btn btn-ghost btn-sm" style="color:var(--accent3);border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.06)" onclick="doExport(event)">⬇ Download CSV</a>
+  <a href="#" class="sx-38 btn btn-ghost btn-sm" style="color:var(--accent3)" onclick="doExport(event)">⬇ Download CSV</a>
 </form>
 
 <!-- ── Expenses Column Totals Summary ── -->
@@ -539,22 +371,18 @@ $summaryGroups = [
   ],
 ];
 ?>
-<div style="margin-bottom:20px">
-  <div style="font-family:var(--font-m);font-size:.62rem;font-weight:700;text-transform:uppercase;
-              letter-spacing:.1em;color:var(--subtext2);margin-bottom:10px">
+<div class="sx-37">
+  <div class="sx-36" style="font-weight:700;color:var(--subtext2)">
     📊 Column Totals — <?= $monthNames[$fMonth] ?> <?= $fYear ?>
   </div>
 
   <?php foreach ($summaryGroups as $groupName => $cols): ?>
-  <div style="overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);
-              box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px">
-    <table style="border-collapse:collapse;width:max-content;min-width:100%">
+  <div class="sx-35">
+    <table class="sx-32">
       <thead>
         <tr>
           <td colspan="<?= count($cols) ?>"
-              style="background:#162d4a;color:rgba(255,255,255,.55);font-family:var(--font-m);
-                     font-size:.54rem;text-transform:uppercase;letter-spacing:.1em;
-                     padding:6px 14px;border-bottom:1px solid #2d5480">
+              class="sx-34" style="color:rgba(255,255,255,.55)">
             <?= $groupName ?>
           </td>
         </tr>
@@ -595,75 +423,48 @@ $summaryGroups = [
   </div>
   <?php if ($groupName === 'VAT BREAKDOWN'): ?>
   <!-- ── Selected Rows Totals (client-side, driven by row checkboxes) ── -->
-  <div style="overflow-x:auto;border-radius:var(--radius);border:2px dashed #d97706;
-              box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:6px">
-    <table style="border-collapse:collapse;width:max-content;min-width:100%">
+  <div class="sx-33">
+    <table class="sx-32">
       <thead>
         <tr>
-          <td colspan="5" style="background:#78350f;color:#fde68a;font-family:var(--font-m);
-                     font-size:.54rem;text-transform:uppercase;letter-spacing:.1em;
-                     padding:6px 14px;border-bottom:1px solid #92400e">
-            <span style="display:inline-flex;align-items:center;gap:8px;width:100%">
+          <td colspan="5" class="sx-31" style="color:#fde68a">
+            <span class="sx-30">
               ☑️ SELECTED TOTALS — VAT BREAKDOWN
-              <span style="opacity:.85;text-transform:none;letter-spacing:0;font-size:.62rem">
+              <span class="sx-29" style="opacity:.85">
                 (<span id="selCount">0</span> row<span id="selPlural">s</span> checked below)
               </span>
               <button type="button" onclick="saveSelectedVat(false)" id="btnSaveSelVat"
-                      style="margin-left:auto;padding:2px 10px;border-radius:5px;border:1px solid rgba(74,222,128,.5);
-                             background:rgba(74,222,128,.15);color:#bbf7d0;font-family:var(--font-m);
-                             font-size:.58rem;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.05em">
+                      class="sx-28" style="color:#bbf7d0;font-weight:700">
                 💾 Save VAT to Cashflow
               </button>
-              <span id="vatAutoSaveindicator" style="font-size:.55rem;color:#86efac;opacity:0;transition:opacity .4s">✓ auto-saved</span>
+              <span id="vatAutoSaveindicator" class="sx-27" style="color:#86efac;opacity:0;transition:opacity .4s">✓ auto-saved</span>
               <button type="button" onclick="clearSelection()"
-                      style="padding:2px 9px;border-radius:5px;border:1px solid rgba(253,230,138,.4);
-                             background:rgba(253,230,138,.12);color:#fde68a;font-family:var(--font-m);
-                             font-size:.58rem;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.05em">
+                      class="sx-26" style="color:#fde68a;font-weight:700">
                 Clear
               </button>
             </span>
           </td>
         </tr>
         <tr>
-          <th style="background:#92400e;color:#fff;font-family:var(--font-m);font-size:.52rem;font-weight:700;
-                     text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border:1px solid #b45309;
-                     white-space:normal;text-align:center;min-width:100px;max-width:120px;line-height:1.3">Amount w/ VAT</th>
-          <th style="background:#166534;color:#fff;font-family:var(--font-m);font-size:.52rem;font-weight:800;
-                     text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border:1px solid #14532d;
-                     white-space:normal;text-align:center;min-width:100px;max-width:120px;line-height:1.3">VAT ↳ feeds Cashflow</th>
-          <th style="background:#92400e;color:#fff;font-family:var(--font-m);font-size:.52rem;font-weight:700;
-                     text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border:1px solid #b45309;
-                     white-space:normal;text-align:center;min-width:100px;max-width:120px;line-height:1.3">Amount w/out VAT</th>
-          <th style="background:#92400e;color:#fff;font-family:var(--font-m);font-size:.52rem;font-weight:700;
-                     text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border:1px solid #b45309;
-                     white-space:normal;text-align:center;min-width:100px;max-width:120px;line-height:1.3">Non VAT</th>
-          <th style="background:#78350f;color:#fff;font-family:var(--font-m);font-size:.52rem;font-weight:700;
-                     text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border:1px solid #b45309;
-                     white-space:normal;text-align:center;min-width:100px;max-width:120px;line-height:1.3">TOTAL AMOUNT</th>
+          <th class="sx-24" style="color:#fff;font-weight:700">Amount w/ VAT</th>
+          <th class="sx-25" style="color:#fff;font-weight:800">VAT ↳ feeds Cashflow</th>
+          <th class="sx-24" style="color:#fff;font-weight:700">Amount w/out VAT</th>
+          <th class="sx-24" style="color:#fff;font-weight:700">Non VAT</th>
+          <th class="sx-23" style="color:#fff;font-weight:700">TOTAL AMOUNT</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td id="sel_amount_w_vat" style="background:#fff;border:1px solid #fde9c8;padding:10px 12px;
-                     text-align:right;font-family:var(--font-m);font-size:.74rem;color:var(--muted);
-                     white-space:nowrap;min-width:100px">—</td>
-          <td id="sel_vat" style="background:#f0fdf4;border:1px solid #bbf7d0;padding:10px 12px;
-                     text-align:right;font-family:var(--font-m);font-size:.76rem;font-weight:800;color:#166534;
-                     white-space:nowrap;min-width:100px">—</td>
-          <td id="sel_amount_wo_vat" style="background:#fff;border:1px solid #fde9c8;padding:10px 12px;
-                     text-align:right;font-family:var(--font-m);font-size:.74rem;color:var(--muted);
-                     white-space:nowrap;min-width:100px">—</td>
-          <td id="sel_non_vat" style="background:#fff;border:1px solid #fde9c8;padding:10px 12px;
-                     text-align:right;font-family:var(--font-m);font-size:.74rem;color:var(--muted);
-                     white-space:nowrap;min-width:100px">—</td>
-          <td id="sel_total_amount" style="background:#fffbeb;border:1px solid #fde9c8;padding:10px 12px;
-                     text-align:right;font-family:var(--font-m);font-size:.76rem;font-weight:800;color:#b45309;
-                     white-space:nowrap;min-width:100px">—</td>
+          <td id="sel_amount_w_vat" class="sx-21" style="color:var(--muted)">—</td>
+          <td id="sel_vat" class="sx-22" style="font-weight:800;color:#166534">—</td>
+          <td id="sel_amount_wo_vat" class="sx-21" style="color:var(--muted)">—</td>
+          <td id="sel_non_vat" class="sx-21" style="color:var(--muted)">—</td>
+          <td id="sel_total_amount" class="sx-20" style="font-weight:800;color:#b45309">—</td>
         </tr>
       </tbody>
     </table>
   </div>
-  <div id="selVatStatus" style="font-family:var(--font-m);font-size:.66rem;color:var(--subtext2);margin-bottom:12px;padding:0 2px">
+  <div id="selVatStatus" class="sx-19" style="color:var(--subtext2)">
     <?php if ($savedSelCount > 0): ?>
       💾 Currently saved to Cashflow for <?= $monthNames[$fMonth] ?> <?= $fYear ?>:
       <strong style="color:#166534"><?= number_format($savedSelVat,2) ?></strong>
@@ -687,16 +488,16 @@ $summaryGroups = [
       <th class="th-date"></th>
       <th colspan="7" class="g-info">TRANSACTION INFO</th>
       <th colspan="4" class="g-vat">VAT BREAKDOWN</th>
-      <th colspan="1" style="background:#2d5480">TOTAL</th>
+      <th colspan="1" class="sx-18">TOTAL</th>
       <th colspan="32" class="g-cat">EXPENSE CATEGORIES</th>
-      <th colspan="1" style="background:#2d5480">TOTAL</th>
-      <th colspan="1" style="background:#374151">CHECK</th>
+      <th colspan="1" class="sx-18">TOTAL</th>
+      <th colspan="1" class="sx-17">CHECK</th>
       <th class="th-act"></th>
     </tr>
     <!-- Column headers -->
     <tr>
       <th class="th-chk"><input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this)" title="Select all rows"></th>
-      <th class="th-date" style="width:80px">DATE</th>
+      <th class="sx-16 th-date" >DATE</th>
       <!-- Transaction Info -->
       <th class="g-info col-txt-sm">VOUCHER NO.</th>
       <th class="g-info col-txt-sm">TIN</th>
@@ -711,7 +512,7 @@ $summaryGroups = [
       <th class="g-vat col-num">Amount w/out VAT</th>
       <th class="g-vat col-num">Non Vat</th>
       <!-- Total Amount -->
-      <th style="background:#1a4a2e;color:#fff" class="col-num">TOTAL AMOUNT</th>
+      <th style="color:#fff" class="sx-15 col-num">TOTAL AMOUNT</th>
       <!-- Categories -->
       <th class="g-cat col-num-sm">Purchases</th>
       <th class="g-cat col-num-sm">Salaries</th>
@@ -746,8 +547,8 @@ $summaryGroups = [
       <th class="g-cat col-num-sm">Withdrawal</th>
       <th class="g-cat col-num-sm">Depreciation Expense</th>
       <!-- Row Total -->
-      <th style="background:#1a4a2e;color:#fff" class="col-num">TOTAL</th>
-      <th style="background:#374151;color:#fff;font-family:var(--font-m);font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:8px 5px;border:1px solid #4b5563;white-space:nowrap;text-align:center;min-width:80px" class="col-num">CHECK<br><span style="font-size:.45rem;opacity:.7;font-weight:400">TOTAL − TOTAL AMT</span></th>
+      <th style="color:#fff" class="sx-15 col-num">TOTAL</th>
+      <th style="color:#fff;font-weight:700" class="sx-14 col-num">CHECK<br><span class="sx-13" style="opacity:.7;font-weight:400">TOTAL − TOTAL AMT</span></th>
       <th class="th-act">ACTION</th>
     </tr>
   </thead>
@@ -763,7 +564,7 @@ $summaryGroups = [
 
   <tfoot>
     <tr>
-      <td class="td-chk" style="position:sticky;left:0;z-index:15;background:#1e3a5f !important"></td>
+      <td class="sx-12 td-chk" ></td>
       <td class="tfl">TOTAL</td>
       <!-- info cols: no totals -->
       <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
@@ -775,22 +576,22 @@ $summaryGroups = [
       <?php foreach(['purchases','salaries','rent','medicine','lpg','repairs_maintenance','fuel_trans','communication','transportation','light','drinking_water','water','sss_phic_hdmf','taxes_licences','office_supplies','kitchen_supplies','bio_pest_control','representation','miscellaneous','sir_budoy_nikki','staff_meal','pest_control_bio_aug','commission_fees','exhaust_cleaning','bank_fees','admin_salary_shares','marketing','sales_discounts','pdc','ca','withdrawal','depreciation_expense','row_total'] as $c): ?>
       <td id="tot_<?=$c?>">—</td>
       <?php endforeach; ?>
-      <td id="tot_check" class="c-check-cell" style="position:sticky;right:80px;z-index:15;background:#1e3a5f !important;font-family:var(--font-m);font-size:.67rem;font-weight:800;text-align:right;padding:7px 8px;border-left:1px solid #2d5480;min-width:80px">—</td>
-      <td class="tfr" style="background:#1e3a5f !important;min-width:80px;width:80px;border-left:2px solid #2d5480;"></td>
+      <td id="tot_check" class="sx-11 c-check-cell" style="font-weight:800">—</td>
+      <td class="sx-10 tfr" ></td>
     </tr>
   </tfoot>
 </table>
 </div>
 
 <?php if ($legacyCount > 0): ?>
-<div style="margin-top:12px;padding:10px 14px;border-radius:8px;background:#FFFBEB;border:1px solid #FCD34D;font-family:var(--font-m);font-size:.7rem;color:#92400E;line-height:1.6">
+<div class="sx-9" style="color:#92400E">
   ⚠ <strong><?= $legacyCount ?> manual (legacy) row<?= $legacyCount===1?'':'s' ?></strong> in <?= $monthNames[$fMonth] ?> <?= $fYear ?> were typed in by hand before auto-posting.
   They still recompute VAT themselves (so a Non-VAT purchase can show a VAT/net split and a CHECK difference) and can duplicate Disbursement entries.
-  <button type="button" onclick="rebuildMonth()" style="margin-left:6px;padding:4px 12px;border:1px solid #D97706;border-radius:6px;background:#fff;color:#92400E;font-weight:700;cursor:pointer;font-size:.68rem">↻ Rebuild <?= $monthNames[$fMonth] ?> from Disbursement</button>
+  <button type="button" onclick="rebuildMonth()" class="sx-8" style="color:#92400E;font-weight:700">↻ Rebuild <?= $monthNames[$fMonth] ?> from Disbursement</button>
 </div>
 <?php endif; ?>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
-  <span style="font-family:var(--font-m);font-size:.68rem;color:var(--subtext2)">🔒 View-only · rows with 🔗 are posted automatically from <a href="stella_disbursement.php" style="color:#1565C0;font-weight:700">Stella Disbursement</a> (gross amount, column chosen per <a href="stella_acc_title.php" style="color:#1565C0;font-weight:700">Account Title</a>).</span>
+<div class="sx-7">
+  <span class="sx-6" style="color:var(--subtext2)">🔒 View-only · rows with 🔗 are posted automatically from <a href="stella_disbursement.php" style="color:#1565C0;font-weight:700">Stella Disbursement</a> (gross amount, column chosen per <a href="stella_acc_title.php" style="color:#1565C0;font-weight:700">Account Title</a>).</span>
 </div>
 
 <?php
@@ -807,7 +608,7 @@ function renderRow(array $r, string $rid): string {
 
     $html  = '<td class="td-chk"><input type="checkbox" class="row-chk" data-col="selected_for_cf" '.($isSelected?'checked':'').' onchange="onRowCheck(this)"></td>';
     $html .= '<td class="td-date">';
-    $html .= '<input type="date" class="sei txt" style="width:100%;text-align:center;font-size:.62rem" data-col="expense_date" value="'.$date.'" oninput="rowChanged(this)">';
+    $html .= '<input type="date" class="sx-4 sei txt" data-col="expense_date" value="'.$date.'" oninput="rowChanged(this)">';
     $html .= '</td>';
 
     // Text cols
@@ -845,10 +646,10 @@ function renderRow(array $r, string $rid): string {
     // Actions (CHECK + buttons merged into single sticky cell)
     $isNew = empty($r['id']);
     // Check cell
-    $html .= '<td class="c-check-cell" style="position:sticky;right:80px;z-index:9;min-width:80px;text-align:right;padding:6px 8px;border:1px solid #e3e6ea;background:#fff"><span class="chk-val" style="font-family:var(--font-m);font-size:.72rem;font-weight:700">—</span></td>';
+    $html .= '<td class="sx-3 c-check-cell" ><span class="sx-2 chk-val" style="font-weight:700">—</span></td>';
 
     // Actions — view-only: just show where the row came from
-    $html .= '<td class="td-act" style="font-family:var(--font-m);font-size:.58rem;text-align:center;color:#6b7280">'
+    $html .= '<td class="sx-5 td-act" style="color:#6b7280">'
           .  ($linked ? '<span title="Posted automatically from Stella Disbursement entry #'.(int)$r['disbursement_id'].'">🔗 #'.(int)$r['disbursement_id'].'</span>' : '<span title="Entered manually before auto-posting">legacy</span>')
           .  '</td>';
 
@@ -1127,7 +928,7 @@ function addRow() {
 function buildNewRowHTML(date) {
   let h = '';
   h += `<td class="td-chk"><input type="checkbox" class="row-chk" data-col="selected_for_cf" onchange="onRowCheck(this)"></td>`;
-  h += `<td class="td-date"><input type="date" class="sei txt" style="width:100%;text-align:center;font-size:.62rem" data-col="expense_date" value="${date}" oninput="rowChanged(this)"></td>`;
+  h += `<td class="td-date"><input type="date" class="sx-4 sei txt" data-col="expense_date" value="${date}" oninput="rowChanged(this)"></td>`;
   const txtCols = {voucher_no:'c-info col-txt-sm',tin:'c-info col-txt-sm',company_name:'c-info col-txt-lg',address:'c-info col-txt-lg',particulars:'c-info col-txt-lg',document_type:'c-info col-txt-md',document_no:'c-info col-txt-md'};
   for (const [col,cls] of Object.entries(txtCols)) {
     if (col === 'tin' || col === 'company_name') {
@@ -1146,7 +947,7 @@ function buildNewRowHTML(date) {
     h += `<td class="c-cat"><input type="number" step="0.01" class="sei" data-col="${col}" value="" placeholder="0.00" oninput="rowChanged(this)"></td>`;
   });
   h += `<td class="c-total"><input type="number" step="0.01" class="sei calc bold" data-col="row_total" value="" readonly tabindex="-1"></td>`;
-  h += `<td class="c-check-cell" style="position:sticky;right:80px;z-index:9;min-width:80px;text-align:right;padding:6px 8px;border:1px solid #e3e6ea;background:#fff"><span class="chk-val" style="font-family:var(--font-m);font-size:.72rem;font-weight:700">—</span></td>`;
+  h += `<td class="sx-3 c-check-cell" ><span class="sx-2 chk-val" style="font-weight:700">—</span></td>`;
   h += `<td class="td-act"><button class="bsv" onclick="saveRow(this)">Save</button></td>`;
   return h;
 }
@@ -1282,7 +1083,7 @@ async function doAC(inp) {
     const res  = await fetch('stella_expenses.php?vendor_lookup=1&q=' + encodeURIComponent(q));
     const data = await res.json();
     if (!data.length) {
-      list.innerHTML = '<div class="ac-item" style="color:#6b7280;cursor:default"><div class="ac-name">No vendor found</div><div class="ac-tin">Add to Vendor Masterlist first</div></div>';
+      list.innerHTML = '<div class="sx-1 ac-item" style="color:#6b7280"><div class="ac-name">No vendor found</div><div class="ac-tin">Add to Vendor Masterlist first</div></div>';
       list.classList.add('open'); return;
     }
     list.innerHTML = data.map(v => `

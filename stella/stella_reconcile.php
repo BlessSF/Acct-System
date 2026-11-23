@@ -197,102 +197,11 @@ $fmt = fn($n) => number_format((float)$n, 2);
 
 $pageTitle  = 'Stella Reconcile';
 $activePage = 'stella_reconcile';
+$bodyClass = 'sp-stella_reconcile';
 include '../layout.php';
 ?>
 
-<style>
-.rc-header-card {
-  background: linear-gradient(135deg, #1e3060 0%, #0f2045 100%);
-  border-radius: var(--radius); padding: 20px 26px 16px;
-  margin-bottom: 18px; display: flex; align-items: flex-start;
-  justify-content: space-between; flex-wrap: wrap; gap: 12px;
-}
-.rc-header-card .eyebrow {
-  font-family: var(--font-m); font-size: .58rem; text-transform: uppercase;
-  letter-spacing: .14em; color: rgba(255,255,255,.45); margin-bottom: 4px;
-}
-.rc-header-card .title { font-size: 1.2rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
-.rc-header-card .subtitle { font-family: var(--font-m); font-size: .67rem; color: rgba(255,255,255,.5); margin-top: 4px; }
-
-.rc-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
-
-.rc-wrap { max-width: 720px; margin: 0 auto; }
-.rc-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); box-shadow: 0 2px 12px rgba(0,0,0,.06);
-  overflow: hidden;
-}
-
-.rc-title-row { background: #1e3060; padding: 14px 28px; text-align: center; }
-.rc-title-row .rc-main-title {
-  font-size: 1rem; font-weight: 800; color: #fff;
-  letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-m);
-}
-
-.rc-section-row { background: #f8f9fb; padding: 10px 28px; border-bottom: 1px solid var(--border); }
-.rc-section-row .rc-section-title {
-  font-family: var(--font-m); font-size: .68rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .1em; color: var(--subtext2);
-}
-
-.rc-row {
-  display: flex; align-items: center; padding: 0 28px;
-  border-bottom: 1px solid #f0f2f5; min-height: 46px; transition: background .1s;
-}
-.rc-row:hover { background: #fafbfc; }
-
-.rc-label { flex: 1; font-size: .82rem; color: var(--text); font-weight: 500; }
-.rc-label.bold { font-weight: 700; }
-
-.rc-input-wrap { display: flex; align-items: center; }
-.rc-input {
-  width: 150px; padding: 7px 12px; text-align: right;
-  font-family: var(--font-m); font-size: .82rem; color: var(--text);
-  background: #fff; border: 1px solid var(--border); border-radius: 7px;
-  outline: none; transition: border-color .15s, box-shadow .15s;
-}
-.rc-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,123,92,.08); }
-.rc-input.manual-field { background: #fffbeb; border-color: rgba(217,119,6,.25); }
-.rc-input.auto-field {
-  background: #f0f4ff; color: #3b5bdb; font-weight: 700;
-  cursor: default; border-color: rgba(59,91,219,.2);
-}
-.auto-badge {
-  font-family: var(--font-m); font-size: .58rem;
-  color: var(--accent); margin-left: 8px;
-  background: rgba(15,123,92,.08); padding: 2px 7px;
-  border-radius: 10px; border: 1px solid rgba(15,123,92,.15);
-  white-space: nowrap;
-}
-
-.rc-total {
-  display: flex; align-items: center; padding: 12px 28px;
-  border-top: 2px solid var(--border2); border-bottom: 1px solid var(--border);
-  background: #f8f9fb;
-}
-.rc-total-label { flex: 1; font-size: .85rem; font-weight: 700; font-style: italic; color: var(--text); }
-.rc-total-val { font-family: var(--font-m); font-size: 1rem; font-weight: 800; min-width: 150px; text-align: right; }
-
-.rc-variance-block { padding: 14px 28px; text-align: center; }
-.rc-variance-label {
-  font-family: var(--font-m); font-size: .68rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .1em; color: var(--subtext2);
-  margin-bottom: 6px;
-}
-.rc-variance-val { font-family: var(--font-m); font-size: 1.6rem; font-weight: 800; }
-.rc-variance-note { font-family: var(--font-m); font-size: .66rem; color: var(--subtext); margin-top: 6px; }
-
-.rc-save-status { font-family: var(--font-m); font-size: .72rem; color: var(--subtext); }
-.toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
-
-.rc-debug-box {
-  max-width: 720px; margin: 0 auto 16px; padding: 10px 16px;
-  border-radius: 8px; font-family: var(--font-m); font-size: .68rem;
-  line-height: 1.6;
-}
-.rc-debug-box.ok    { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
-.rc-debug-box.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <!-- Page Header -->
 <div class="rc-header-card">
@@ -301,21 +210,20 @@ include '../layout.php';
     <div class="title">Bank Reconciliation</div>
     <div class="subtitle">Bank Side vs Book Side — Ending Balance per Books auto-pulls from Cashflow Balance's running total</div>
   </div>
-  <span style="background:rgba(255,255,255,.1);color:#fff;padding:5px 14px;border-radius:20px;
-               font-family:var(--font-m);font-size:.65rem;font-weight:600;align-self:flex-start">
+  <span class="sx-6" style="color:#fff">
     📌 Stella
   </span>
 </div>
 
 <!-- Controls -->
 <div class="rc-controls">
-  <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <select name="month" class="form-control" style="max-width:140px" onchange="this.form.submit()">
+  <form method="GET" class="sx-5">
+    <select name="month" class="sx-4 form-control" onchange="this.form.submit()">
       <?php for($m=1;$m<=12;$m++): ?>
       <option value="<?=$m?>" <?=$fMonth==$m?'selected':''?>><?= $months[$m-1] ?></option>
       <?php endfor; ?>
     </select>
-    <select name="year" class="form-control" style="max-width:100px" onchange="this.form.submit()">
+    <select name="year" class="sx-3 form-control" onchange="this.form.submit()">
       <?php for($y=date('Y')-5;$y<=date('Y')+10;$y++): ?>
       <option value="<?=$y?>" <?=$fYear==$y?'selected':''?>><?=$y?></option>
       <?php endfor; ?>
@@ -351,7 +259,7 @@ include '../layout.php';
   <div class="rc-row">
     <div class="rc-label">For the month Ending</div>
     <div class="rc-input-wrap">
-      <span class="rc-input" style="background:#f8f9fb;color:var(--subtext2);font-weight:700;text-align:right;border-color:transparent"><?= $displayDate ?></span>
+      <span class="sx-2 rc-input" style="color:var(--subtext2)"><?= $displayDate ?></span>
     </div>
   </div>
 
@@ -382,7 +290,7 @@ include '../layout.php';
   <div class="rc-total">
     <div class="rc-total-label">Adjusted Bank Balance</div>
     <div class="rc-input-wrap">
-      <input type="text" class="rc-input auto-field" style="font-weight:800" id="adjusted_bank_balance" value="<?= number_format($adjBank,2,'.','') ?>" readonly tabindex="-1">
+      <input type="text" class="sx-1 rc-input auto-field" id="adjusted_bank_balance" value="<?= number_format($adjBank,2,'.','') ?>" readonly tabindex="-1">
     </div>
   </div>
 
@@ -416,7 +324,7 @@ include '../layout.php';
   <div class="rc-total">
     <div class="rc-total-label">Adjusted Book Balance</div>
     <div class="rc-input-wrap">
-      <input type="text" class="rc-input auto-field" style="font-weight:800" id="adjusted_book_balance" value="<?= number_format($adjBook,2,'.','') ?>" readonly tabindex="-1">
+      <input type="text" class="sx-1 rc-input auto-field" id="adjusted_book_balance" value="<?= number_format($adjBook,2,'.','') ?>" readonly tabindex="-1">
     </div>
   </div>
 

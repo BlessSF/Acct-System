@@ -464,7 +464,7 @@ body[class*="_sales_report"] input[type=number]::-webkit-outer-spin-button,
 body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none!important;margin:0!important}
 </style>
 </head>
-<body class="page-<?= htmlspecialchars($activePage ?? '', ENT_QUOTES) ?>">
+<body class="page-<?= htmlspecialchars($activePage ?? '', ENT_QUOTES) ?><?= !empty($bodyClass) ? ' ' . htmlspecialchars($bodyClass, ENT_QUOTES) : '' ?>">
 
 <!-- ── Sidebar ── -->
 <aside class="sidebar">
