@@ -74,65 +74,92 @@ $activePage = 'stella_cashflow_sheet';
 include '../layout.php';
 ?>
 <style>
-.cf{--cf-line:#e3e6ea;--cf-soft:#f6f8fa;--cf-mut:#6b7280}
-.cf-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.cf-tabs{display:flex;gap:6px;flex-wrap:wrap}
-.cf-tab{border:1px solid var(--cf-line);background:#fff;color:#374151;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.02em;font-family:inherit}
-.cf-tab:hover{background:var(--cf-soft)}
-.cf-pen{margin-left:6px;opacity:.8;font-size:12px}
-.cf-tabedit{border:1px solid var(--accent)!important;background:#fff!important;border-radius:10px;padding:8px 12px!important;font-size:13px;font-weight:600;width:auto!important;text-transform:none}
-.cf-tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.cf-save{font-size:12.5px;color:var(--cf-mut);display:flex;align-items:center;gap:8px}
-.cf-save i{width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block}
+.cf{--ink:#111827;--mut:#6b7280;--line:#e5e8ec;--line2:#d9dee5;--soft:#f8f9fb;--ac:var(--accent);--acs:#eef6f1;--acl:#cfe6da;color:var(--ink)}
+/* ── tabs: underline style, like sheet tabs ── */
+.cf-top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:22px}
+.cf-tabs{display:flex;gap:2px;flex-wrap:wrap}
+.cf th,.cf td{font-family:inherit}
+.cf-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px}
+.cf-intro .cf-sub{margin:0}
+.cf-tab{border:0;background:none;color:var(--mut);padding:12px 15px;font-size:12.5px;font-weight:600;letter-spacing:.04em;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:0;transition:color .12s,border-color .12s}
+.cf-tab:hover{color:var(--ink)}
+.cf-tab.on{color:var(--ink);border-bottom-color:var(--ac)}
+.cf-pen{margin-left:7px;opacity:.45;font-size:12px}.cf-pen:hover{opacity:1;color:var(--ac)}
+.cf-tabedit{border:1px solid var(--ac)!important;background:#fff!important;border-radius:8px;padding:7px 11px!important;font-size:12.5px;font-weight:600;width:auto!important;margin-bottom:6px}
+.cf-save{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:7px;padding:0 2px 12px}
+.cf-save i{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block}
 .cf-save.busy i{background:#f59e0b}.cf-save.err i{background:#dc3545}
-.cf-card{background:#fff;border:1px solid var(--cf-line);border-radius:14px;padding:18px 20px;margin-bottom:18px}
-.cf-h{font-size:15px;font-weight:700;margin:0 0 2px}.cf-sub{font-size:12.5px;color:var(--cf-mut);margin:0 0 14px}
-.cf-scroll{overflow-x:auto;border:1px solid var(--cf-line);border-radius:12px}
-.cf-tbl{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
-.cf-tbl th,.cf-tbl td{padding:6px 8px;border-bottom:1px solid var(--cf-line);vertical-align:middle;background:#fff}
-.cf-tbl thead th{background:var(--cf-soft);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:#4b5563;text-align:left;white-space:nowrap}
-.cf-tbl td.lab,.cf-tbl th.lab{position:sticky;left:0;z-index:2;min-width:230px;max-width:230px;border-right:1px solid var(--cf-line);background:#fff;font-weight:500}
-.cf-tbl thead th.lab{background:var(--cf-soft);z-index:3}
-.cf-tbl tr.sec td{background:var(--accent);color:#fff;font-weight:700;font-size:11.5px;letter-spacing:.06em;padding:7px 10px}
-.cf-tbl tr.sec td.lab{background:var(--accent)}
-.cf-tbl tr.tot td{background:rgba(15,123,92,.08);font-weight:700}
-.cf-tbl tr.tot td.lab{background:#eef7f3}
-.cf-tbl tr.big td{background:#0f2a22;color:#fff;font-weight:700}
-.cf-tbl tr.big td.lab{background:#0f2a22}
-.cf-tbl tr.sub td.lab{font-weight:700;color:#374151;background:var(--cf-soft)}
-.cf-tbl tr.sub td{background:var(--cf-soft)}
+/* ── cards ── */
+.cf-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:20px}
+.cf-h{font-size:15px;font-weight:700;margin:0 0 3px;letter-spacing:-.01em}
+.cf-sub{font-size:12.5px;color:var(--mut);margin:0 0 16px;line-height:1.5}
+.cf-ttl{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+.cf-note{font-size:12px;color:var(--mut);margin-top:16px;line-height:1.65;padding-top:14px;border-top:1px dashed var(--line2)}
+.cf-pill{font-size:12px;color:var(--mut);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin-left:6px;white-space:nowrap}
+.cf-pill b{color:var(--ink);font-variant-numeric:tabular-nums;margin-left:4px}
+/* ── KPI strip ── */
+.cf-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:18px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff}
+.kpi span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:600;margin-bottom:6px}
+.kpi b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi.hi{background:var(--acs);border-color:var(--acl)}.kpi.hi b{color:var(--ac)}
+.kpi.warn{background:#fff8ec;border-color:#f3d9a4}.kpi.warn b{color:#b45309}
+.kpi b.cf-neg{color:#dc3545}
+/* ── grid table ── */
+.cf-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;width:fit-content;max-width:100%}
+.cf-tbl{border-collapse:separate;border-spacing:0;font-size:13px;width:max-content}
+.cf-tbl th,.cf-tbl td{padding:2px 10px;border-bottom:1px solid #f0f2f5;vertical-align:middle;background:#fff;height:36px}
+.cf-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);text-align:left;white-space:nowrap;padding:10px;border-bottom:1px solid var(--line2);background:var(--soft);height:auto}
+.cf-tbl td.lab,.cf-tbl th.lab{position:sticky;left:0;z-index:2;width:262px;min-width:262px;max-width:262px;border-right:1px solid var(--line);font-weight:500;color:#1f2937;padding-left:16px;background:#fff}
+.cf-tbl thead th.lab{background:var(--soft);z-index:3}
+.cf-tbl .c{width:230px;min-width:230px}
+.cf-tbl tbody tr:not(.sec):not(.tot):not(.big):not(.sub):hover td{background:#fbfcfd}
+.cf-tbl tr.sec td{background:var(--soft);color:var(--ac);font-weight:700;font-size:10.5px;letter-spacing:.12em;height:auto;padding:14px 10px 8px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
+.cf-tbl tr.sec td.lab{background:var(--soft);padding-left:16px}
+.cf-tbl tr.tot td{font-weight:700;background:#fff;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+.cf-tbl tr.tot td.lab{background:#fff}
+.cf-tbl tr.tot td>div,.cf-tbl tr.big td>div{padding-right:10px}
+.cf-tbl tr.sub td{background:#fbfcfd;color:#374151;font-weight:600}
+.cf-tbl tr.sub td.lab{background:#fbfcfd}
+.cf-tbl tr.big td{background:var(--acs);font-weight:700;font-size:14px;border-top:1px solid var(--acl);border-bottom:1px solid var(--acl);height:44px}
+.cf-tbl tr.big td.lab{background:var(--acs)}
+.cf-tbl tr.big td>div{color:var(--ac)}
 .cf-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.cf-tbl .c{min-width:150px}
-.cf input[type=text],.cf input[type=date],.cf input[type=month],.cf textarea{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;padding:6px 8px;border-radius:8px;font:inherit;font-size:13px;color:inherit}
-.cf input:hover,.cf textarea:hover{border-color:var(--cf-line);background:#fff}
-.cf input:focus,.cf textarea:focus{outline:0;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(15,123,92,.12)}
-.cf input.n{text-align:right;font-variant-numeric:tabular-nums}
-.cf input.n::placeholder{color:#9aa3af;font-style:italic}
-.cf textarea{min-height:70px;resize:vertical}
+.cf-tbl td>div[data-c]{text-align:right;font-variant-numeric:tabular-nums}
+/* ── inputs ── */
+.cf input[type=text],.cf input[type=date],.cf input[type=month],.cf textarea{width:100%;box-sizing:border-box;border:1px solid transparent;background:transparent;padding:6px 9px;border-radius:7px;font:inherit;font-size:13px;color:inherit;transition:border-color .12s,box-shadow .12s,background .12s}
+.cf input.n{text-align:right;font-variant-numeric:tabular-nums;background:#fafbfc;border-color:#edf0f3}
+.cf input:hover,.cf textarea:hover{border-color:#cdd3db;background:#fff}
+.cf input:focus,.cf textarea:focus{outline:0;border-color:var(--ac);background:#fff;box-shadow:0 0 0 3px rgba(15,123,92,.13)}
+.cf input.n::placeholder{color:#b3bac4;font-style:normal;font-size:12.5px}
+.cf input[type=date],.cf input[type=month]{color:#374151}
+.cf-tbl thead input[type=date]{background:#fff;border-color:var(--line);font-weight:600;color:var(--ink)}
+.cf textarea{min-height:72px;resize:vertical;background:#fafbfc;border-color:#edf0f3}
 .cf-item{display:flex;gap:4px;align-items:center;margin-bottom:3px}
-.cf-item input:first-child{flex:1;min-width:0}.cf-item input.n{width:96px;flex:none}
-.cf-x{border:0;background:transparent;color:#9aa3af;cursor:pointer;font-size:15px;line-height:1;padding:2px 5px;border-radius:6px}
+.cf-item input:first-child{flex:1;min-width:0}.cf-item input.n{width:100px;flex:none}
+.cf-x{border:0;background:transparent;color:#a3acb9;cursor:pointer;font-size:15px;line-height:1;padding:3px 6px;border-radius:6px;font-family:inherit}
 .cf-x:hover{background:#fde8ea;color:#dc3545}
-.cf-add{border:1px dashed #b9c1cc;background:#fff;color:var(--accent);font-weight:600;font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit}
-.cf-add:hover{background:rgba(15,123,92,.07);border-color:var(--accent)}
-.cf-btn{border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;font-size:13px;padding:8px 16px;border-radius:10px;cursor:pointer;font-family:inherit}
-.cf-btn.ghost{background:#fff;color:var(--accent)}
-.cf-mini{font-size:11px;border:1px solid var(--cf-line);background:#fff;border-radius:6px;padding:2px 7px;cursor:pointer;color:var(--accent);font-weight:600;font-family:inherit}
+.cf-add{border:1px dashed #c3cad5;background:transparent;color:var(--ac);font-weight:600;font-size:12px;padding:5px 11px;border-radius:7px;cursor:pointer;font-family:inherit}
+.cf-add:hover{background:var(--acs);border-color:var(--ac)}
+.cf-btn{border:1px solid var(--ac);background:var(--ac);color:#fff;font-weight:600;font-size:13px;padding:8px 15px;border-radius:8px;cursor:pointer;font-family:inherit}
+.cf-btn:hover{filter:brightness(.94)}
+.cf-mini{font-size:11px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--ac);font-weight:600;font-family:inherit}
+.cf-mini:hover{background:var(--acs)}
 .cf-pos{color:#0f7b5c}.cf-neg{color:#dc3545}
-.cf-fsgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px;align-items:start}
+/* ── month blocks (CASHFLOW/FS) ── */
+.cf-fsgrid{display:grid;grid-template-columns:1fr 1fr;gap:22px 28px;align-items:start}
 .cf-fsgrid>div:nth-child(3){grid-column:1/-1}
-.cf-mini-tbl input.n{min-width:150px}
 @media(max-width:1000px){.cf-fsgrid{grid-template-columns:1fr}}
-.cf-mini-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.cf-mini-tbl td,.cf-mini-tbl th{padding:4px 6px;border-bottom:1px solid var(--cf-line)}
-.cf-mini-tbl th{background:var(--cf-soft);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#4b5563;text-align:left}
-.cf-mini-tbl td.k{font-weight:600;font-size:12px;color:#374151;white-space:nowrap}
-.cf-mini-tbl tr.tot td{background:rgba(15,123,92,.08);font-weight:700}
-.cf-mini-tbl tr.big td{background:#0f2a22;color:#fff;font-weight:700}
-.cf-mini-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.cf-ttl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-.cf-ttl input{font-weight:700;font-size:15px;width:auto}
-.cf-note{font-size:12px;color:var(--cf-mut);margin-top:10px}
+.cf-mini-tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cf-mini-tbl td,.cf-mini-tbl th{padding:2px 10px;border-bottom:1px solid #f0f2f5;background:#fff;height:36px}
+.cf-mini-tbl tr:last-child td{border-bottom:0}
+.cf-mini-tbl th{background:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ac);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line2);height:auto;font-weight:700}
+.cf-mini-tbl td.k{font-weight:500;font-size:12.5px;color:#374151;white-space:nowrap;padding-left:14px}
+.cf-mini-tbl tr.tot td{background:#fff;font-weight:700;border-top:1px solid var(--line2)}
+.cf-mini-tbl tr.big td{background:var(--acs);font-weight:700;color:var(--ac);border-top:1px solid var(--acl);height:42px}
+.cf-mini-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-right:16px}
+.cf-mini-tbl input.n{min-width:150px}
+.cf-mini-tbl thead th input,.cf-mini-tbl input[type=date]{font-size:12.5px}
 .cf-badge{font-size:10px;background:#e7f3ee;color:#0f7b5c;border-radius:5px;padding:1px 6px;margin-left:5px;font-weight:700}
 </style>
 
@@ -213,7 +240,7 @@ include '../layout.php';
     if (cls === 'n' && has(v)) { var r = evalExpr(v); if (!isNaN(r)) v = fmt(r); }
     return '<input type="' + (type || 'text') + '" data-p="' + path + '" class="' + (cls || '') + '" value="' + esc(v == null ? '' : v) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
   }
-  function numIn(path, ph) { return inp(path, 'n', ph || '', 'text').replace('<input ', '<input inputmode="decimal" '); }
+  function numIn(path, ph) { return inp(path, 'n', ph || '0.00', 'text').replace('<input ', '<input inputmode="decimal" '); }
 
   // ── withdrawals helpers ─────────────────────────────────
   function wdSecTotal(sec) { return sec.rows.reduce(function (a, r) { return a + N(r.a); }, 0); }
@@ -241,10 +268,14 @@ include '../layout.php';
     return hit ? hit.r : null;
   }
 
+  function kpi(label, id, cls) { return '<div class="kpi' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><b data-c="' + id + '">0.00</b></div>'; }
+  function setK(id, v) { var el = document.querySelector('[data-c="' + id + '"]'); if (el) { el.textContent = fmt(v); el.classList.toggle('cf-neg', v < 0); } }
+
   // ── render: balance sheet (MARCH 30 / CASH-FLOW) ────────
   function renderBs(key, title, sub) {
     var cols = S[key].cols, h = '';
     h += '<div class="cf-card"><div class="cf-ttl"><div><div class="cf-h" style="margin-left:-8px;min-width:520px">' + inp('names.' + key + 't', '', title) .replace('<input ', '<input style="font-size:15px;font-weight:700" ') + '</div><div class="cf-sub">' + sub + '</div></div><button class="cf-btn" data-act="bsaddcol" data-k="' + key + '">+ Add column</button></div>';
+    h += '<div class="cf-kpis">' + kpi('Bank balances', 'kpi:' + key + ':bt') + kpi('Receivables', 'kpi:' + key + ':at') + kpi('Payables', 'kpi:' + key + ':pt') + kpi('Extra fund', 'kpi:' + key + ':ef', 'hi') + kpi('Increase in cash', 'kpi:' + key + ':inc') + '</div>';
     h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">DATE</th>';
     cols.forEach(function (c, i) { h += '<th class="c" style="min-width:270px"><div style="display:flex;gap:4px;align-items:center">' + inp(key + '.cols.' + i + '.date', '', '', 'date') + '<button class="cf-x" title="Remove column" data-act="bsdelcol" data-k="' + key + '" data-i="' + i + '">×</button></div></th>'; });
     h += '</tr></thead><tbody>';
@@ -283,6 +314,7 @@ include '../layout.php';
   }
   function recalcBs(key) {
     var calc = bsCalc(key);
+    if (calc.length) { var L = calc[calc.length - 1]; ['bt','at','pt','ef','inc'].forEach(function (id) { setK('kpi:' + key + ':' + id, L[id]); }); }
     calc.forEach(function (r, i) {
       ['bt','at','rel','pay','pt','ef','inc'].forEach(function (id) {
         var el = document.querySelector('[data-c="' + key + ':' + i + ':' + id + '"]');
@@ -295,11 +327,11 @@ include '../layout.php';
 
   // ── render: BREAKDOWN VS FS ─────────────────────────────
   function renderBd() {
-    var h = '<div class="cf-card"><div class="cf-ttl"><div style="flex:1">' + inp('bd.title', '', 'Title') + '<div class="cf-sub" style="padding-left:8px">Monthly inventory, bank balance, expenses and pull-out used for the Income Statement.</div></div></div>';
+    var h = '<div class="cf-card"><div class="cf-ttl"><div style="flex:1">' + inp('bd.title', '', 'Title').replace('<input ', '<input style="font-size:15px;font-weight:700" ') + '<div class="cf-sub" style="padding-left:8px">Monthly inventory, bank balance, expenses and pull-out used for the Income Statement.</div></div></div>';
     h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">DATE</th><th>INVENTORY</th><th>BANK BALANCE</th><th>EXPENSES</th><th>PULL-OUT</th></tr></thead><tbody>';
     S.bd.rows.forEach(function (r, i) {
       h += '<tr><td class="lab">' + MONTHS[i] + '</td>' +
-        ['inv','bank','exp','pull'].map(function (k) { return '<td>' + numIn('bd.rows.' + i + '.' + k, 'amount or 1000+500') + '</td>'; }).join('') + '</tr>';
+        ['inv','bank','exp','pull'].map(function (k) { return '<td>' + numIn('bd.rows.' + i + '.' + k) + '</td>'; }).join('') + '</tr>';
     });
     h += '</tbody></table></div><div class="cf-note">Tip: amount boxes accept math, e.g. <b>1960965.07+386344.01</b> — press Tab and it turns into the total.</div></div>';
     return h;
@@ -316,9 +348,9 @@ include '../layout.php';
     return h;
   }
   function renderWd() {
-    var h = '<div class="cf-top" style="margin-bottom:12px"><div><div class="cf-h">WITHDRAWALS MONITORING</div><div class="cf-sub" style="margin:0">One block per month — the totals feed CF Statement/Cash-Flow pull-out and the CASHFLOW/FS tab.</div></div><button class="cf-btn" data-act="wdaddsec">+ Add month</button></div>';
+    var h = '<div class="cf-intro"><div><div class="cf-h">WITHDRAWALS MONITORING</div><div class="cf-sub" style="margin:0">One block per month — the totals feed CF Statement/Cash-Flow pull-out and the CASHFLOW/FS tab.</div></div><button class="cf-btn" data-act="wdaddsec">+ Add month</button></div>';
     S.wd.secs.forEach(function (s, si) {
-      h += '<div class="cf-card"><div class="cf-ttl"><div style="display:flex;align-items:center;gap:8px"><b style="font-size:13px">AS OF</b><div style="width:170px">' + inp('wd.secs.' + si + '.asof', '', '', 'date') + '</div><span class="cf-sub" style="margin:0">WITHDRAWALS BREAKDOWN</span></div><button class="cf-x" title="Remove this month" data-act="wddelsec" data-si="' + si + '">Remove ×</button></div>' + wdTable(si) + '</div>';
+      h += '<div class="cf-card"><div class="cf-ttl"><div style="display:flex;align-items:center;gap:8px"><b style="font-size:13px">AS OF</b><div style="width:170px">' + inp('wd.secs.' + si + '.asof', '', '', 'date') + '</div><span class="cf-sub" style="margin:0">WITHDRAWALS BREAKDOWN</span><span class="cf-pill">Total<b data-c="wd:' + si + ':tot"></b></span></div><button class="cf-x" title="Remove this month" data-act="wddelsec" data-si="' + si + '">Remove ×</button></div>' + wdTable(si) + '</div>';
     });
     return h;
   }
@@ -365,6 +397,7 @@ include '../layout.php';
   function renderCs() {
     var cols = S.cs.cols, h = '';
     h += '<div class="cf-card"><div class="cf-ttl"><div><div class="cf-h">CASHFLOW STATEMENT — STELLA FUSION BUFFET</div><div class="cf-sub">Enter every amount as a positive number — “Cash paid for” rows are subtracted automatically.</div></div><button class="cf-btn" data-act="csaddcol">+ Add month</button></div>';
+    h += '<div class="cf-kpis">' + kpi('Operations', 'kpi:cs:nops') + kpi('Investing', 'kpi:cs:ninv') + kpi('Financing', 'kpi:cs:nfin') + kpi('Cash at end of month', 'kpi:cs:end', 'hi') + kpi('Variance vs actual', 'kpi:cs:vari') + '</div>';
     h += '<div class="cf-scroll"><table class="cf-tbl"><thead><tr><th class="lab">For the month ending</th>' + cols.map(function (c, i) { return '<th class="c"><div style="display:flex;gap:4px;align-items:center">' + inp('cs.cols.' + i + '.date', '', '', 'date') + '<button class="cf-x" data-act="csdelcol" data-i="' + i + '">×</button></div></th>'; }).join('') + '</tr></thead><tbody>';
     function line(label, fn, cls) { h += '<tr class="' + (cls || '') + '"><td class="lab">' + label + '</td>' + cols.map(function (c, i) { return '<td>' + fn(c, i) + '</td>'; }).join('') + '</tr>'; }
     line('Cash at Beginning of Month', function (c, i) { return numIn('cs.cols.' + i + '.begin', i > 0 ? 'auto' : 'enter beginning cash'); }, 'sub');
@@ -384,7 +417,9 @@ include '../layout.php';
     return h;
   }
   function recalcCs() {
-    csCalc().forEach(function (r, i) {
+    var cc = csCalc();
+    if (cc.length) { var L = cc[cc.length - 1]; ['nops','ninv','nfin','end'].forEach(function (id) { setK('kpi:cs:' + id, L[id]); }); var kv = document.querySelector('[data-c="kpi:cs:vari"]'); if (kv) { kv.textContent = L.vari === null ? '—' : fmt(L.vari); kv.classList.toggle('cf-neg', L.vari !== null && L.vari < 0); } }
+    cc.forEach(function (r, i) {
       ['nops','ninv','nfin','inc','end','vari'].forEach(function (id) {
         var el = document.querySelector('[data-c="cs:' + i + ':' + id + '"]');
         if (!el) return;
@@ -418,12 +453,13 @@ include '../layout.php';
     return res;
   }
   function renderFs() {
-    var h = '<div class="cf-top" style="margin-bottom:12px"><div><div class="cf-h">CASHFLOW / FS — Income Statement vs Cashflow</div><div class="cf-sub" style="margin:0">One block per month. Bank, receivables and payables fill in from the CASH-FLOW tab (same month) and the pull-out from WITHDRAWALS MONITORING, unless you type over them.</div></div><button class="cf-btn" data-act="fsaddblk">+ Add month</button></div>';
+    var h = '<div class="cf-intro"><div><div class="cf-h">CASHFLOW / FS — Income Statement vs Cashflow</div><div class="cf-sub" style="margin:0">One block per month. Bank, receivables and payables fill in from the CASH-FLOW tab (same month) and the pull-out from WITHDRAWALS MONITORING, unless you type over them.</div></div><button class="cf-btn" data-act="fsaddblk">+ Add month</button></div>';
     S.fs.blocks.forEach(function (b, i) {
       var p = 'fs.blocks.' + i + '.v.';
       function row(label, key, ph) { return '<tr><td class="k">' + label + '</td><td>' + numIn(p + key, ph || '') + '</td></tr>'; }
       function calc(label, id, cls) { return '<tr class="' + (cls || 'tot') + '"><td class="k">' + label + '</td><td class="num" data-c="fs:' + i + ':' + id + '"></td></tr>'; }
       h += '<div class="cf-card"><div class="cf-ttl"><div style="display:flex;align-items:center;gap:10px"><b>STELLA — FOR THE MONTH OF</b><div style="width:170px">' + inp('fs.blocks.' + i + '.month', '', '', 'month') + '</div><b data-c="fs:' + i + ':lbl" style="color:var(--accent)"></b></div><button class="cf-x" data-act="fsdelblk" data-i="' + i + '">Remove ×</button></div>';
+      h += '<div class="cf-kpis">' + kpi('Net sale', 'fs:' + i + ':k_netSale') + kpi('Total net', 'fs:' + i + ':k_totalNet2') + kpi('Extra fund', 'fs:' + i + ':k_extra') + kpi('Net income', 'fs:' + i + ':k_netInc') + kpi('Variance', 'fs:' + i + ':k_vari', 'hi') + '</div>';
       h += '<div class="cf-fsgrid">';
       h += '<div><table class="cf-mini-tbl"><thead><tr><th colspan="2">INCOME STATEMENT</th></tr></thead><tbody>' +
         row('NET SALES', 'sales') + row('COGS', 'cogs') + row('SALES DISCOUNT', 'disc') + row('OPERATING EXPENSES', 'opex') + row('GENERAL EXPENSES', 'genex') + row('EXTRA EXPENSES', 'extraexp') +
@@ -453,8 +489,9 @@ include '../layout.php';
         el.textContent = fmt(r[id]);
         if (id === 'vari') { el.classList.toggle('cf-neg', false); el.style.color = ''; }
       });
+      [['netSale','k_netSale'],['totalNet2','k_totalNet2'],['extra','k_extra'],['netInc','k_netInc'],['vari','k_vari']].forEach(function (q) { setK('fs:' + i + ':' + q[1], r[q[0]]); });
       var l = document.querySelector('[data-c="fs:' + i + ':lbl"]'); if (l) l.textContent = b.month ? monthLabel(b.month) : '';
-      var set = function (k, val, text) { var e = document.querySelector('[data-p="fs.blocks.' + i + '.v.' + k + '"]'); if (e) e.placeholder = text; };
+      var set = function (k, val, text) { var e = document.querySelector('[data-p="fs.blocks.' + i + '.v.' + k + '"]'); if (e) e.placeholder = text || '0.00'; };
       set('bank', 0, r.link ? 'linked: ' + fmt(r.link.bt) : ''); set('recv', 0, r.link ? 'linked: ' + fmt(r.link.at) : ''); set('pay', 0, r.link ? 'linked: ' + fmt(r.link.pt) : '');
       set('begin', 0, r.prevExtra !== null ? 'auto: ' + fmt(r.prevExtra) : '');
     });
@@ -504,6 +541,7 @@ include '../layout.php';
     var t = e.target, p = t.getAttribute('data-p');
     if (!p) return;
     setP(p, t.value);
+    if (/^fs\.blocks\.\d+\.month$/.test(p) && t.value.length === 7) { render(); queueSave(); return; } // refresh the withdrawals panel for the chosen month
     recalc(); queueSave();
     // dependent tabs re-evaluate when shown; nothing else to refresh here
   });
