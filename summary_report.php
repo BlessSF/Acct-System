@@ -65,12 +65,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_quota'])) {
     $store  = isBranch() ? currentBranch() : trim($_POST['store_name'] ?? '');
     $month  = trim($_POST['report_month'] ?? '');
     $quota  = (float)($_POST['quota'] ?? 0);
+    $wdays  = isset($_POST['work_days']) ? max(1, min(31, (int)$_POST['work_days'])) : null;   // working days used for the Daily Sales Target
     if (!$store || !$month) { echo json_encode(['ok'=>false,'msg'=>'Missing data']); exit; }
     try {
         $pdo = getPDO();
         // Auto-add column if DB hasn't been migrated yet
         try {
             $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS quota_target decimal(12,2) NOT NULL DEFAULT 0.00");
+            $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS work_days tinyint(3) NOT NULL DEFAULT 5");
         } catch(Throwable $ignored) {}
         // ONE row per store + month. The table has no unique key, so every save used to add
         // ANOTHER row. Update the existing row in place and remove any leftover copies.
@@ -79,14 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_quota'])) {
         $cnt->execute([$store, $mDate]);
         $have = (int)$cnt->fetchColumn();
         if ($have > 0) {
-            $pdo->prepare("UPDATE summary_reports SET quota_target=?, created_by=? WHERE store_name=? AND report_month=?")
-                ->execute([$quota, currentUser()['name'], $store, $mDate]);
+            $pdo->prepare("UPDATE summary_reports SET quota_target=?, work_days=COALESCE(?, work_days), created_by=? WHERE store_name=? AND report_month=?")
+                ->execute([$quota, $wdays, currentUser()['name'], $store, $mDate]);
             if ($have > 1) {
                 $pdo->exec("DELETE FROM summary_reports WHERE store_name=" . $pdo->quote($store) . " AND report_month=" . $pdo->quote($mDate) . " LIMIT " . ($have - 1));
             }
         } else {
-            $pdo->prepare("INSERT INTO summary_reports (report_month,store_name,quota_target,created_by) VALUES (?,?,?,?)")
-                ->execute([$mDate, $store, $quota, currentUser()['name']]);
+            $pdo->prepare("INSERT INTO summary_reports (report_month,store_name,quota_target,work_days,created_by) VALUES (?,?,?,?,?)")
+                ->execute([$mDate, $store, $quota, $wdays ?? 5, currentUser()['name']]);
         }
         echo json_encode(['ok'=>true]);
     } catch(Throwable $e){ echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]); }
@@ -318,10 +320,14 @@ try {
             ON a.store_name=b.store_name AND a.report_month=b.report_month AND a.id<b.id
             WHERE a.store_name=? AND YEAR(a.report_month)=? AND MONTH(a.report_month)=?")->execute([$fStore, $fYear, $fMonth]);
     } catch(Throwable $ignored) {}
-    $quotaRow = $pdo->prepare("SELECT quota_target FROM summary_reports WHERE store_name=? AND YEAR(report_month)=? AND MONTH(report_month)=? ORDER BY id DESC LIMIT 1");
+    $pdo->exec("ALTER TABLE summary_reports ADD COLUMN IF NOT EXISTS work_days tinyint(3) NOT NULL DEFAULT 5");
+    $quotaRow = $pdo->prepare("SELECT quota_target, work_days FROM summary_reports WHERE store_name=? AND YEAR(report_month)=? AND MONTH(report_month)=? ORDER BY id DESC LIMIT 1");
     $quotaRow->execute([$fStore, $fYear, $fMonth]);
-    $savedQuota = (float)($quotaRow->fetchColumn() ?: 0);
+    $qr = $quotaRow->fetch(PDO::FETCH_ASSOC) ?: [];
+    $savedQuota = (float)($qr['quota_target'] ?? 0);
+    $savedWorkDays = (int)($qr['work_days'] ?? 5);
 } catch(Throwable $e) { $savedQuota = 0; }
+if (empty($savedWorkDays) || $savedWorkDays < 1) $savedWorkDays = 5;
 
 // ── Column definitions ────────────────────────────────────
 // [key, label, group, computed]
@@ -713,7 +719,10 @@ include 'layout.php';
     <div style="padding:16px 20px;background:#f0fdf4">
       <div style="font-family:var(--font-m);font-size:.58rem;text-transform:uppercase;letter-spacing:.09em;color:var(--subtext);margin-bottom:8px">Daily Sales Target</div>
       <div id="summDailyTarget" style="font-size:1.25rem;font-weight:800;color:#0f7b5c;font-family:var(--font-m)">—</div>
-      <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Needed ÷ 5 working days</div>
+      <div style="font-family:var(--font-m);font-size:.62rem;color:var(--subtext);margin-top:4px">Needed ÷
+        <input id="workDaysInput" type="text" inputmode="numeric" autocomplete="off" value="<?= (int)$savedWorkDays ?>" title="Number of working days left — you can change it"
+          style="width:44px;text-align:center;background:#fff;border:1px solid #d1d5db;border-radius:5px;font-family:var(--font-m);font-size:.72rem;font-weight:700;padding:2px 4px;outline:none"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,2);recalcSummary();queueQuotaSave()" onblur="if(!this.value||+this.value<1)this.value=1;recalcSummary();saveQuota()"> working days</div>
     </div>
 
   </div>
@@ -971,7 +980,7 @@ document.addEventListener('keydown', e=>{
 // Formulas from Excel:
 //   Sales %           = Total Store Gross / Monthly Quota   (=E5/E7)
 //   Needed to Reach   = Monthly Quota - Total Store Gross   (=E7-E5)
-//   Daily Target      = Needed / 5                          (=E9/5)
+//   Daily Target      = Needed / working days (typed in the panel, default 5)
 function recalcSummary() {
   const quota = numOf(document.getElementById('quotaInput')?.value);
 
@@ -1006,8 +1015,9 @@ function recalcSummary() {
     neededEl.style.color = needed <= 0 ? 'var(--accent)' : 'var(--accent3)';
   }
 
-  // Daily Sales Target = Needed / 5
-  const daily = needed <= 0 ? 0 : needed / 5;
+  // Daily Sales Target = Needed / working days (editable, saved)
+  const wd = Math.max(1, parseInt(document.getElementById('workDaysInput')?.value, 10) || 5);
+  const daily = needed <= 0 ? 0 : needed / wd;
   if(dailyEl) {
     dailyEl.textContent = needed <= 0
       ? '✓ Done!'
@@ -1029,6 +1039,7 @@ async function saveQuota() {
   fd.append('store_name', STORE);
   fd.append('report_month', <?=json_encode(sprintf('%04d-%02d',$fYear,$fMonth))?>);
   fd.append('quota', quota);
+  fd.append('work_days', Math.max(1, parseInt(document.getElementById('workDaysInput')?.value, 10) || 5));
   try {
     const res = await fetch('summary_report.php',{method:'POST',body:fd});
     const data = await res.json();
