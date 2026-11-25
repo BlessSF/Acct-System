@@ -382,7 +382,8 @@ include 'layout.php';
 /* ── Outer scroll container ── */
 .sr-outer {
   width: 100%; max-width: 100%;
-  overflow-x: auto; overflow-y: visible;
+  overflow-x: auto; overflow-y: auto;
+  max-height: calc(100vh - 330px); min-height: 300px;   /* table scrolls inside, so the header and the TOTAL row stay in view */
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -495,11 +496,15 @@ include 'layout.php';
   padding: 8px 6px; font-family: var(--font-m); font-size: .69rem; font-weight: 700;
   text-align: right; border: 1px solid #d1d5db;
   background: #f0f2f5; color: #1a1d23;
+  position: sticky; bottom: 0; z-index: 15;           /* TOTAL row stays at the bottom while you scroll */
+  box-shadow: 0 -2px 5px rgba(0,0,0,.08);
 }
 .sr-table tfoot td.tfl {
   text-align: center; color: var(--accent);
   font-size: .6rem; text-transform: uppercase; letter-spacing: .06em;
 }
+.sr-table tfoot td:first-child { left: 0; z-index: 35; }
+.sr-table tfoot td:last-child  { right: 0; z-index: 35; }
 
 /* ── Status dot ── */
 .sdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
