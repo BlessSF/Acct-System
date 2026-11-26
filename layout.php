@@ -541,9 +541,8 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     <a href="<?= BASE_URL ?>/stella/stella_cogs_monitoring.php" class="nav-item <?= ($activePage==='stella_cogs_monitoring')?'active':'' ?>">
       <span class="ni">📈</span> <?= isBranch() ? 'COGS Monitoring' : 'Stella COGS Monitoring' ?>
     </a>
-    <a href="<?= BASE_URL ?>/stella/stella_expenses.php" class="nav-item <?= ($activePage==='stella_expenses')?'active':'' ?>">
-      <span class="ni">🧾</span> <?= isBranch() ? 'Expenses' : 'Stella Expenses' ?>
-    </a>
+    <?php /* Stella Expenses is hidden from the sidebar on purpose — the page (stella/stella_expenses.php)
+             and its data still exist and keep feeding COGS PURC., the Income Statement, etc. */ ?>
     <a href="<?= BASE_URL ?>/summary_report.php" class="nav-item <?= ($activePage==='summary')?'active':'' ?>">
       <span class="ni">📊</span> <?= isBranch() ? 'Summary Report' : 'Stella Summary' ?>
     </a>
