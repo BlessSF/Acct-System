@@ -772,9 +772,11 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
     if (isset($isPages[$branch])):
         $ip = $isPages[$branch];
     ?>
+    <?php if ($branch !== 'Stella'): /* Stella uses only "Income Stmt (Acct Titles)" below; the old page still exists */ ?>
     <a href="<?= BASE_URL . '/' . ($ip['file']) ?>" class="nav-item <?= ($activePage===$ip['key'])?'active':'' ?>">
       <span class="ni">📑</span> Income Statement
     </a>
+    <?php endif; ?>
     <?php if ($branch === 'H'): ?>
     <a href="<?= BASE_URL ?>/h/h_income_statement_acct.php" class="nav-item <?= ($activePage==='h_income_statement_acct')?'active':'' ?>">
       <span class="ni">📑</span> Income Stmt (Acct Titles)
@@ -1093,7 +1095,8 @@ body[class*="_sales_report"] input[type=number]::-webkit-inner-spin-button{-webk
         'DemicLab-Main' => ['file'=>'demicmain/demiclab_income_statement.php',      'key'=>'demiclab_income_statement',      'label'=>'DemicLab-Main'],
         'DemicLab-Jaro' => ['file'=>'demiclab_jaro/demiclab_jaro_income_statement.php', 'key'=>'demiclab_jaro_income_statement', 'label'=>'DemicLab-Jaro'],
     ];
-    foreach ($isPages as $ip): ?>
+    foreach ($isPages as $ip):
+        if ($ip['key'] === 'stella_income_statement') continue;   // Stella: only the Acct Titles one below ?>
     <a href="<?= BASE_URL . '/' . ($ip['file']) ?>" class="nav-item <?= ($activePage===$ip['key'])?'active':'' ?>">
       <span class="ni">📑</span> <?= projectName($ip['label']) ?> Income Stmt
     </a>
