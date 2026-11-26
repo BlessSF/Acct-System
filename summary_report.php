@@ -414,6 +414,12 @@ include 'layout.php';
   font-size: .5rem; padding: 4px 6px;
   background: #ebedf0; letter-spacing: .05em; color: #374151;
 }
+/* Stella: keep BOTH header rows pinned — the column-name row sits just under
+   the group row instead of sliding over it (--grp-h is measured in JS) */
+.sr-table.sticky-2row thead tr.grp-row th { top: 0; z-index: 22; }
+.sr-table.sticky-2row thead tr:not(.grp-row) th { top: var(--grp-h, 21px); z-index: 21; }
+.sr-table.sticky-2row thead th.th-date,
+.sr-table.sticky-2row thead th.th-act { z-index: 30 !important; }
 
 /* ── Sticky columns ── */
 .th-date {
@@ -584,7 +590,7 @@ include 'layout.php';
 <!-- Spreadsheet -->
 <div class="sr-outer">
 <div class="scroll-hint">← Scroll horizontally to see all columns →</div>
-<table class="sr-table" id="srt">
+<table class="sr-table<?= $fStore === 'Stella' ? ' sticky-2row' : '' ?>" id="srt">
   <thead>
     <!-- Group label row -->
     <tr class="grp-row">
@@ -738,6 +744,17 @@ include 'layout.php';
 
 <script>
 const STORE = <?=json_encode($fStore)?>;
+
+// Stella: offset the second sticky header row by the group row's real height
+(function(){
+  const t = document.getElementById('srt');
+  if (!t || !t.classList.contains('sticky-2row')) return;
+  const grp = t.querySelector('thead tr.grp-row');
+  const setH = () => { if (grp) t.style.setProperty('--grp-h', grp.getBoundingClientRect().height + 'px'); };
+  setH();
+  window.addEventListener('resize', setH);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(setH);
+})();
 const COLS  = <?=json_encode(array_map(fn($c)=>['key'=>$c[0],'grp'=>$c[2],'comp'=>$c[3]],$COLS))?>;
 
 // ── number helpers: thousands separators (1,234.56) ───────
