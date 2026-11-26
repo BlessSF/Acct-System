@@ -219,10 +219,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
 }
 
 // ── AJAX: Purchases by Commi — save / delete one line ────────
+// STELLA (permanent line) = COGS Monitoring "Stella kitchen copy – billing to Commi" month total
+function commiStella(PDO $pdo, int $y, int $m): float {
+    return function_exists('expCommiAutoTotal') ? expCommiAutoTotal($pdo, 'stella_cogs', $y, $m) : 0.0;
+}
 function commiNet(PDO $pdo, int $y, int $m): float {
     $q = $pdo->prepare("SELECT COALESCE(SUM(sign * amount),0) FROM stella_cogs_commi WHERE c_year=? AND c_month=?");
     $q->execute([$y, $m]);
-    return round((float)$q->fetchColumn(), 2);
+    return round((float)$q->fetchColumn() + commiStella($pdo, $y, $m), 2);
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['ajax_commi_save']) || isset($_POST['ajax_commi_delete']))) {
     header('Content-Type: application/json');
@@ -235,6 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['ajax_commi_save']) |
             $id = 0;
         } else {
             $label = mb_substr(trim($_POST['label'] ?? ''), 0, 120);
+            if (strtoupper($label) === 'STELLA') { echo json_encode(['ok'=>false,'msg'=>'STELLA is automatic (from COGS Monitoring) — use another name']); exit; }
             $sign  = ((int)($_POST['sign'] ?? 1)) < 0 ? -1 : 1;
             $amt   = round((float)str_replace(',', '', $_POST['amount'] ?? '0'), 2);
             $sort  = (int)($_POST['sort_order'] ?? 0);
@@ -348,16 +353,18 @@ if ($prevCogsEnd !== false) {
 }
 
 // ── Purchases by Commi lines for the selected month ──────────
+// STELLA is now a permanent automatic line (from COGS Monitoring) → drop any typed STELLA copies so it isn't counted twice
+try { $pdo->exec("DELETE FROM stella_cogs_commi WHERE UPPER(TRIM(label))='STELLA'"); } catch (Throwable $e) {}
 $commiStmt = $pdo->prepare("SELECT id, label, sign, amount FROM stella_cogs_commi WHERE c_year=? AND c_month=? ORDER BY sort_order, id");
 $commiStmt->execute([$fYear, $fMonth]);
 $commiRows = $commiStmt->fetchAll(PDO::FETCH_ASSOC);
 if (!$commiRows) {   // starting lines, same as the Excel (saved once an amount is typed)
     $commiRows = [
-        ['id'=>0, 'label'=>'STELLA',         'sign'=>1,  'amount'=>0],
         ['id'=>0, 'label'=>'HERO',           'sign'=>-1, 'amount'=>0],
         ['id'=>0, 'label'=>'MRKTG EXPENSES', 'sign'=>-1, 'amount'=>0],
     ];
 }
+$commiStellaNow = commiStella($pdo, $fYear, $fMonth);
 $commiNetNow = commiNet($pdo, $fYear, $fMonth);
 
 // ── Load rows for selected month ──────────────────────────
@@ -549,8 +556,18 @@ include '../layout.php';
         <th style="width:90px"></th>
       </tr>
     </thead>
+    <tbody id="commiFixed">
+      <tr class="fixed" title="Automatic: total of STELLA KITCHEN COPY – BILLING TO COMMI (COGS) in COGS Monitoring for this month">
+        <td style="padding:8px 10px;font-weight:700">STELLA <span style="font-size:.58rem;font-weight:600;color:#0f7b5c;background:#dcfce7;border-radius:4px;padding:1px 6px;margin-left:4px">AUTO · COGS MONITORING</span></td>
+        <td style="padding:8px 10px;color:var(--subtext)">+ Add</td>
+        <td class="ro" id="commiStella" style="color:#0f3d2e;background:#ecfdf5;font-weight:700"><?= number_format($commiStellaNow,2) ?></td>
+        <td class="ro" id="commiOther"><?= number_format($purcAuto,2) ?></td>
+        <td class="ro" id="commiRowTotal" style="color:#0f3d2e;background:#f0fdf4"><?= number_format($commiStellaNow + $purcAuto,2) ?></td>
+        <td class="st" style="color:var(--muted)" title="This line is permanent">🔒</td>
+      </tr>
+    </tbody>
     <tbody id="commiBody">
-      <?php foreach ($commiRows as $i => $c): $less = (int)$c['sign'] < 0; ?>
+      <?php foreach ($commiRows as $c): $less = (int)$c['sign'] < 0; ?>
       <tr data-id="<?= (int)$c['id'] ?>" class="<?= $less ? 'less' : '' ?>">
         <td><input type="text" class="lbl" value="<?= htmlspecialchars($c['label']) ?>" placeholder="Name (e.g. STELLA)" oninput="commiChanged(this)"></td>
         <td><select class="sgn" onchange="commiChanged(this)">
@@ -560,12 +577,7 @@ include '../layout.php';
         <td><input type="text" class="amt" inputmode="decimal" autocomplete="off" placeholder="0.00"
                    value="<?= (float)$c['amount'] != 0 ? number_format((float)$c['amount'],2) : '' ?>"
                    oninput="commaLive(this);commiChanged(this)" onblur="fmtBlur(this)" onfocus="this.select()"></td>
-        <?php if ($i === 0): ?>
-        <td class="ro" id="commiOther"><?= number_format($purcAuto,2) ?></td>
-        <td class="ro" id="commiRowTotal" style="color:#0f3d2e;background:#f0fdf4"></td>
-        <?php else: ?>
         <td></td><td></td>
-        <?php endif; ?>
         <td class="st"><button class="commi-del" onclick="commiDelete(this)" title="Remove this line">✕</button> <span class="cst"><?= (int)$c['id'] ? '✓' : '' ?></span></td>
       </tr>
       <?php endforeach; ?>
@@ -673,21 +685,19 @@ const PREV_END_INV = <?= $prevEndInv ?>;
 const PURC_AUTO = <?= $purcNew ?>;
 let PURC_LEDGER = <?= $purcAuto + $commiNetNow ?>;   // Disbursement purchases + Purchases by Commi
 const OTHER_PURC = <?= $purcAuto ?>;
+const COMMI_STELLA = <?= $commiStellaNow ?>;   // permanent STELLA line, from COGS Monitoring
 
 // ── Purchases by Commi ────────────────────────────────────
 function commiRecalc() {
-  let net = 0, first = null;
+  let net = COMMI_STELLA;
   document.querySelectorAll('#commiBody tr').forEach(tr => {
     const s = parseInt(tr.querySelector('.sgn').value, 10) < 0 ? -1 : 1;
     const a = numOf(tr.querySelector('.amt').value);
     tr.classList.toggle('less', s < 0);
-    if (!first) first = a * s;
     net += s * a;
   });
   document.getElementById('commiNet').textContent = fmtN(net);
   document.getElementById('commiGrand').textContent = fmtN(net + OTHER_PURC);
-  const rt = document.getElementById('commiRowTotal');
-  if (rt) rt.textContent = first ? fmtN(first + OTHER_PURC) : '';
   PURC_LEDGER = net + OTHER_PURC;
   return net;
 }
@@ -731,15 +741,7 @@ async function commiDelete(btn) {
     fd.append('ajax_commi_delete', '1'); fd.append('year', CURR_YEAR); fd.append('month', CURR_MONTH); fd.append('id', id);
     try { const j = await (await fetch('stella_cogs.php', {method: 'POST', body: fd})).json(); if (!j.ok) return; applyState(j.rows); } catch (e) { return; }
   }
-  const body = tr.parentNode;
-  const wasFirst = tr === body.firstElementChild;
   tr.remove();
-  // keep the Other Purchases / Total cells on the first line
-  if (wasFirst && body.firstElementChild) {
-    const f = body.firstElementChild, tds = f.children;
-    tds[3].className = 'ro'; tds[3].id = 'commiOther'; tds[3].textContent = fmtN(OTHER_PURC);
-    tds[4].className = 'ro'; tds[4].id = 'commiRowTotal'; tds[4].style.cssText = 'color:#0f3d2e;background:#f0fdf4';
-  }
   commiRecalc(); updateKPIs();
 }
 function commiAdd() {
@@ -753,10 +755,6 @@ function commiAdd() {
     <td><input type="text" class="amt" inputmode="decimal" autocomplete="off" placeholder="0.00" oninput="commaLive(this);commiChanged(this)" onblur="fmtBlur(this)" onfocus="this.select()"></td>
     <td></td><td></td>
     <td class="st"><button class="commi-del" onclick="commiDelete(this)" title="Remove this line">✕</button> <span class="cst"></span></td>`;
-  if (!body.firstElementChild) {   // the very first line carries the Other Purchases / Total cells
-    tr.children[3].className = 'ro'; tr.children[3].id = 'commiOther'; tr.children[3].textContent = fmtN(OTHER_PURC);
-    tr.children[4].className = 'ro'; tr.children[4].id = 'commiRowTotal'; tr.children[4].style.cssText = 'color:#0f3d2e;background:#f0fdf4';
-  }
   body.appendChild(tr);
   tr.querySelector('.lbl').focus();
 }

@@ -267,6 +267,22 @@ const EXP_SYNC_DEFAULTS = EXP_SYNC_H_DEFAULTS;
  * Every month that already has a COGS row is refreshed too, which covers an entry
  * whose date was moved to another month or that was deleted.
  */
+// Permanent "Purchases by Commi" line that is read live from another page (not typed):
+//   stella_cogs → STELLA = month total of COGS Monitoring's "STELLA KITCHEN COPY – BILLING TO COMMI (COGS)"
+function expCommiAutoTotal(PDO $pdo, string $cogsTable, int $y, int $m): float {
+    $map = [
+        'stella_cogs' => ['stella_cogs_monitoring', 'sm_kitchen_copy', 'Stella'],
+    ];
+    if (!isset($map[$cogsTable])) return 0.0;
+    [$tbl, $col, $store] = $map[$cogsTable];
+    try {
+        $from = sprintf('%04d-%02d-01', $y, $m);
+        $q = $pdo->prepare("SELECT COALESCE(SUM(`$col`),0) FROM `$tbl` WHERE store_name=? AND entry_date BETWEEN ? AND ?");
+        $q->execute([$store, $from, date('Y-m-t', strtotime($from))]);
+        return round((float)$q->fetchColumn(), 2);
+    } catch (Throwable $e) { return 0.0; }
+}
+
 function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, string $store,
                               ?string $date = null, bool $create = true, string $meiTable = '', string $disTable = ''): void {
     $cogsTable = preg_replace('/[^a-z0-9_]/i', '', $cogsTable);
@@ -297,11 +313,11 @@ function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, str
     $commiTable = $cogsTable . '_commi';
     $hasCommi = false;
     try { $hasCommi = (bool)$pdo->query("SHOW TABLES LIKE " . $pdo->quote($commiTable))->fetchColumn(); } catch (Throwable $e) {}
-    $commiNet = function (int $y, int $m) use ($pdo, $commiTable, $hasCommi): float {
+    $commiNet = function (int $y, int $m) use ($pdo, $commiTable, $hasCommi, $cogsTable): float {
         if (!$hasCommi) return 0.0;
         $q = $pdo->prepare("SELECT COALESCE(SUM(sign * amount),0) FROM `$commiTable` WHERE c_year=? AND c_month=?");
         $q->execute([$y, $m]);
-        return round((float)$q->fetchColumn(), 2);
+        return round((float)$q->fetchColumn() + expCommiAutoTotal($pdo, $cogsTable, $y, $m), 2);
     };
     foreach ($months as [$y, $m, $mayCreate]) {
         $total = $purcSum(sprintf('%04d-%02d-01', $y, $m), date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $y, $m))));

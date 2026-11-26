@@ -75,6 +75,17 @@ $FIELDS = ['sm_kitchen_copy','rhea_copy','rhea_copy_parcel','gulay_store_copy','
            'daily_sales','extra_fees','mkt_pullout','gross_sales','total_sales_per_day','gas_kg','gas_amount','total_mp'];
 
 // ── AJAX: Save row ───────────────────────────────────────
+// The STELLA KITCHEN COPY column feeds the permanent "STELLA" line of COGS → Purchases by Commi,
+// so after any change here refresh the COGS PURC./COS (runs after the JSON reply is sent).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['ajax_action'] ?? '', ['save_row','import_rows','delete_row','clear_month'], true)) {
+    register_shutdown_function(function () use ($pdo) {
+        $f = __DIR__ . '/../lib/expense_sync.php';
+        if (!is_file($f)) return;
+        require_once $f;
+        try { expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
+    });
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['ajax_action'] ?? '') === 'save_row') {
     header('Content-Type: application/json');
     try {
