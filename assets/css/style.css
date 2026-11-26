@@ -5067,3 +5067,14 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
   padding: 6px 12px; border-bottom: 1px solid var(--border);
   background: #f8f9fb;
 }
+
+/* ── stella_month_end_inv.php — Import from Excel modal ── */
+:where(body.sp-stella_month_end_inv) .imp-field { margin-top: 12px; }
+:where(body.sp-stella_month_end_inv) .imp-field > label { display: block; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--subtext); margin-bottom: 4px; }
+:where(body.sp-stella_month_end_inv) .imp-file { width: 100%; font-family: var(--font-m); font-size: .74rem; }
+:where(body.sp-stella_month_end_inv) .imp-hint { display: block; font-size: .64rem; color: var(--subtext); margin-top: 4px; line-height: 1.4; }
+:where(body.sp-stella_month_end_inv) .imp-hidden { display: none !important; }
+:where(body.sp-stella_month_end_inv) .imp-preview { margin-top: 14px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: .74rem; line-height: 1.6; color: #14532d; }
+:where(body.sp-stella_month_end_inv) .imp-warn { color: #b45309; font-weight: 700; }
+:where(body.sp-stella_month_end_inv) #importModal .modal-input { width: 100%; }
+:where(body.sp-stella_month_end_inv) #importModal .dup-select { width: 100%; max-width: none; }
