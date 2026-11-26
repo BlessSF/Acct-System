@@ -117,7 +117,7 @@ $displayDate  = $months[$fMonth-1] . ' ' . str_pad($fDay,2,'0',STR_PAD_LEFT) . '
 
 // The GRAND TOTAL here is COGS END. (and next month's BEG.) → after any change, refresh COGS
 // (runs after the JSON reply is sent; months done oldest first so each BEG. follows the END. before it).
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_intersect(array_keys($_POST), ['ajax_save','ajax_delete','ajax_delete_category','ajax_duplicate_day','ajax_import_run'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_intersect(array_keys($_POST), ['ajax_save','ajax_delete','ajax_delete_category','ajax_duplicate_day','ajax_import_run','ajax_clear_month'])) {
     register_shutdown_function(function () use ($pdo) {
         $f = __DIR__ . '/../lib/expense_sync.php';
         if (!is_file($f)) return;
@@ -278,6 +278,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_duplicate_day'])
         }
 
         echo json_encode(['ok'=>true,'summary'=>$summary,'itemCount'=>count($srcRows)]);
+    } catch (Throwable $e) {
+        echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
+    }
+    exit;
+}
+
+// ── AJAX: Clear every item of one month (all dates of that month) ──
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_clear_month'])) {
+    header('Content-Type: application/json');
+    try {
+        $yr = (int)($_POST['year'] ?? 0);
+        $mo = (int)($_POST['month'] ?? 0);
+        if ($yr < 2000 || $yr > 2100 || $mo < 1 || $mo > 12) { echo json_encode(['ok'=>false,'msg'=>'Invalid month/year.']); exit; }
+        $from = sprintf('%04d-%02d-01', $yr, $mo);
+        $to   = date('Y-m-t', strtotime($from));
+        $st = $pdo->prepare("DELETE FROM stella_month_end_inv WHERE store_name='Stella' AND inv_date BETWEEN ? AND ?");
+        $st->execute([$from, $to]);
+        echo json_encode(['ok'=>true,'deleted'=>$st->rowCount()]);
     } catch (Throwable $e) {
         echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
     }
@@ -638,6 +656,7 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
       📋 Duplicate to Other Days
     </button>
     <button type="button" class="btn btn-ghost" onclick="openImportModal()">⬆ Import Excel</button>
+    <button type="button" class="btn btn-ghost btn-clear-month" onclick="clearMonth()">🗑 Clear Month</button>
     <button type="button" class="btn btn-primary" onclick="addSection()">+ Add Section</button>
   </form>
 
@@ -929,8 +948,42 @@ function calcTotal(el) {
 
 function markChanged(el) {
   // triggers recalc on non-numeric fields
-  refreshCatTotal(parseInt(el.closest('.inv-row').dataset.cat));
+  const row = el.closest('.inv-row');
+  refreshCatTotal(parseInt(row.dataset.cat));
+  scheduleAutoSave(row);
 }
+
+// ── Auto-save: a row saves by itself a moment after you stop typing ──
+const pendingRows = new Set();
+function rowStatus(row, text, color, hideAfter) {
+  const st = row.querySelector('.row-status'); if (!st) return;
+  st.textContent = text; st.style.color = color || ''; st.style.display = 'block';
+  if (hideAfter) setTimeout(() => { if (st.textContent === text) st.style.display = 'none'; }, hideAfter);
+}
+function scheduleAutoSave(row) {
+  clearTimeout(row._autoT);
+  pendingRows.add(row);
+  rowStatus(row, '…', 'var(--subtext)');
+  row._autoT = setTimeout(() => autoSaveRow(row), 900);
+}
+async function autoSaveRow(row) {
+  if (!row.isConnected) { pendingRows.delete(row); return; }
+  if (row._saving) { row._again = true; return; }
+  const id   = parseInt(row.dataset.id) || 0;
+  const desc = row.querySelector('.desc-input').value.trim();
+  if (id === 0) {
+    if (!desc) { pendingRows.delete(row); rowStatus(row, ''); return; }                 // nothing to save yet
+    if (row.querySelector('.desc-input').classList.contains('desc-duplicate')) {          // a new duplicate: use the Save button to confirm
+      pendingRows.delete(row); rowStatus(row, '⚠ not saved', 'var(--accent3)'); return;
+    }
+  }
+  row._saving = true;
+  const section = row.closest('.inv-section');
+  await saveRow(row.querySelector('.btn-inv-save'), section ? section.dataset.cat : '', parseInt(row.dataset.cat), true);
+  row._saving = false;
+  if (row._again) { row._again = false; scheduleAutoSave(row); } else pendingRows.delete(row);
+}
+window.addEventListener('beforeunload', e => { if (pendingRows.size) { e.preventDefault(); e.returnValue = ''; } });
 
 function refreshCatTotal(catIdx) {
   let sum = 0;
@@ -1092,7 +1145,7 @@ function addRow(catIdx, catName) {
   div.querySelector('.desc-input').focus();
 }
 
-async function saveRow(btn, catName, catIdx) {
+async function saveRow(btn, catName, catIdx, auto) {
   const row    = btn.closest('.inv-row');
   const status = row.querySelector('.row-status');
   const rowId  = parseInt(row.dataset.id) || 0;
@@ -1108,11 +1161,11 @@ async function saveRow(btn, catName, catIdx) {
   // Warn if another row in this category already has the same description
   const dupExists = Array.from(row.parentElement.querySelectorAll('.inv-row[data-id] .desc-input'))
     .some(inp => inp !== row.querySelector('.desc-input') && inp.value.trim().toLowerCase() === desc.toLowerCase() && desc !== '');
-  if (dupExists && !confirm(`"${desc}" already exists in this category. Save it again anyway?`)) {
+  if (!auto && dupExists && !confirm(`"${desc}" already exists in this category. Save it again anyway?`)) {
     return;
   }
 
-  btn.textContent = '…'; btn.disabled = true;
+  if (!auto) { btn.textContent = '…'; btn.disabled = true; }
 
   const fd = new FormData();
   fd.append('ajax_save',    '1');
@@ -1141,12 +1194,13 @@ async function saveRow(btn, catName, catIdx) {
       status.textContent = '❌';
       status.style.color = 'var(--accent2)';
       status.style.display = 'block';
-      alert('Error: ' + json.msg);
+      if (auto) { status.title = json.msg || ''; } else alert('Error: ' + json.msg);
     }
   } catch(e) {
-    alert('Network error');
+    if (auto) { status.textContent = '❌'; status.style.color = 'var(--accent2)'; status.style.display = 'block'; status.title = 'Network error — not saved'; }
+    else alert('Network error');
   }
-  btn.textContent = 'Save'; btn.disabled = false;
+  if (!auto) { btn.textContent = 'Save'; btn.disabled = false; }
 }
 
 async function deleteRow(btn, catIdx) {
@@ -1446,6 +1500,27 @@ async function confirmDuplicate() {
   }
 }
 
+
+// ── Clear all items of this month ─────────────────────────
+function clearMonth() {
+  const days  = Object.keys(DAY_COUNTS).filter(d => +DAY_COUNTS[d] > 0);
+  const total = days.reduce((a, d) => a + (+DAY_COUNTS[d] || 0), 0);
+  const label = MONTH_NAMES[INV_MONTH - 1] + ' ' + INV_YEAR;
+  if (!total) { showConfirm({title: 'Clear Month', message: 'There are no saved items in <strong>' + label + '</strong> to clear.', btnLabel: 'OK', btnClass: 'modal-btn-primary', onConfirm: async () => {}}); return; }
+  showConfirm({
+    title: 'Clear ' + label + '?', danger: true,
+    message: 'This will permanently delete <strong>all ' + total + ' saved item(s)</strong> on <strong>' + days.length + ' day(s)</strong> of <strong>' + label + '</strong>.'
+           + '<br><br>Every date of this month is emptied (your sections stay). <strong>This cannot be undone.</strong>',
+    btnLabel: 'Yes, clear ' + label, btnClass: 'modal-btn-danger',
+    onConfirm: async () => {
+      const fd = new FormData(); fd.append('ajax_clear_month', '1'); fd.append('year', INV_YEAR); fd.append('month', INV_MONTH);
+      try {
+        const j = await (await fetch('stella_month_end_inv.php', {method: 'POST', body: fd})).json();
+        if (j.ok) location.reload(); else alert(j.msg || 'Could not clear the month.');
+      } catch (e) { alert('Network error — nothing was cleared.'); }
+    }
+  });
+}
 
 // ── Import from Excel ─────────────────────────────────────
 let impSheets = [];
