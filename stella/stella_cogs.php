@@ -525,26 +525,6 @@ include '../layout.php';
 </div>
 
 <!-- Purchases by Commi -->
-<style>
-.commi-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.05); margin-bottom:16px; overflow:hidden; }
-.commi-head { background:#0f3d2e; color:#fff; padding:9px 16px; font-family:var(--font-m); font-size:.66rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
-.commi-head span { color:rgba(255,255,255,.55); font-weight:500; letter-spacing:.03em; text-transform:none; }
-.commi-wrap { overflow-x:auto; }
-.commi-tbl { width:100%; border-collapse:collapse; font-family:var(--font-m); font-size:.78rem; min-width:620px; }
-.commi-tbl th { background:#f4f5f7; color:#4b5563; font-size:.6rem; text-transform:uppercase; letter-spacing:.07em; padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); }
-.commi-tbl th.num, .commi-tbl td.num { text-align:right; }
-.commi-tbl td { border-bottom:1px solid #eef0f2; padding:0; }
-.commi-tbl input, .commi-tbl select { width:100%; border:none; background:transparent; padding:8px 10px; font-family:var(--font-m); font-size:.78rem; outline:none; box-sizing:border-box; }
-.commi-tbl input:focus, .commi-tbl select:focus { background:rgba(15,123,92,.07); }
-.commi-tbl input.amt { text-align:right; }
-.commi-tbl tr.less input.amt { color:#be123c; }
-.commi-tbl td.ro { padding:8px 10px; text-align:right; color:#6d28d9; background:#f5f3ff; }
-.commi-tbl td.st { padding:0 10px; font-size:.64rem; color:var(--subtext); white-space:nowrap; text-align:center; }
-.commi-tbl tfoot td { padding:9px 10px; font-weight:800; background:#f0f2f5; border-top:1px solid #d1d5db; }
-.commi-tbl .grand { color:#0f7b5c; font-size:.88rem; }
-.commi-del { border:1px solid #fecdd3; background:#fff1f2; color:#be123c; border-radius:5px; cursor:pointer; padding:2px 8px; font-size:.7rem; }
-.commi-add { margin:10px 12px; }
-</style>
 <div class="commi-card">
   <div class="commi-head">
     Purchases by Commi — <?= strtoupper($months[$fMonth-1]) ?> <?= $fYear ?>
@@ -554,22 +534,22 @@ include '../layout.php';
   <table class="commi-tbl" id="commiTbl">
     <thead>
       <tr>
-        <th style="width:38%">Purchases by Commi</th>
-        <th style="width:110px">Add / Less</th>
+        <th class="col-name">Purchases by Commi</th>
+        <th class="col-sign">Add / Less</th>
         <th class="num">Amount</th>
         <th class="num">Other Purchases</th>
         <th class="num">Total</th>
-        <th style="width:90px"></th>
+        <th class="col-act"></th>
       </tr>
     </thead>
     <tbody id="commiFixed">
       <tr class="fixed" title="Automatic: total of STELLA KITCHEN COPY – BILLING TO COMMI (COGS) in COGS Monitoring for this month">
-        <td style="padding:8px 10px;font-weight:700">STELLA <span style="font-size:.58rem;font-weight:600;color:#0f7b5c;background:#dcfce7;border-radius:4px;padding:1px 6px;margin-left:4px">AUTO · COGS MONITORING</span></td>
-        <td style="padding:8px 10px;color:var(--subtext)">+ Add</td>
-        <td class="ro" id="commiStella" style="color:#0f3d2e;background:#ecfdf5;font-weight:700"><?= number_format($commiStellaNow,2) ?></td>
+        <td class="fx-name">STELLA <span class="commi-auto">AUTO · COGS MONITORING</span></td>
+        <td class="fx-sign">+ Add</td>
+        <td class="ro stella" id="commiStella"><?= number_format($commiStellaNow,2) ?></td>
         <td class="ro" id="commiOther"><?= number_format($purcAuto,2) ?></td>
-        <td class="ro" id="commiRowTotal" style="color:#0f3d2e;background:#f0fdf4"><?= number_format($commiStellaNow + $purcAuto,2) ?></td>
-        <td class="st" style="color:var(--muted)" title="This line is permanent">🔒</td>
+        <td class="ro rowtotal" id="commiRowTotal"><?= number_format($commiStellaNow + $purcAuto,2) ?></td>
+        <td class="st lock" title="This line is permanent">🔒</td>
       </tr>
     </tbody>
     <tbody id="commiBody">
@@ -592,7 +572,7 @@ include '../layout.php';
       <tr>
         <td colspan="2">TOTAL</td>
         <td class="num" id="commiNet"><?= number_format($commiNetNow,2) ?></td>
-        <td class="num" style="color:#6d28d9"><?= number_format($purcAuto,2) ?></td>
+        <td class="num other"><?= number_format($purcAuto,2) ?></td>
         <td class="num grand" id="commiGrand"><?= number_format($commiNetNow + $purcAuto,2) ?></td>
         <td></td>
       </tr>

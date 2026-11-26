@@ -261,46 +261,11 @@ $titlesOf = function ($key) use ($FS_LINES) { return isset($FS_LINES[$key]) ? im
 
 $pageTitle  = 'Income Statement (FS)';
 $activePage = 'stella_income_statement_acct';
+$bodyClass  = 'sp-stella_income_statement_acct';
 include '../layout.php';
 ?>
 
-<style>
-.is-wrap { max-width: <?= $compare ? '980px' : '760px' ?>; margin: 0 auto; }
-.is-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
-.is-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
-.fs-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
-.fs-table th, .fs-table td { padding: 0 10px; border-bottom: 1px solid #f1f3f6; height: 30px; }
-.fs-title { background: #7a1313; color: #fff; padding: 14px 22px; }
-.fs-title b { font-size: 1.02rem; letter-spacing: .01em; }
-.fs-title span { display: block; font-family: var(--font-m); font-size: .66rem; color: rgba(255,255,255,.7); margin-top: 3px; }
-.fs-table thead th { background: #fbeaea; color: #7a1313; font-family: var(--font-m); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; height: 36px; text-align: right; border-bottom: 2px solid #e9c2c2; }
-.fs-table thead th:first-child { text-align: left; }
-.fs-table thead th.cur { background: #7a1313; color: #fff; }
-.fs-table td.lbl { color: #0b0f19; font-weight: 600; text-align: left; }
-.fs-table td.num { color: #0b0f19; font-weight: 600; }
-.fs-table td.num { text-align: right; font-family: var(--font-m); font-size: .79rem; white-space: nowrap; min-width: 118px; }
-.fs-table td.pc  { text-align: right; font-family: var(--font-m); font-size: .68rem; color: #374151; width: 46px; border-right: 1px solid #f1f3f6; }
-.fs-table td.cur { background: #fffafa; }
-.fs-table tr.line td.lbl { padding-left: 26px; }
-.fs-table tr.sub td.lbl  { padding-left: 90px; font-weight: 700; color: var(--subtext2); font-size: .74rem; }
-.fs-table tr.sub td.num  { font-weight: 700; border-top: 1px solid var(--border2); }
-.fs-table tr.sec td  { background: #f3f4f6; font-weight: 800; font-family: var(--font-m); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--subtext2); height: 28px; }
-.fs-table tr.sec2 td { font-weight: 700; color: var(--subtext2); padding-left: 26px; height: 24px; }
-.fs-table tr.total td { font-weight: 800; background: #fafbfc; border-top: 1px solid var(--border2); }
-.fs-table tr.grand td { font-weight: 800; background: #f6f7f9; border-top: 2px solid var(--border2); }
-.fs-table tr.final td { font-weight: 800; background: #fff6e0; border-top: 2px solid var(--accent3); color: #8a5300; }
-.fs-table tr.zero.line td { color: #4b5563; }
-.fs-table .neg { color: var(--accent2) !important; }
-.fs-table input.fs-in { width: 118px; text-align: right; font-family: var(--font-m); font-size: .82rem; font-weight: 700; color: #0b0f19; padding: 4px 8px; border: 2px solid #0284c7; border-radius: 6px; background: #fff;
-  box-shadow: 0 0 0 3px rgba(2,132,199,.35), 0 0 10px 1px rgba(2,132,199,.45); }
-.fs-table input.fs-in:focus { outline: none; border-color: #0369a1; box-shadow: 0 0 0 4px rgba(2,132,199,.6), 0 0 16px 3px rgba(2,132,199,.6); }
-.fs-tag { font-family: var(--font-m); font-size: .58rem; color: var(--accent); margin-left: 8px; background: rgba(15,123,92,.08); padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(15,123,92,.15); white-space: nowrap; }
-.fs-st { font-family: var(--font-m); font-size: .62rem; color: var(--subtext); margin-left: 6px; }
-.is-note { font-family: var(--font-m); font-size: .68rem; color: var(--subtext); line-height: 1.7; padding: 12px 22px; border-top: 1px solid var(--border); background: #fcfcfd; }
-.is-note b { color: var(--text); }
-.is-note .bad { color: var(--accent2); }
-@media print { .is-controls, .sidebar, aside, .fs-tag, .fs-st { display: none !important; } .fs-table input.fs-in { border: 0; box-shadow: none; } }
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/../assets/css/style.css') ?: time() ?>">
 
 <div class="is-controls">
   <form method="GET" id="isForm" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -330,7 +295,7 @@ include '../layout.php';
   <button type="button" class="btn btn-ghost" onclick="window.print()">🖨 Print</button>
 </div>
 
-<div class="is-wrap">
+<div class="is-wrap<?= $compare ? ' compare' : '' ?>">
 <div class="is-card">
   <div class="fs-title">
     <b>STELLA INCOME STATEMENT <?= (int)$year ?></b>

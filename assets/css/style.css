@@ -1554,8 +1554,6 @@
 .page-dois_sales_report .btn-add-sub:hover,
 .page-dois_sales_report .btn-add-di:hover { background:#164f34; }
 
-
-
 /* ── Sales Reports (all branches): hide number-input spinner arrows ── */
 .page-commissary_sales_report input[type=number],
 .page-demiclab_sales_report input[type=number],
@@ -1818,7 +1816,6 @@ body.page-h_sales_report .sr-row.green .sr-note,
 body.page-h_sales_report .sr-row.coh .sr-note,
 body.page-h_sales_report .sr-row.short .sr-note { color:#ffecec !important; }
 
-
 /* ============================================================
  *  Sales Reports — Stella-style design in each branch's colour,
  *  Summary Report in the LEFT column.
@@ -1838,7 +1835,6 @@ body.page-dois_sales_report {
   --sr-line:#f6c07a;   /* soft grid lines                           */
   --sr-ink:#7b341e;     /* dark text on light fills                  */
 }
-
 
 /* Layout: Summary Report in the LEFT column, report on the right */
 body.page-dois_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
@@ -1904,12 +1900,10 @@ body.page-dois_sales_report .sr-row.short .sr-input.readout { color:#000; -webki
 body.page-dois_sales_report .sr-note { color:var(--sr-dark); }
 body.page-dois_sales_report .sr-row.green .sr-note, body.page-dois_sales_report .sr-row.coh .sr-note, body.page-dois_sales_report .sr-row.short .sr-note { color:#fff !important; opacity:.9; }
 
-
 @media (max-width:1500px) and (min-width:1101px) {
   body.page-dois_sales_report .sub-grid, body.page-dois_sales_report .sub-grid.three-col, body.page-dois_sales_report .sub-grid.four-col { grid-template-columns:repeat(2,1fr); }
   body.page-dois_sales_report .sub-col:nth-child(2n) { border-right:none; }
 }
-
 
 /* ── Recovery (light brown) ── */
 
@@ -1923,7 +1917,6 @@ body.page-recovery_sales_report {
   --sr-line:#d8bfa6;   /* soft grid lines                           */
   --sr-ink:#4e3220;     /* dark text on light fills                  */
 }
-
 
 /* Layout: Summary Report in the LEFT column, report on the right */
 body.page-recovery_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
@@ -1989,12 +1982,10 @@ body.page-recovery_sales_report .sr-row.short .sr-input.readout { color:#000; -w
 body.page-recovery_sales_report .sr-note { color:var(--sr-dark); }
 body.page-recovery_sales_report .sr-row.green .sr-note, body.page-recovery_sales_report .sr-row.coh .sr-note, body.page-recovery_sales_report .sr-row.short .sr-note { color:#fff !important; opacity:.9; }
 
-
 @media (max-width:1500px) and (min-width:1101px) {
   body.page-recovery_sales_report .sub-grid, body.page-recovery_sales_report .sub-grid.three-col, body.page-recovery_sales_report .sub-grid.four-col { grid-template-columns:repeat(2,1fr); }
   body.page-recovery_sales_report .sub-col:nth-child(2n) { border-right:none; }
 }
-
 
 /* Recovery-specific tables */
 body.page-recovery_sales_report .ss-table thead tr:first-child th, body.page-recovery_sales_report .ss-action-th { background:var(--sr-main) !important; color:#fff !important; border-color:var(--sr-dark) !important; }
@@ -2017,7 +2008,6 @@ body.page-recovery_sales_report .cb-tot-cell { color:var(--sr-ink); }
   body.page-recovery_sales_report .gc-grid, body.page-recovery_sales_report .gc-grid.three-col { grid-template-columns:1fr; }
 }
 
-
 /* ── Pub Express (dark red) ── */
 
 body.page-pub_express_sales_report {
@@ -2030,7 +2020,6 @@ body.page-pub_express_sales_report {
   --sr-line:#e3adad;   /* soft grid lines                           */
   --sr-ink:#5c1212;     /* dark text on light fills                  */
 }
-
 
 /* Layout: Summary Report in the LEFT column, report on the right */
 body.page-pub_express_sales_report .sr-split { display:flex; gap:22px; align-items:flex-start; }
@@ -2103,7 +2092,6 @@ body.page-pub_express_sales_report .sr-row.green .sr-note, body.page-pub_express
 
 /* Dois: Gross Sales formula hint is too long for the left column (Stella hides it too) */
 body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label span { display:none; }
-
 
 /* >>> STELLA PAGES (generated block) >>> */
 
@@ -2217,7 +2205,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 :where(body.sp-stella_acc_title) .at-cancel:hover { background: #e5e7eb; }
 :where(body.sp-stella_acc_title) .at-empty { padding: 30px 16px; text-align: center; color: var(--subtext); font-family: var(--font-m); font-size: .78rem; }
 :where(body.sp-stella_acc_title) .toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
-
 
 /* ============================================================
  *  stella_cashflow.php   (body.sp-stella_cashflow)
@@ -2369,7 +2356,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
   :where(body.sp-stella_cashflow) .cf-input { width: 110px; }
 }
 
-
 /* ============================================================
  *  stella_cashflow_balance.php   (body.sp-stella_cashflow_balance)
  *  Moved here from the inline <style> block(s) of the page.
@@ -2443,7 +2429,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 :where(body.sp-stella_cashflow_balance) .cb-save.saving { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; cursor: wait; }
 :where(body.sp-stella_cashflow_balance) .cb-save.ok     { background: #dcfce7; border-color: #86efac; color: #15803d; }
 :where(body.sp-stella_cashflow_balance) .cb-save.err    { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
-
 
 /* ============================================================
  *  stella_cashflow_sheet.php   (body.sp-stella_cashflow_sheet)
@@ -2549,7 +2534,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 :where(body.sp-stella_cashflow_sheet) .cf-mini-tbl thead th input,
 :where(body.sp-stella_cashflow_sheet) .cf-mini-tbl input[type=date]{font-size:12.5px}
 :where(body.sp-stella_cashflow_sheet) .cf-badge{font-size:10px;background:#e7f3ee;color:#0f7b5c;border-radius:5px;padding:1px 6px;margin-left:5px;font-weight:700}
-
 
 /* ============================================================
  *  stella_cogs.php   (body.sp-stella_cogs)
@@ -2701,7 +2685,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
   :where(body.sp-stella_cogs) .cogs-kpi { grid-template-columns: 1fr 1fr; }
 }
 
-
 /* ============================================================
  *  stella_cogs_monitoring.php   (body.sp-stella_cogs_monitoring)
  *  Moved here from the inline <style> block(s) of the page.
@@ -2775,7 +2758,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 :where(body.sp-stella_cogs_monitoring) .imp-foot { display:flex; justify-content:flex-end; gap:8px; padding:12px 18px; border-top:1px solid var(--border); }
 :where(body.sp-stella_cogs_monitoring) .imp-foot .btn[disabled] { opacity:.45; cursor:not-allowed; }
 :where(body.sp-stella_cogs_monitoring) .note { padding:6px 16px 14px; font-family:var(--font-m); font-size:.64rem; color:var(--subtext2); }
-
 
 /* ============================================================
  *  stella_disbursement.php   (body.sp-stella_disbursement)
@@ -2956,7 +2938,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
   font-family: var(--font-m); font-size: .78rem; color: var(--subtext);
 }
 
-
 /* ============================================================
  *  stella_expenses.php   (body.sp-stella_expenses)
  *  Moved here from the inline <style> block(s) of the page.
@@ -3132,399 +3113,41 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 :where(body.sp-stella_expenses) .ac-item .ac-tin  { font-family: var(--font-m); font-size: .64rem; color: #6b7280; margin-top: 1px; }
 :where(body.sp-stella_expenses) .ac-item .ac-addr { font-family: var(--font-m); font-size: .62rem; color: #9ca3af; margin-top: 1px; font-style: italic; }
 
-
-/* ============================================================
- *  stella_month_end_inv.php   (body.sp-stella_month_end_inv)
- *  Moved here from the inline <style> block(s) of the page.
- *  Selectors are scoped with :where() so specificity is unchanged.
- * ============================================================ */
 /* ── Page header ── */
-:where(body.sp-stella_month_end_inv) .inv-header {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border-radius: var(--radius); padding: 20px 26px 16px;
-  margin-bottom: 18px; display: flex; align-items: flex-start;
-  justify-content: space-between; flex-wrap: wrap; gap: 12px;
-}
-:where(body.sp-stella_month_end_inv) .inv-header .eyebrow {
-  font-family: var(--font-m); font-size: .58rem;
-  text-transform: uppercase; letter-spacing: .14em;
-  color: rgba(255,255,255,.4); margin-bottom: 4px;
-}
-:where(body.sp-stella_month_end_inv) .inv-header .title {
-  font-size: 1.15rem; font-weight: 800; color: #fff; letter-spacing: -.02em;
-}
-:where(body.sp-stella_month_end_inv) .inv-header .subtitle {
-  font-family: var(--font-m); font-size: .67rem;
-  color: rgba(255,255,255,.45); margin-top: 3px;
-}
 
 /* ── Controls ── */
-:where(body.sp-stella_month_end_inv) .inv-controls {
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px;
-}
 
 /* ── KPI strip ── */
-:where(body.sp-stella_month_end_inv) .inv-kpi {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px; margin-bottom: 20px;
-  /* Sticky: the section totals + Grand Total stay in view under the top bar while you scroll / type */
-  position: sticky; top: 0; z-index: 60;
-  padding: 10px 0 10px; margin-top: -4px;
-  background: linear-gradient(to bottom, var(--bg, #f3f5f7) 88%, rgba(243,245,247,0));
-}
+
 /* the layout's wrapper uses overflow-x:hidden, which would stop "sticky" from working — clip does the same job without that side effect */
-:where(body.sp-stella_month_end_inv) .main-wrapper { overflow-x: clip !important; }
-:where(body.sp-stella_month_end_inv) .inv-kpi .inv-kpi-card { box-shadow: 0 2px 8px rgba(15,23,42,.08); }
-:where(body.sp-stella_month_end_inv) .inv-kpi-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 12px 14px;
-  cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s;
-  user-select: none;
-}
-:where(body.sp-stella_month_end_inv) .inv-kpi-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(15,123,92,.08);
-}
-:where(body.sp-stella_month_end_inv) .inv-kpi-card.active-filter {
-  border-color: var(--accent);
-  background: #f0fdf4;
-  box-shadow: 0 0 0 3px rgba(15,123,92,.12);
-}
-:where(body.sp-stella_month_end_inv) .inv-kpi-card.grand-card {
-  border-top: 2px solid var(--accent);
-  cursor: default;
-}
-:where(body.sp-stella_month_end_inv) .inv-kpi-card.grand-card:hover {
-  border-color: var(--accent); box-shadow: none;
-}
-:where(body.sp-stella_month_end_inv) .inv-kpi-label {
-  font-family: var(--font-m); font-size: .55rem; text-transform: uppercase;
-  letter-spacing: .07em; color: var(--subtext); margin-bottom: 4px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-:where(body.sp-stella_month_end_inv) .inv-kpi-val {
-  font-family: var(--font-m); font-size: .95rem; font-weight: 800;
-  color: var(--accent3);
-}
-:where(body.sp-stella_month_end_inv) .inv-kpi-val.grand { font-size: 1.1rem; color: var(--accent); }
-:where(body.sp-stella_month_end_inv) .inv-kpi-hint {
-  font-family: var(--font-m); font-size: .55rem;
-  color: var(--subtext); margin-top: 3px;
-}
 
 /* ── Date banner ── */
-:where(body.sp-stella_month_end_inv) .inv-date-banner {
-  background: #1e3a5f; color: #fff;
-  padding: 9px 18px; border-radius: var(--radius) var(--radius) 0 0;
-  font-family: var(--font-m); font-size: .68rem; font-weight: 700;
-  letter-spacing: .08em; text-transform: uppercase;
-}
 
 /* ── Table wrapper ── */
-:where(body.sp-stella_month_end_inv) .inv-section {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.05);
-}
 
 /* ── Category header ── */
-:where(body.sp-stella_month_end_inv) .inv-cat-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 16px;
-  font-family: var(--font-m); font-size: .65rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .1em; color: #fff;
-  background: #0f3d2e;
-}
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-0  { background: #1e3a5f; }
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-1  { background: #3d1f0f; }
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-2  { background: #1f0f3d; }
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-3  { background: #3d0f1f; }
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-4  { background: #0f3d1f; }
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-5  { background: #1f3d0f; }
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-6  { background: #3d2e0f; }
-:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-7  { background: #0f2e3d; }
-:where(body.sp-stella_month_end_inv) .inv-cat-total-badge {
-  background: rgba(255,255,255,.15);
-  padding: 3px 10px; border-radius: 12px;
-  font-size: .62rem;
-}
 
 /* ── Column headers ── */
-:where(body.sp-stella_month_end_inv) .inv-col-head {
-  display: grid;
-  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
-  gap: 0;
-  background: #1e3a5f;
-  border-bottom: 1px solid #2d5480;
-}
-:where(body.sp-stella_month_end_inv) .inv-col-head div {
-  padding: 8px 10px;
-  font-family: var(--font-m); font-size: .58rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .07em; color: #fff;
-  border-right: 1px solid #2d5480; text-align: center;
-}
-:where(body.sp-stella_month_end_inv) .inv-col-head div:first-child { text-align: left; padding-left: 14px; }
-:where(body.sp-stella_month_end_inv) .inv-col-head div:last-child  { border-right: none; }
 
 /* ── Data rows ── */
-:where(body.sp-stella_month_end_inv) .inv-row {
-  display: grid;
-  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
-  gap: 0;
-  border-bottom: 1px solid #f0f2f5;
-  transition: background .1s;
-  align-items: stretch;
-}
-:where(body.sp-stella_month_end_inv) .inv-row:hover { background: #f8fbff; }
-
-:where(body.sp-stella_month_end_inv) .inv-cell {
-  border-right: 1px solid #eef0f3;
-  display: flex; align-items: center;
-}
-:where(body.sp-stella_month_end_inv) .inv-cell:last-child { border-right: none; }
-
-:where(body.sp-stella_month_end_inv) .inv-input {
-  width: 100%; padding: 7px 10px;
-  font-family: var(--font-m); font-size: .76rem; color: var(--text);
-  background: transparent; border: none; outline: none;
-  transition: background .12s, box-shadow .12s;
-}
-:where(body.sp-stella_month_end_inv) .inv-input:focus {
-  background: #fff;
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-:where(body.sp-stella_month_end_inv) .inv-input::placeholder { color: #a8b0ba; opacity: 1; font-weight: 400; }
-:where(body.sp-stella_month_end_inv) .inv-input.desc-input { font-size: .78rem; padding-left: 14px; }
-:where(body.sp-stella_month_end_inv) .inv-input.desc-input.desc-duplicate {
-  background: #fff5f5;
-  box-shadow: inset 0 0 0 2px #dc3545;
-}
-:where(body.sp-stella_month_end_inv) .inv-cell { position: relative; }
-:where(body.sp-stella_month_end_inv) .desc-dup-warn {
-  position: absolute; left: 14px; bottom: 1px;
-  font-family: var(--font-m); font-size: .55rem; font-weight: 700;
-  color: #dc3545; background: #fff; padding: 0 4px 0 0;
-  pointer-events: none; line-height: 1;
-}
-:where(body.sp-stella_month_end_inv) .inv-input.num-input  { text-align: right; }
-:where(body.sp-stella_month_end_inv) .inv-input.total-input {
-  background: #f0fdf4; color: var(--accent);
-  font-weight: 700; cursor: default;
-  text-align: right;
-}
 
 /* Unit select */
-:where(body.sp-stella_month_end_inv) .inv-unit-select {
-  width: 100%; padding: 7px 8px;
-  font-family: var(--font-m); font-size: .74rem;
-  background: transparent; border: none; outline: none;
-  color: var(--text); cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%236b7280' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  padding-right: 20px;
-}
-:where(body.sp-stella_month_end_inv) .inv-unit-select:focus {
-  background-color: #fff;
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
 
 /* Action cell */
-:where(body.sp-stella_month_end_inv) .inv-action-cell {
-  display: flex; gap: 4px; align-items: center;
-  justify-content: center; padding: 4px 6px;
-}
-:where(body.sp-stella_month_end_inv) .btn-inv-save {
-  padding: 4px 10px; background: var(--accent); color: #fff;
-  border: none; border-radius: 5px; font-family: var(--font-m);
-  font-size: .62rem; font-weight: 600; cursor: pointer;
-  white-space: nowrap; transition: background .15s;
-}
-:where(body.sp-stella_month_end_inv) .btn-inv-save:hover { background: #0a6649; }
-:where(body.sp-stella_month_end_inv) .btn-inv-del {
-  padding: 4px 7px; background: transparent; color: var(--accent2);
-  border: 1px solid rgba(220,53,69,.2); border-radius: 5px;
-  font-size: .62rem; cursor: pointer; transition: background .15s;
-}
-:where(body.sp-stella_month_end_inv) .btn-inv-del:hover { background: rgba(220,53,69,.07); }
 
 /* Total row */
-:where(body.sp-stella_month_end_inv) .inv-total-row {
-  display: grid;
-  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
-  background: #0f2d4a; border-top: 2px solid #1e3a5f;
-}
-:where(body.sp-stella_month_end_inv) .inv-total-row div {
-  padding: 9px 10px;
-  font-family: var(--font-m); font-size: .68rem; font-weight: 800;
-  color: #fff; border-right: 1px solid #1e3a5f; text-align: right;
-}
-:where(body.sp-stella_month_end_inv) .inv-total-row div:first-child  { text-align: left; padding-left: 14px; letter-spacing: .06em; text-transform: uppercase; }
-:where(body.sp-stella_month_end_inv) .inv-total-row div:last-child   { border-right: none; }
-:where(body.sp-stella_month_end_inv) .inv-total-row div.total-val    { color: #6ee7b7; font-size: .78rem; }
 
 /* Grand total */
-:where(body.sp-stella_month_end_inv) .inv-grand-total {
-  background: var(--surface);
-  border: 2px solid var(--accent);
-  border-radius: var(--radius); padding: 16px 24px;
-  display: flex; align-items: center; justify-content: space-between;
-  margin-top: 8px;
-}
-:where(body.sp-stella_month_end_inv) .inv-grand-label {
-  font-family: var(--font-m); font-size: .8rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .1em; color: var(--accent);
-}
-:where(body.sp-stella_month_end_inv) .inv-grand-val {
-  font-family: var(--font-m); font-size: 1.4rem; font-weight: 800;
-  color: var(--accent);
-}
 
 /* Add row btn */
-:where(body.sp-stella_month_end_inv) .btn-add-row {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 14px; background: transparent;
-  border: 1px dashed var(--border2); border-radius: 7px;
-  font-family: var(--font-m); font-size: .66rem; color: var(--subtext2);
-  cursor: pointer; transition: all .15s; width: 100%;
-  justify-content: center; margin: 4px 0;
-}
-:where(body.sp-stella_month_end_inv) .btn-add-row:hover {
-  background: #f0fdf4; border-color: var(--accent); color: var(--accent);
-}
 
 /* Save status */
-:where(body.sp-stella_month_end_inv) .row-status {
-  font-family: var(--font-m); font-size: .58rem;
-  color: var(--accent); display: none;
-  text-align: center; padding: 2px 0; white-space: nowrap;
-}
-:where(body.sp-stella_month_end_inv) .row-status.err { color: #b91c1c; font-weight: 700; }
-
-@media (max-width: 900px) {
-  :where(body.sp-stella_month_end_inv) #kpiStrip { grid-template-columns: repeat(3, 1fr) !important; }
-  :where(body.sp-stella_month_end_inv) .inv-col-head,
-:where(body.sp-stella_month_end_inv) .inv-row,
-:where(body.sp-stella_month_end_inv) .inv-total-row {
-    grid-template-columns: 1fr 90px 110px 100px 120px 90px;
-  }
-}
 
 /* ── Delete-section button (on category header) ── */
-:where(body.sp-stella_month_end_inv) .btn-inv-del-section {
-  background: rgba(255,255,255,.12); border: none; color: #fff;
-  width: 22px; height: 22px; border-radius: 6px; cursor: pointer;
-  font-size: .7rem; line-height: 1; flex-shrink: 0;
-}
-:where(body.sp-stella_month_end_inv) .btn-inv-del-section:hover { background: rgba(255,90,90,.4); }
-:where(body.sp-stella_month_end_inv) .inv-section-empty-note {
-  text-align: center; padding: 40px 20px; font-family: var(--font-m);
-  font-size: .8rem; color: var(--muted); background: var(--surface);
-  border: 1px dashed var(--border); border-radius: var(--radius);
-}
 
 /* ── Modals ── */
-:where(body.sp-stella_month_end_inv) .modal-overlay {
-  position: fixed; inset: 0; background: rgba(10,12,20,.55);
-  backdrop-filter: blur(2px); display: none;
-  align-items: center; justify-content: center; z-index: 9999; padding: 16px;
-}
-:where(body.sp-stella_month_end_inv) .modal-overlay.active { display: flex; }
-:where(body.sp-stella_month_end_inv) .modal-box {
-  background: var(--surface); width: 420px; max-width: 100%;
-  border-radius: 14px; overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0,0,0,.35);
-  animation: modalPop-sp-stella_month_end_inv .15s ease;
-}
-@keyframes modalPop-sp-stella_month_end_inv { from{transform:scale(.96);opacity:0} to{transform:scale(1);opacity:1} }
-:where(body.sp-stella_month_end_inv) .modal-header {
-  background: #1a1a2e; color: #fff; padding: 16px 20px;
-  font-family: var(--font-m); font-size: .85rem; font-weight: 800; letter-spacing: .02em;
-}
-:where(body.sp-stella_month_end_inv) .modal-header.danger { background: #3a1414; }
-:where(body.sp-stella_month_end_inv) .modal-body { padding: 20px; font-family: var(--font-m); font-size: .8rem; color: var(--text); line-height: 1.6; }
-:where(body.sp-stella_month_end_inv) .modal-input {
-  width: 100%; margin-top: 12px; padding: 10px 14px;
-  font-family: var(--font-m); font-size: .85rem; text-transform: uppercase;
-  border: 1px solid var(--border); border-radius: 8px; outline: none;
-  background: #fff; color: var(--text); transition: border-color .15s;
-}
-:where(body.sp-stella_month_end_inv) .modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,123,92,.1); }
-:where(body.sp-stella_month_end_inv) .modal-error { color: #b91c1c; font-size: .72rem; margin-top: 8px; display: none; }
-:where(body.sp-stella_month_end_inv) .modal-footer {
-  padding: 14px 20px; display: flex; justify-content: flex-end; gap: 8px;
-  border-top: 1px solid var(--border); background: #fafbfc;
-}
-:where(body.sp-stella_month_end_inv) .modal-btn { padding: 9px 16px; border-radius: 8px; font-family: var(--font-m); font-size: .75rem; font-weight: 700; cursor: pointer; border: none; }
-:where(body.sp-stella_month_end_inv) .modal-btn-cancel  { background: #eef0f3; color: var(--text); }
-:where(body.sp-stella_month_end_inv) .modal-btn-cancel:hover  { background: #e2e5ea; }
-:where(body.sp-stella_month_end_inv) .modal-btn-primary { background: var(--accent); color: #fff; }
-:where(body.sp-stella_month_end_inv) .modal-btn-primary:hover { background: #0a6b50; }
-:where(body.sp-stella_month_end_inv) .modal-btn-danger  { background: #b91c1c; color: #fff; }
-:where(body.sp-stella_month_end_inv) .modal-btn-danger:hover  { background: #991616; }
 
 /* ── Duplicate-to-other-days modal ── */
-:where(body.sp-stella_month_end_inv) .modal-box.wide { width: 480px; }
-:where(body.sp-stella_month_end_inv) .dup-day-grid {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
-  margin: 10px 0 14px;
-}
-:where(body.sp-stella_month_end_inv) .dup-day-chip {
-  position: relative; display: flex; align-items: center; justify-content: center;
-  height: 34px; border: 1px solid var(--border); border-radius: 7px;
-  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
-  cursor: pointer; user-select: none; background: #fff; color: var(--text);
-  transition: all .12s;
-}
-:where(body.sp-stella_month_end_inv) .dup-day-chip:hover { border-color: var(--accent); }
-:where(body.sp-stella_month_end_inv) .dup-day-chip.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
-:where(body.sp-stella_month_end_inv) .dup-day-chip.has-data::after {
-  content: ''; position: absolute; top: 3px; right: 3px;
-  width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;
-}
-:where(body.sp-stella_month_end_inv) .dup-day-chip.has-data.checked::after { background: #fff; }
-:where(body.sp-stella_month_end_inv) .dup-day-chip.is-source { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
-:where(body.sp-stella_month_end_inv) .dup-month-nav {
-  display: flex; align-items: center; gap: 6px; margin-top: 12px;
-}
-:where(body.sp-stella_month_end_inv) .dup-nav-btn {
-  flex: none; height: 30px; padding: 0 10px; border: 1px solid var(--border);
-  border-radius: 7px; background: #fff; color: var(--text); cursor: pointer;
-  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
-}
-:where(body.sp-stella_month_end_inv) .dup-nav-btn:hover { border-color: var(--accent); background: #f0fdf4; }
-:where(body.sp-stella_month_end_inv) .dup-nav-today { margin-left: auto; color: var(--accent3); }
-:where(body.sp-stella_month_end_inv) .dup-month-nav .dup-select { flex: 1; }
-:where(body.sp-stella_month_end_inv) .dup-legend {
-  display: flex; align-items: center; gap: 14px; font-family: var(--font-m);
-  font-size: .64rem; color: var(--subtext); margin-bottom: 10px;
-}
-:where(body.sp-stella_month_end_inv) .dup-legend span { display: flex; align-items: center; gap: 5px; }
-:where(body.sp-stella_month_end_inv) .dup-legend .dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; display: inline-block; }
-:where(body.sp-stella_month_end_inv) .dup-quicklinks { display: flex; gap: 12px; margin-bottom: 4px; }
-:where(body.sp-stella_month_end_inv) .dup-quicklinks a { font-family: var(--font-m); font-size: .68rem; color: var(--accent3); cursor: pointer; text-decoration: underline; }
-:where(body.sp-stella_month_end_inv) .dup-option-row {
-  display: flex; align-items: flex-start; gap: 8px; margin-top: 12px;
-  padding-top: 12px; border-top: 1px solid var(--border);
-}
-:where(body.sp-stella_month_end_inv) .dup-option-row label { font-family: var(--font-m); font-size: .74rem; color: var(--text); line-height: 1.4; }
-:where(body.sp-stella_month_end_inv) .dup-option-row .hint { display: block; font-size: .65rem; color: var(--subtext); margin-top: 2px; }
-:where(body.sp-stella_month_end_inv) .dup-select {
-  width: 100%; margin-top: 6px; padding: 7px 10px;
-  font-family: var(--font-m); font-size: .76rem;
-  border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--text);
-}
-:where(body.sp-stella_month_end_inv) #dupSummary {
-  margin-top: 12px; padding: 10px 12px; border-radius: 8px;
-  background: #f0fdf4; border: 1px solid #bbf7d0;
-  font-family: var(--font-m); font-size: .72rem; color: #166534; display: none;
-}
-
 
 /* ============================================================
  *  stella_pdc.php   (body.sp-stella_pdc)
@@ -3718,7 +3341,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
   margin-top: 2px;
 }
 
-
 /* ============================================================
  *  stella_profit_loss.php   (body.sp-stella_profit_loss)
  *  Moved here from the inline <style> block(s) of the page.
@@ -3865,7 +3487,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 }
 :where(body.sp-stella_profit_loss) .toast { position:fixed; top:68px; right:22px; z-index:9999; max-width:300px; animation:fadeSlideDown .3s ease; }
 
-
 /* ============================================================
  *  stella_reconcile.php   (body.sp-stella_reconcile)
  *  Moved here from the inline <style> block(s) of the page.
@@ -3962,7 +3583,6 @@ body.page-dois_sales_report .sr-split .sr-card > .sr-row:nth-child(3) .sr-label 
 }
 :where(body.sp-stella_reconcile) .rc-debug-box.ok    { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
 :where(body.sp-stella_reconcile) .rc-debug-box.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-
 
 /* ============================================================
  *  stella_sales_report.php   (body.page-stella_sales_report)
@@ -4232,7 +3852,6 @@ body.page-stella_sales_report.sr2 .sub-grid { grid-template-columns:repeat(2,min
 }
 body.page-stella_sales_report.sr2 #subsec-in { align-items:start !important; }
 
-
 /* Excel-style block selection: make the blue selection clearly visible (drag across boxes) */
 html body.page-stella_sales_report.sr2 input.xl-sel.xl-sel { background:rgba(59,130,246,.22) !important; box-shadow:inset 0 0 0 1.5px #3b82f6 !important; border-radius:4px !important; transition:none !important; }
 html body.page-stella_sales_report.sr2 input.xl-selhi.xl-selhi { background:rgba(59,130,246,.10) !important; box-shadow:inset 0 0 0 2px #2563eb !important; transition:none !important; }
@@ -4252,7 +3871,6 @@ body.page-stella_sales_report.sr2 .sr-undo-btn:disabled { opacity:.4; cursor:def
 :where(body.page-stella_sales_report) #xlFill { position:fixed; width:9px; height:9px; background:#2563eb; border:1px solid #fff; cursor:crosshair; z-index:9999; display:none; box-sizing:content-box; }
 body:where(.page-stella_sales_report).xl-dragging,
 body:where(.page-stella_sales_report).xl-dragging * { user-select:none !important; cursor:crosshair !important; }
-
 
 /* ============================================================
  *  stella_sum.php   (body.sp-stella_sum)
@@ -4360,7 +3978,6 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
   padding: 9px 8px; border: 1px solid #BF360C; text-align: right;
 }
 :where(body.sp-stella_sum) .sum-table tfoot td.td-label { text-align: left; padding-left: 12px; }
-
 
 /* ============================================================
  *  stella_tb.php   (body.sp-stella_tb)
@@ -4475,7 +4092,6 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
   padding:9px 8px; border:1px solid #7F0000; text-align:right;
 }
 :where(body.sp-stella_tb) .tb-table tfoot td.td-label { text-align:left; padding-left:14px; }
-
 
 /* ============================================================
  *  stella_totals.php   (body.sp-stella_totals)
@@ -4712,37 +4328,6 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
 /* inline style="" attributes of stella_income_statement.php moved here as classes (!important keeps them winning exactly like inline styles did) */
 
 /* inline style="" attributes of stella_month_end_inv.php moved here as classes (!important keeps them winning exactly like inline styles did) */
-:where(body.sp-stella_month_end_inv) .sx-1 { grid-column:1/-1 !important; }
-:where(body.sp-stella_month_end_inv) .sx-2 { gap:3px !important; }
-:where(body.sp-stella_month_end_inv) .sx-3 { flex-direction:column !important; align-items:center !important; gap:2px !important; }
-:where(body.sp-stella_month_end_inv) .sx-4 { margin-top:8px !important; line-height:1.5 !important; }
-:where(body.sp-stella_month_end_inv) .sx-5 { margin-top:12px !important; border:1px solid #d8dde3 !important; border-radius:8px !important; background:#f7f9fb !important; line-height:1.7 !important; }
-:where(body.sp-stella_month_end_inv) .sx-6 { margin-top:4px !important; }
-:where(body.sp-stella_month_end_inv) .sx-7 { font-weight:400 !important; }
-:where(body.sp-stella_month_end_inv) .sx-8 { font-weight:700 !important; margin-top:10px !important; }
-:where(body.sp-stella_month_end_inv) .sx-9 { font-weight:700 !important; }
-:where(body.sp-stella_month_end_inv) .sx-10 { margin-top:12px !important; }
-:where(body.sp-stella_month_end_inv) .sx-11 { margin-bottom:10px !important; }
-:where(body.sp-stella_month_end_inv) .sx-12 { width:540px !important; max-width:94vw !important; }
-:where(body.sp-stella_month_end_inv) .sx-13 { border-top:none !important; padding-top:0 !important; flex-direction:column !important; align-items:stretch !important; }
-:where(body.sp-stella_month_end_inv) .sx-14 { margin-top:3px !important; }
-:where(body.sp-stella_month_end_inv) .sx-15 { margin-top:2px !important; }
-:where(body.sp-stella_month_end_inv) .sx-16 { opacity:.6 !important; }
-:where(body.sp-stella_month_end_inv) .sx-17 { margin-top:10px !important; }
-:where(body.sp-stella_month_end_inv) .sx-18 { margin:0 !important; max-width:90px !important; }
-:where(body.sp-stella_month_end_inv) .sx-19 { margin:0 !important; }
-:where(body.sp-stella_month_end_inv) .sx-20 { align-items:center !important; gap:10px !important; }
-:where(body.sp-stella_month_end_inv) .sx-21 { margin:-10px 0 16px 2px !important; }
-:where(body.sp-stella_month_end_inv) .sx-22 { position:absolute !important; right:8px !important; transform:translateY(-50%) !important; background:none !important; border:none !important; cursor:pointer !important; }
-:where(body.sp-stella_month_end_inv) .sx-23 { position:absolute !important; left:10px !important; transform:translateY(-50%) !important; pointer-events:none !important; }
-:where(body.sp-stella_month_end_inv) .sx-24 { width:100% !important; padding-left:30px !important; }
-:where(body.sp-stella_month_end_inv) .sx-25 { position:relative !important; min-width:260px !important; flex:1 !important; max-width:360px !important; }
-:where(body.sp-stella_month_end_inv) .sx-26 { max-width:100px !important; }
-:where(body.sp-stella_month_end_inv) .sx-27 { max-width:80px !important; }
-:where(body.sp-stella_month_end_inv) .sx-28 { max-width:140px !important; }
-:where(body.sp-stella_month_end_inv) .sx-29 { gap:8px !important; align-items:center !important; flex-wrap:wrap !important; }
-:where(body.sp-stella_month_end_inv) .sx-30 { background:rgba(255,255,255,.1) !important; border-radius:20px !important; font-weight:600 !important; align-self:flex-start !important; }
-:where(body.sp-stella_month_end_inv) .sx-31 { margin:0 0 12px !important; border-radius:8px !important; background:#e7f6ef !important; border:1px solid #9fd8bd !important; font-weight:700 !important; }
 
 /* inline style="" attributes of stella_pdc.php moved here as classes (!important keeps them winning exactly like inline styles did) */
 :where(body.sp-stella_pdc) .sx-1 { padding:4px 6px !important; text-align:center !important; }
@@ -4801,60 +4386,6 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
 
 /* <<< STELLA PAGES <<< */
 
-
-/* ============================================================
- *  stella_income_statement_acct.php   (body.sp-stella_income_statement_acct)
- * ============================================================ */
-:where(body.sp-stella_income_statement_acct) .is-wrap { max-width: 780px; margin: 0 auto; }
-:where(body.sp-stella_income_statement_acct) .is-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
-:where(body.sp-stella_income_statement_acct) .is-header { background: #1e3060; color: #fff; padding: 18px 28px 14px; }
-:where(body.sp-stella_income_statement_acct) .is-header-title { font-family: var(--font-m); font-size: .62rem; text-transform: uppercase;
-  letter-spacing: .12em; color: rgba(255,255,255,.5); margin-bottom: 4px; }
-:where(body.sp-stella_income_statement_acct) .is-header-main { font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; color: #fff; }
-:where(body.sp-stella_income_statement_acct) .is-header-date { font-family: var(--font-m); font-size: .72rem; color: rgba(255,255,255,.6); margin-top: 3px; }
-:where(body.sp-stella_income_statement_acct) .is-section { background: #f0f2f5; padding: 8px 28px; font-family: var(--font-m); font-size: .62rem;
-  font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--subtext2);
-  border-top: 1px solid var(--border); }
-:where(body.sp-stella_income_statement_acct) .is-row { display: flex; align-items: center; padding: 0 28px 0 44px; border-bottom: 1px solid #f4f5f7;
-  min-height: 38px; transition: background .1s; }
-:where(body.sp-stella_income_statement_acct) .is-row:hover { background: #fafbfc; }
-:where(body.sp-stella_income_statement_acct) .is-row.zero .is-label,
-:where(body.sp-stella_income_statement_acct) .is-row.zero .is-val { color: var(--subtext); }
-:where(body.sp-stella_income_statement_acct) .is-label { flex: 1; font-size: .78rem; color: var(--text); padding: 6px 0; }
-:where(body.sp-stella_income_statement_acct) .is-count { font-family: var(--font-m); font-size: .58rem; color: var(--subtext); margin-left: 8px;
-  background: #f3f4f6; padding: 2px 7px; border-radius: 10px; }
-:where(body.sp-stella_income_statement_acct) .is-val { font-family: var(--font-m); font-size: .8rem; color: var(--text); min-width: 140px; text-align: right; }
-:where(body.sp-stella_income_statement_acct) .is-pct { font-family: var(--font-m); font-size: .7rem; color: var(--subtext); width: 56px; text-align: right; margin-left: 6px; }
-:where(body.sp-stella_income_statement_acct) .is-total { display: flex; align-items: center; padding: 8px 28px 8px 44px; background: #f8f9fb;
-  border-top: 2px solid var(--border2); border-bottom: 1px solid var(--border); }
-:where(body.sp-stella_income_statement_acct) .is-total-label { flex: 1; font-family: var(--font-m); font-size: .72rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .06em; color: var(--subtext2); }
-:where(body.sp-stella_income_statement_acct) .is-total-val { font-family: var(--font-m); font-size: .88rem; font-weight: 800; color: var(--text);
-  min-width: 140px; text-align: right; }
-:where(body.sp-stella_income_statement_acct) .is-total-pct { font-family: var(--font-m); font-size: .7rem; font-weight: 700; width: 56px; text-align: right; margin-left: 6px; }
-:where(body.sp-stella_income_statement_acct) .is-net { background: #fffbeb; border-top: 2px solid var(--accent3) !important; }
-:where(body.sp-stella_income_statement_acct) .is-net .is-total-label { color: var(--accent3); font-size: .82rem; }
-:where(body.sp-stella_income_statement_acct) .is-net .is-total-val { color: var(--accent3); font-size: 1rem; }
-:where(body.sp-stella_income_statement_acct) .is-tag { font-family: var(--font-m); font-size: .6rem; color: var(--accent); margin-left: 8px;
-  background: rgba(15,123,92,.08); padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(15,123,92,.15); }
-:where(body.sp-stella_income_statement_acct) .is-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
-:where(body.sp-stella_income_statement_acct) .is-note { font-family: var(--font-m); font-size: .68rem; color: var(--subtext); line-height: 1.6;
-  padding: 12px 28px; border-top: 1px solid var(--border); background: #fcfcfd; }
-:where(body.sp-stella_income_statement_acct) .is-note b { color: var(--text); }
-:where(body.sp-stella_income_statement_acct) .neg { color: var(--accent2) !important; }
-:where(body.sp-stella_income_statement_acct) .is-form { display:flex; gap:10px; align-items:center; flex-wrap:nowrap; }
-:where(body.sp-stella_income_statement_acct) .is-form .form-control { width:auto; flex:0 0 auto; }
-:where(body.sp-stella_income_statement_acct) .is-sel-month { max-width:150px; }
-:where(body.sp-stella_income_statement_acct) .is-sel-year { max-width:100px; }
-:where(body.sp-stella_income_statement_acct) .is-sel-basis { max-width:170px; }
-:where(body.sp-stella_income_statement_acct) .is-hide-label { font-family:var(--font-m); font-size:.72rem; color:var(--subtext); display:flex; align-items:center; gap:6px; cursor:pointer; }
-:where(body.sp-stella_income_statement_acct) .is-section-hint { text-transform:none; letter-spacing:0; font-weight:400; }
-:where(body.sp-stella_income_statement_acct) .is-empty { color:var(--subtext); }
-:where(body.sp-stella_income_statement_acct) .is-hide-zero .is-row[data-zero="1"] { display:none; }
-@media print { :where(body.sp-stella_income_statement_acct) .is-controls, :where(body.sp-stella_income_statement_acct) .sidebar, :where(body.sp-stella_income_statement_acct) aside { display:none !important; } }
-
-
 /* ============================================================
  *  stella_income_statement.php   (body.sp-stella_income_statement)
  *  Month view with previous-month comparison (same layout idea as the H FS page)
@@ -4905,3 +4436,634 @@ body:where(.page-stella_sales_report).xl-dragging * { user-select:none !importan
 :where(body.sp-stella_income_statement) .fs-addx:hover { background:#e9f5dc; }
 :where(body.sp-stella_income_statement) .fs-note { font-family:var(--font-m); font-size:.68rem; color:var(--subtext); line-height:1.7; padding:12px 22px; border-top:1px solid var(--border); background:#fcfcfd; }
 @media print { :where(body.sp-stella_income_statement) .fs-controls, :where(body.sp-stella_income_statement) .fs-xdel, :where(body.sp-stella_income_statement) .fs-addx { display:none !important; } :where(body.sp-stella_income_statement) .fs-table input.fs-in { border:0; } }
+
+/* ============================================================
+ *  stella_cogs.php — Purchases by Commi   (body.sp-stella_cogs)
+ *  Moved here from the inline <style> block of the page.
+ *  Selectors are scoped with :where() so specificity is unchanged.
+ * ============================================================ */
+:where(body.sp-stella_cogs) .commi-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.05); margin-bottom:16px; overflow:hidden; }
+:where(body.sp-stella_cogs) .commi-head { background:#0f3d2e; color:#fff; padding:9px 16px; font-family:var(--font-m); font-size:.66rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+:where(body.sp-stella_cogs) .commi-head span { color:rgba(255,255,255,.55); font-weight:500; letter-spacing:.03em; text-transform:none; }
+:where(body.sp-stella_cogs) .commi-wrap { overflow-x:auto; }
+:where(body.sp-stella_cogs) .commi-tbl { width:100%; border-collapse:collapse; font-family:var(--font-m); font-size:.78rem; min-width:620px; }
+:where(body.sp-stella_cogs) .commi-tbl th { background:#f4f5f7; color:#4b5563; font-size:.6rem; text-transform:uppercase; letter-spacing:.07em; padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); }
+:where(body.sp-stella_cogs) .commi-tbl th.num, :where(body.sp-stella_cogs) .commi-tbl td.num { text-align:right; }
+:where(body.sp-stella_cogs) .commi-tbl td { border-bottom:1px solid #eef0f2; padding:0; }
+:where(body.sp-stella_cogs) .commi-tbl input, :where(body.sp-stella_cogs) .commi-tbl select { width:100%; border:none; background:transparent; padding:8px 10px; font-family:var(--font-m); font-size:.78rem; outline:none; box-sizing:border-box; }
+:where(body.sp-stella_cogs) .commi-tbl input:focus, :where(body.sp-stella_cogs) .commi-tbl select:focus { background:rgba(15,123,92,.07); }
+:where(body.sp-stella_cogs) .commi-tbl input.amt { text-align:right; }
+:where(body.sp-stella_cogs) .commi-tbl tr.less input.amt { color:#be123c; }
+:where(body.sp-stella_cogs) .commi-tbl td.ro { padding:8px 10px; text-align:right; color:#6d28d9; background:#f5f3ff; }
+:where(body.sp-stella_cogs) .commi-tbl td.st { padding:0 10px; font-size:.64rem; color:var(--subtext); white-space:nowrap; text-align:center; }
+:where(body.sp-stella_cogs) .commi-tbl tfoot td { padding:9px 10px; font-weight:800; background:#f0f2f5; border-top:1px solid #d1d5db; }
+:where(body.sp-stella_cogs) .commi-tbl .grand { color:#0f7b5c; font-size:.88rem; }
+:where(body.sp-stella_cogs) .commi-del { border:1px solid #fecdd3; background:#fff1f2; color:#be123c; border-radius:5px; cursor:pointer; padding:2px 8px; font-size:.7rem; }
+:where(body.sp-stella_cogs) .commi-add { margin:10px 12px; }
+:where(body.sp-stella_cogs) .commi-tbl th.col-name { width:38%; }
+:where(body.sp-stella_cogs) .commi-tbl th.col-sign { width:110px; }
+:where(body.sp-stella_cogs) .commi-tbl th.col-act { width:90px; }
+:where(body.sp-stella_cogs) .commi-tbl td.fx-name { padding:8px 10px; font-weight:700; }
+:where(body.sp-stella_cogs) .commi-tbl td.fx-sign { padding:8px 10px; color:var(--subtext); }
+:where(body.sp-stella_cogs) .commi-tbl .commi-auto { font-size:.58rem; font-weight:600; color:#0f7b5c; background:#dcfce7; border-radius:4px; padding:1px 6px; margin-left:4px; }
+:where(body.sp-stella_cogs) .commi-tbl td.ro.stella { color:#0f3d2e; background:#ecfdf5; font-weight:700; }
+:where(body.sp-stella_cogs) .commi-tbl td.ro.rowtotal { color:#0f3d2e; background:#f0fdf4; }
+:where(body.sp-stella_cogs) .commi-tbl td.st.lock { color:var(--muted); }
+:where(body.sp-stella_cogs) .commi-tbl tfoot td.other { color:#6d28d9; }
+
+/* ============================================================
+ *  stella_month_end_inv.php   (body.sp-stella_month_end_inv)
+ *  Moved here from the inline <style> block of the page.
+ *  Selectors are scoped with :where() so specificity is unchanged.
+ * ============================================================ */
+/* ── Page header ── */
+:where(body.sp-stella_month_end_inv) .inv-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: var(--radius); padding: 20px 26px 16px;
+  margin-bottom: 18px; display: flex; align-items: flex-start;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+:where(body.sp-stella_month_end_inv) .inv-header .eyebrow {
+  font-family: var(--font-m); font-size: .58rem;
+  text-transform: uppercase; letter-spacing: .14em;
+  color: rgba(255,255,255,.4); margin-bottom: 4px;
+}
+:where(body.sp-stella_month_end_inv) .inv-header .title {
+  font-size: 1.15rem; font-weight: 800; color: #fff; letter-spacing: -.02em;
+}
+:where(body.sp-stella_month_end_inv) .inv-header .subtitle {
+  font-family: var(--font-m); font-size: .67rem;
+  color: rgba(255,255,255,.45); margin-top: 3px;
+}
+
+/* ── Controls ── */
+:where(body.sp-stella_month_end_inv) .inv-controls {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px;
+}
+
+/* ── KPI strip ── */
+:where(body.sp-stella_month_end_inv) .inv-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin-bottom: 20px;
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s;
+  user-select: none;
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15,123,92,.08);
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-card.active-filter {
+  border-color: var(--accent);
+  background: #f0fdf4;
+  box-shadow: 0 0 0 3px rgba(15,123,92,.12);
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-card.grand-card {
+  border-top: 2px solid var(--accent);
+  cursor: default;
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-card.grand-card:hover {
+  border-color: var(--accent); box-shadow: none;
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-label {
+  font-family: var(--font-m); font-size: .55rem; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--subtext); margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-val {
+  font-family: var(--font-m); font-size: .95rem; font-weight: 800;
+  color: var(--accent3);
+}
+:where(body.sp-stella_month_end_inv) .inv-kpi-val.grand { font-size: 1.1rem; color: var(--accent); }
+:where(body.sp-stella_month_end_inv) .inv-kpi-hint {
+  font-family: var(--font-m); font-size: .55rem;
+  color: var(--subtext); margin-top: 3px;
+}
+
+/* ── Date banner ── */
+:where(body.sp-stella_month_end_inv) .inv-date-banner {
+  background: #1e3a5f; color: #fff;
+  padding: 9px 18px; border-radius: var(--radius) var(--radius) 0 0;
+  font-family: var(--font-m); font-size: .68rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+
+/* ── Table wrapper ── */
+:where(body.sp-stella_month_end_inv) .inv-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+
+/* ── Category header ── */
+:where(body.sp-stella_month_end_inv) .inv-cat-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 16px;
+  font-family: var(--font-m); font-size: .65rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .1em; color: #fff;
+  background: #0f3d2e;
+}
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-0 { background: #1e3a5f; }
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-1 { background: #3d1f0f; }
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-2 { background: #1f0f3d; }
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-3 { background: #3d0f1f; }
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-4 { background: #0f3d1f; }
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-5 { background: #1f3d0f; }
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-6 { background: #3d2e0f; }
+:where(body.sp-stella_month_end_inv) .inv-cat-head.cat-7 { background: #0f2e3d; }
+:where(body.sp-stella_month_end_inv) .inv-cat-total-badge {
+  background: rgba(255,255,255,.15);
+  padding: 3px 10px; border-radius: 12px;
+  font-size: .62rem;
+}
+
+/* ── Column headers ── */
+:where(body.sp-stella_month_end_inv) .inv-col-head {
+  display: grid;
+  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
+  gap: 0;
+  background: #1e3a5f;
+  border-bottom: 1px solid #2d5480;
+}
+:where(body.sp-stella_month_end_inv) .inv-col-head div {
+  padding: 8px 10px;
+  font-family: var(--font-m); font-size: .58rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; color: #fff;
+  border-right: 1px solid #2d5480; text-align: center;
+}
+:where(body.sp-stella_month_end_inv) .inv-col-head div:first-child { text-align: left; padding-left: 14px; }
+:where(body.sp-stella_month_end_inv) .inv-col-head div:last-child { border-right: none; }
+
+/* ── Data rows ── */
+:where(body.sp-stella_month_end_inv) .inv-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
+  gap: 0;
+  border-bottom: 1px solid #f0f2f5;
+  transition: background .1s;
+  align-items: stretch;
+}
+:where(body.sp-stella_month_end_inv) .inv-row:hover { background: #f8fbff; }
+
+:where(body.sp-stella_month_end_inv) .inv-cell {
+  border-right: 1px solid #eef0f3;
+  display: flex; align-items: center;
+}
+:where(body.sp-stella_month_end_inv) .inv-cell:last-child { border-right: none; }
+
+:where(body.sp-stella_month_end_inv) .inv-input {
+  width: 100%; padding: 7px 10px;
+  font-family: var(--font-m); font-size: .76rem; color: var(--text);
+  background: transparent; border: none; outline: none;
+  transition: background .12s, box-shadow .12s;
+}
+:where(body.sp-stella_month_end_inv) .inv-input:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+:where(body.sp-stella_month_end_inv) .inv-input::placeholder { color: #a8b0ba; opacity: 1; font-weight: 400; }
+:where(body.sp-stella_month_end_inv) .inv-input.desc-input { font-size: .78rem; padding-left: 14px; }
+:where(body.sp-stella_month_end_inv) .inv-input.desc-input.desc-duplicate {
+  background: #fff5f5;
+  box-shadow: inset 0 0 0 2px #dc3545;
+}
+:where(body.sp-stella_month_end_inv) .inv-cell { position: relative; }
+:where(body.sp-stella_month_end_inv) .desc-dup-warn {
+  position: absolute; left: 14px; bottom: 1px;
+  font-family: var(--font-m); font-size: .55rem; font-weight: 700;
+  color: #dc3545; background: #fff; padding: 0 4px 0 0;
+  pointer-events: none; line-height: 1;
+}
+:where(body.sp-stella_month_end_inv) .inv-input.num-input { text-align: right; }
+:where(body.sp-stella_month_end_inv) .inv-input.total-input {
+  background: #f0fdf4; color: var(--accent);
+  font-weight: 700; cursor: default;
+  text-align: right;
+}
+
+/* Unit select */
+:where(body.sp-stella_month_end_inv) .inv-unit-select {
+  width: 100%; padding: 7px 8px;
+  font-family: var(--font-m); font-size: .74rem;
+  background: transparent; border: none; outline: none;
+  color: var(--text); cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%236b7280' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 20px;
+}
+:where(body.sp-stella_month_end_inv) .inv-unit-select:focus {
+  background-color: #fff;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Action cell */
+:where(body.sp-stella_month_end_inv) .inv-action-cell {
+  display: flex; gap: 4px; align-items: center;
+  justify-content: center; padding: 4px 6px;
+}
+:where(body.sp-stella_month_end_inv) .btn-inv-save {
+  padding: 4px 10px; background: var(--accent); color: #fff;
+  border: none; border-radius: 5px; font-family: var(--font-m);
+  font-size: .62rem; font-weight: 600; cursor: pointer;
+  white-space: nowrap; transition: background .15s;
+}
+:where(body.sp-stella_month_end_inv) .btn-inv-save:hover { background: #0a6649; }
+:where(body.sp-stella_month_end_inv) .btn-inv-del {
+  padding: 4px 7px; background: transparent; color: var(--accent2);
+  border: 1px solid rgba(220,53,69,.2); border-radius: 5px;
+  font-size: .62rem; cursor: pointer; transition: background .15s;
+}
+:where(body.sp-stella_month_end_inv) .btn-inv-del:hover { background: rgba(220,53,69,.07); }
+
+/* Total row */
+:where(body.sp-stella_month_end_inv) .inv-total-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 130px 120px 140px 100px;
+  background: #0f2d4a; border-top: 2px solid #1e3a5f;
+}
+:where(body.sp-stella_month_end_inv) .inv-total-row div {
+  padding: 9px 10px;
+  font-family: var(--font-m); font-size: .68rem; font-weight: 800;
+  color: #fff; border-right: 1px solid #1e3a5f; text-align: right;
+}
+:where(body.sp-stella_month_end_inv) .inv-total-row div:first-child { text-align: left; padding-left: 14px; letter-spacing: .06em; text-transform: uppercase; }
+:where(body.sp-stella_month_end_inv) .inv-total-row div:last-child { border-right: none; }
+:where(body.sp-stella_month_end_inv) .inv-total-row div.total-val { color: #6ee7b7; font-size: .78rem; }
+
+/* Grand total */
+:where(body.sp-stella_month_end_inv) .inv-grand-total {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius); padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 8px;
+}
+:where(body.sp-stella_month_end_inv) .inv-grand-label {
+  font-family: var(--font-m); font-size: .8rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .1em; color: var(--accent);
+}
+:where(body.sp-stella_month_end_inv) .inv-grand-val {
+  font-family: var(--font-m); font-size: 1.4rem; font-weight: 800;
+  color: var(--accent);
+}
+
+/* Add row btn */
+:where(body.sp-stella_month_end_inv) .btn-add-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; background: transparent;
+  border: 1px dashed var(--border2); border-radius: 7px;
+  font-family: var(--font-m); font-size: .66rem; color: var(--subtext2);
+  cursor: pointer; transition: all .15s; width: 100%;
+  justify-content: center; margin: 4px 0;
+}
+:where(body.sp-stella_month_end_inv) .btn-add-row:hover {
+  background: #f0fdf4; border-color: var(--accent); color: var(--accent);
+}
+
+/* Save status */
+:where(body.sp-stella_month_end_inv) .row-status {
+  font-family: var(--font-m); font-size: .58rem;
+  color: var(--accent); display: none;
+  text-align: center; padding: 2px 0;
+}
+
+@media (max-width: 900px) {
+  :where(body.sp-stella_month_end_inv) #kpiStrip { grid-template-columns: repeat(3, 1fr) !important; }
+  :where(body.sp-stella_month_end_inv) .inv-col-head, :where(body.sp-stella_month_end_inv) .inv-row, :where(body.sp-stella_month_end_inv) .inv-total-row {
+    grid-template-columns: 1fr 90px 110px 100px 120px 90px;
+  }
+}
+
+/* ── Delete-section button (on category header) ── */
+:where(body.sp-stella_month_end_inv) .btn-inv-del-section {
+  background: rgba(255,255,255,.12); border: none; color: #fff;
+  width: 22px; height: 22px; border-radius: 6px; cursor: pointer;
+  font-size: .7rem; line-height: 1; flex-shrink: 0;
+}
+:where(body.sp-stella_month_end_inv) .btn-inv-del-section:hover { background: rgba(255,90,90,.4); }
+:where(body.sp-stella_month_end_inv) .inv-section-empty-note {
+  text-align: center; padding: 40px 20px; font-family: var(--font-m);
+  font-size: .8rem; color: var(--muted); background: var(--surface);
+  border: 1px dashed var(--border); border-radius: var(--radius);
+}
+
+/* ── Modals ── */
+:where(body.sp-stella_month_end_inv) .modal-overlay {
+  position: fixed; inset: 0; background: rgba(10,12,20,.55);
+  backdrop-filter: blur(2px); display: none;
+  align-items: center; justify-content: center; z-index: 9999; padding: 16px;
+}
+:where(body.sp-stella_month_end_inv) .modal-overlay.active { display: flex; }
+:where(body.sp-stella_month_end_inv) .modal-box {
+  background: var(--surface); width: 420px; max-width: 100%;
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  animation: modalPop-sp-stella_month_end_inv .15s ease;
+}
+@keyframes modalPop-sp-stella_month_end_inv { from{transform:scale(.96);opacity:0} to{transform:scale(1);opacity:1} }
+:where(body.sp-stella_month_end_inv) .modal-header {
+  background: #1a1a2e; color: #fff; padding: 16px 20px;
+  font-family: var(--font-m); font-size: .85rem; font-weight: 800; letter-spacing: .02em;
+}
+:where(body.sp-stella_month_end_inv) .modal-header.danger { background: #3a1414; }
+:where(body.sp-stella_month_end_inv) .modal-body { padding: 20px; font-family: var(--font-m); font-size: .8rem; color: var(--text); line-height: 1.6; }
+:where(body.sp-stella_month_end_inv) .modal-input {
+  width: 100%; margin-top: 12px; padding: 10px 14px;
+  font-family: var(--font-m); font-size: .85rem; text-transform: uppercase;
+  border: 1px solid var(--border); border-radius: 8px; outline: none;
+  background: #fff; color: var(--text); transition: border-color .15s;
+}
+:where(body.sp-stella_month_end_inv) .modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(15,123,92,.1); }
+:where(body.sp-stella_month_end_inv) .modal-error { color: #b91c1c; font-size: .72rem; margin-top: 8px; display: none; }
+:where(body.sp-stella_month_end_inv) .modal-footer {
+  padding: 14px 20px; display: flex; justify-content: flex-end; gap: 8px;
+  border-top: 1px solid var(--border); background: #fafbfc;
+}
+:where(body.sp-stella_month_end_inv) .modal-btn { padding: 9px 16px; border-radius: 8px; font-family: var(--font-m); font-size: .75rem; font-weight: 700; cursor: pointer; border: none; }
+:where(body.sp-stella_month_end_inv) .modal-btn-cancel { background: #eef0f3; color: var(--text); }
+:where(body.sp-stella_month_end_inv) .modal-btn-cancel:hover { background: #e2e5ea; }
+:where(body.sp-stella_month_end_inv) .modal-btn-primary { background: var(--accent); color: #fff; }
+:where(body.sp-stella_month_end_inv) .modal-btn-primary:hover { background: #0a6b50; }
+:where(body.sp-stella_month_end_inv) .modal-btn-danger { background: #b91c1c; color: #fff; }
+:where(body.sp-stella_month_end_inv) .modal-btn-danger:hover { background: #991616; }
+
+/* ── Duplicate-to-other-days modal ── */
+:where(body.sp-stella_month_end_inv) .modal-box.wide { width: 480px; }
+:where(body.sp-stella_month_end_inv) .dup-day-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  margin: 10px 0 14px;
+}
+:where(body.sp-stella_month_end_inv) .dup-day-chip {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  height: 34px; border: 1px solid var(--border); border-radius: 7px;
+  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
+  cursor: pointer; user-select: none; background: #fff; color: var(--text);
+  transition: all .12s;
+}
+:where(body.sp-stella_month_end_inv) .dup-day-chip:hover { border-color: var(--accent); }
+:where(body.sp-stella_month_end_inv) .dup-day-chip.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+:where(body.sp-stella_month_end_inv) .dup-day-chip.has-data::after {
+  content: ''; position: absolute; top: 3px; right: 3px;
+  width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;
+}
+:where(body.sp-stella_month_end_inv) .dup-day-chip.has-data.checked::after { background: #fff; }
+:where(body.sp-stella_month_end_inv) .dup-day-chip.is-source { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
+:where(body.sp-stella_month_end_inv) .dup-month-nav {
+  display: flex; align-items: center; gap: 6px; margin-top: 12px;
+}
+:where(body.sp-stella_month_end_inv) .dup-nav-btn {
+  flex: none; height: 30px; padding: 0 10px; border: 1px solid var(--border);
+  border-radius: 7px; background: #fff; color: var(--text); cursor: pointer;
+  font-family: var(--font-m); font-size: .72rem; font-weight: 700;
+}
+:where(body.sp-stella_month_end_inv) .dup-nav-btn:hover { border-color: var(--accent); background: #f0fdf4; }
+:where(body.sp-stella_month_end_inv) .dup-nav-today { margin-left: auto; color: var(--accent3); }
+:where(body.sp-stella_month_end_inv) .dup-month-nav .dup-select { flex: 1; }
+:where(body.sp-stella_month_end_inv) .dup-legend {
+  display: flex; align-items: center; gap: 14px; font-family: var(--font-m);
+  font-size: .64rem; color: var(--subtext); margin-bottom: 10px;
+}
+:where(body.sp-stella_month_end_inv) .dup-legend span { display: flex; align-items: center; gap: 5px; }
+:where(body.sp-stella_month_end_inv) .dup-legend .dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; display: inline-block; }
+:where(body.sp-stella_month_end_inv) .dup-quicklinks { display: flex; gap: 12px; margin-bottom: 4px; }
+:where(body.sp-stella_month_end_inv) .dup-quicklinks a { font-family: var(--font-m); font-size: .68rem; color: var(--accent3); cursor: pointer; text-decoration: underline; }
+:where(body.sp-stella_month_end_inv) .dup-option-row {
+  display: flex; align-items: flex-start; gap: 8px; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+:where(body.sp-stella_month_end_inv) .dup-option-row label { font-family: var(--font-m); font-size: .74rem; color: var(--text); line-height: 1.4; }
+:where(body.sp-stella_month_end_inv) .dup-option-row .hint { display: block; font-size: .65rem; color: var(--subtext); margin-top: 2px; }
+:where(body.sp-stella_month_end_inv) .dup-select {
+  width: 100%; margin-top: 6px; padding: 7px 10px;
+  font-family: var(--font-m); font-size: .76rem;
+  border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--text);
+}
+:where(body.sp-stella_month_end_inv) #dupSummary {
+  margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  font-family: var(--font-m); font-size: .72rem; color: #166534; display: none;
+}
+
+/* ============================================================
+ *  stella_income_statement_acct.php   (body.sp-stella_income_statement_acct)
+ *  Moved here from the inline <style> block of the page.
+ *  Selectors are scoped with :where() so specificity is unchanged.
+ * ============================================================ */
+:where(body.sp-stella_income_statement_acct) .is-wrap { max-width: 760px; margin: 0 auto; }
+:where(body.sp-stella_income_statement_acct) .is-wrap.compare { max-width: 980px; }
+:where(body.sp-stella_income_statement_acct) .is-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; }
+:where(body.sp-stella_income_statement_acct) .is-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+:where(body.sp-stella_income_statement_acct) .fs-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+:where(body.sp-stella_income_statement_acct) .fs-table th, :where(body.sp-stella_income_statement_acct) .fs-table td { padding: 0 10px; border-bottom: 1px solid #f1f3f6; height: 30px; }
+:where(body.sp-stella_income_statement_acct) .fs-title { background: #7a1313; color: #fff; padding: 14px 22px; }
+:where(body.sp-stella_income_statement_acct) .fs-title b { font-size: 1.02rem; letter-spacing: .01em; }
+:where(body.sp-stella_income_statement_acct) .fs-title span { display: block; font-family: var(--font-m); font-size: .66rem; color: rgba(255,255,255,.7); margin-top: 3px; }
+:where(body.sp-stella_income_statement_acct) .fs-table thead th { background: #fbeaea; color: #7a1313; font-family: var(--font-m); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; height: 36px; text-align: right; border-bottom: 2px solid #e9c2c2; }
+:where(body.sp-stella_income_statement_acct) .fs-table thead th:first-child { text-align: left; }
+:where(body.sp-stella_income_statement_acct) .fs-table thead th.cur { background: #7a1313; color: #fff; }
+:where(body.sp-stella_income_statement_acct) .fs-table td.lbl { color: #0b0f19; font-weight: 600; text-align: left; }
+:where(body.sp-stella_income_statement_acct) .fs-table td.num { color: #0b0f19; font-weight: 600; }
+:where(body.sp-stella_income_statement_acct) .fs-table td.num { text-align: right; font-family: var(--font-m); font-size: .79rem; white-space: nowrap; min-width: 118px; }
+:where(body.sp-stella_income_statement_acct) .fs-table td.pc { text-align: right; font-family: var(--font-m); font-size: .68rem; color: #374151; width: 46px; border-right: 1px solid #f1f3f6; }
+:where(body.sp-stella_income_statement_acct) .fs-table td.cur { background: #fffafa; }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.line td.lbl { padding-left: 26px; }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.sub td.lbl { padding-left: 90px; font-weight: 700; color: var(--subtext2); font-size: .74rem; }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.sub td.num { font-weight: 700; border-top: 1px solid var(--border2); }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.sec td { background: #f3f4f6; font-weight: 800; font-family: var(--font-m); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--subtext2); height: 28px; }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.sec2 td { font-weight: 700; color: var(--subtext2); padding-left: 26px; height: 24px; }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.total td { font-weight: 800; background: #fafbfc; border-top: 1px solid var(--border2); }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.grand td { font-weight: 800; background: #f6f7f9; border-top: 2px solid var(--border2); }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.final td { font-weight: 800; background: #fff6e0; border-top: 2px solid var(--accent3); color: #8a5300; }
+:where(body.sp-stella_income_statement_acct) .fs-table tr.zero.line td { color: #4b5563; }
+:where(body.sp-stella_income_statement_acct) .fs-table .neg { color: var(--accent2) !important; }
+:where(body.sp-stella_income_statement_acct) .fs-table input.fs-in { width: 118px; text-align: right; font-family: var(--font-m); font-size: .82rem; font-weight: 700; color: #0b0f19; padding: 4px 8px; border: 2px solid #0284c7; border-radius: 6px; background: #fff;
+  box-shadow: 0 0 0 3px rgba(2,132,199,.35), 0 0 10px 1px rgba(2,132,199,.45); }
+:where(body.sp-stella_income_statement_acct) .fs-table input.fs-in:focus { outline: none; border-color: #0369a1; box-shadow: 0 0 0 4px rgba(2,132,199,.6), 0 0 16px 3px rgba(2,132,199,.6); }
+:where(body.sp-stella_income_statement_acct) .fs-tag { font-family: var(--font-m); font-size: .58rem; color: var(--accent); margin-left: 8px; background: rgba(15,123,92,.08); padding: 2px 7px; border-radius: 10px; border: 1px solid rgba(15,123,92,.15); white-space: nowrap; }
+:where(body.sp-stella_income_statement_acct) .fs-st { font-family: var(--font-m); font-size: .62rem; color: var(--subtext); margin-left: 6px; }
+:where(body.sp-stella_income_statement_acct) .is-note { font-family: var(--font-m); font-size: .68rem; color: var(--subtext); line-height: 1.7; padding: 12px 22px; border-top: 1px solid var(--border); background: #fcfcfd; }
+:where(body.sp-stella_income_statement_acct) .is-note b { color: var(--text); }
+:where(body.sp-stella_income_statement_acct) .is-note .bad { color: var(--accent2); }
+@media print { :where(body.sp-stella_income_statement_acct) .is-controls, :where(body.sp-stella_income_statement_acct) .sidebar, :where(body.sp-stella_income_statement_acct) aside, :where(body.sp-stella_income_statement_acct) .fs-tag, :where(body.sp-stella_income_statement_acct) .fs-st { display: none !important; } :where(body.sp-stella_income_statement_acct) .fs-table input.fs-in { border: 0; box-shadow: none; } }
+
+/* ============================================================
+ *  summary_report.php (Stella Summary Report)   (body.sp-summary)
+ *  Moved here from the inline <style> block of the page.
+ *  Selectors are scoped with :where() so specificity is unchanged.
+ * ============================================================ */
+/* ── Page content ── */
+:where(body.sp-summary) .page-content { padding: 20px 24px !important; overflow-x: hidden; }
+
+/* ── Outer scroll container ── */
+:where(body.sp-summary) .sr-outer {
+  width: 100%; max-width: 100%;
+  overflow-x: auto; overflow-y: auto;
+  max-height: calc(100vh - 330px); min-height: 300px;   /* table scrolls inside, so the header and the TOTAL row stay in view */
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c7d0 #f1f3f5;
+  display: block;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+:where(body.sp-summary) .sr-outer::-webkit-scrollbar { height: 8px; }
+:where(body.sp-summary) .sr-outer::-webkit-scrollbar-track { background: #f1f3f5; }
+:where(body.sp-summary) .sr-outer::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 4px; }
+:where(body.sp-summary) .sr-outer::-webkit-scrollbar-thumb:hover { background: #9aa3af; }
+
+/* ── Table ── */
+:where(body.sp-summary) .sr-table { border-collapse: collapse; width: max-content; font-size: .69rem; table-layout: fixed; }
+
+/* ── Header ── */
+:where(body.sp-summary) .sr-table thead th {
+  background: #f4f5f7; color: #4b5563;
+  font-family: var(--font-m); font-size: .52rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 9px 6px; border: 1px solid #e3e6ea;
+  white-space: nowrap; text-align: center;
+  position: sticky; top: 0; z-index: 20;
+}
+:where(body.sp-summary) .sr-table thead tr.grp-row th {
+  font-size: .5rem; padding: 4px 6px;
+  background: #ebedf0; letter-spacing: .05em; color: #374151;
+}
+/* Stella: keep BOTH header rows pinned — the column-name row sits just under
+   the group row instead of sliding over it (--grp-h is measured in JS) */
+:where(body.sp-summary) .sr-table.sticky-2row thead tr.grp-row th { top: 0; z-index: 22; }
+:where(body.sp-summary) .sr-table.sticky-2row thead tr:not(.grp-row) th { top: var(--grp-h, 21px); z-index: 21; }
+:where(body.sp-summary) .sr-table.sticky-2row thead th.th-date, :where(body.sp-summary) .sr-table.sticky-2row thead th.th-act { z-index: 30 !important; }
+/* Stella: show every day of the month (no inner vertical scroll) — the page scrolls,
+   and the header (top) and TOTAL row (bottom) are pinned to the screen by JS (see pinRows below) */
+:where(body.sp-summary) .sr-outer.all-rows { max-height: none; overflow-y: visible; }
+:where(body.sp-summary) .sr-table.sticky-2row thead th, :where(body.sp-summary) .sr-table.sticky-2row tfoot td { will-change: transform; }
+
+/* ── Sticky columns ── */
+:where(body.sp-summary) .th-date {
+  position: sticky !important; left: 0; z-index: 30 !important;
+  width: 88px; min-width: 88px;
+  background: #ebedf0 !important; color: var(--accent) !important;
+  box-shadow: 2px 0 5px rgba(0,0,0,.07);
+}
+:where(body.sp-summary) .th-act {
+  position: sticky !important; right: 0; z-index: 30 !important;
+  width: 66px; min-width: 66px;
+  background: #ebedf0 !important;
+  box-shadow: -2px 0 5px rgba(0,0,0,.07);
+}
+:where(body.sp-summary) .td-date {
+  position: sticky; left: 0; z-index: 5;
+  background: #f8f9fb !important;
+  box-shadow: 2px 0 5px rgba(0,0,0,.06);
+  font-family: var(--font-m); font-size: .69rem;
+  color: var(--accent); font-weight: 600;
+  text-align: center; padding: 0 6px;
+  white-space: nowrap; width: 88px; min-width: 88px;
+}
+:where(body.sp-summary) .td-act {
+  position: sticky; right: 0; z-index: 5;
+  background: #f8f9fb !important;
+  box-shadow: -2px 0 5px rgba(0,0,0,.06);
+  text-align: center; padding: 3px 5px;
+  width: 66px; min-width: 66px;
+}
+
+/* ── Column group colours ── */
+:where(body.sp-summary) .g-income { background: #f0fdf4 !important; }
+:where(body.sp-summary) .g-deduct { background: #fff7f7 !important; }
+:where(body.sp-summary) .g-calc { background: #eff6ff !important; }
+:where(body.sp-summary) .g-text { background: #faf5ff !important; }
+
+/* ── Column widths ── */
+:where(body.sp-summary) .col-num { width: 90px; min-width: 90px; }
+:where(body.sp-summary) .col-text { width: 140px; min-width: 140px; }
+
+/* ── Body rows ── */
+:where(body.sp-summary) .sr-table tbody tr { border-bottom: 1px solid #e8eaed; transition: background .1s; }
+:where(body.sp-summary) .sr-table tbody tr:hover td { filter: brightness(.97); }
+:where(body.sp-summary) .sr-table td { border: 1px solid #e8eaed; padding: 0; vertical-align: middle; }
+
+/* ── Inputs ── */
+:where(body.sp-summary) .sri {
+  width: 100%; padding: 6px 6px;
+  background: transparent; border: none; outline: none;
+  color: #1a1d23; font-family: var(--font-m); font-size: .69rem;
+  text-align: right; transition: background .12s;
+  display: block; box-sizing: border-box;
+}
+:where(body.sp-summary) .sri:focus { background: rgba(15,123,92,.07); outline: 1px solid rgba(15,123,92,.4); }
+:where(body.sp-summary) .sri.calc { color: #1d4ed8; background: rgba(37,99,235,.05); cursor: default; font-weight: 600; }
+:where(body.sp-summary) .sri.txt { text-align: left; font-family: var(--font-h); font-size: .69rem; }
+:where(body.sp-summary) .sri.neg { color: #be123c !important; font-weight: 600; }
+
+/* ── Save button ── */
+:where(body.sp-summary) .asv { font-size:.68rem; font-weight:600; color:var(--subtext); }
+:where(body.sp-summary) .asv.saving { color:#b45309; }
+:where(body.sp-summary) .asv.ok { color:#15803d; }
+:where(body.sp-summary) .asv.err { color:#be123c; }
+:where(body.sp-summary) .bsr {
+  padding: 4px 8px; font-size: .6rem;
+  font-family: var(--font-m); font-weight: 700;
+  background: #f0fdf4; color: #15803d;
+  border: 1px solid #bbf7d0; border-radius: 5px;
+  cursor: pointer; white-space: nowrap;
+  transition: all .13s; letter-spacing: .02em; width: 56px;
+}
+:where(body.sp-summary) .bsr:hover { background: #dcfce7; border-color: #86efac; }
+:where(body.sp-summary) .bsr.saving { opacity: .5; pointer-events: none; }
+:where(body.sp-summary) .bsr.ok { background: #dcfce7; color: #15803d; border-color: #86efac; }
+:where(body.sp-summary) .bsr.err { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+
+/* ── Totals row ── */
+:where(body.sp-summary) .sr-table tfoot td {
+  padding: 8px 6px; font-family: var(--font-m); font-size: .69rem; font-weight: 700;
+  text-align: right; border: 1px solid #d1d5db;
+  background: #f0f2f5; color: #1a1d23;
+  position: sticky; bottom: 0; z-index: 15;           /* TOTAL row stays at the bottom while you scroll */
+  box-shadow: 0 -2px 5px rgba(0,0,0,.08);
+}
+:where(body.sp-summary) .sr-table tfoot td.tfl {
+  text-align: center; color: var(--accent);
+  font-size: .6rem; text-transform: uppercase; letter-spacing: .06em;
+}
+:where(body.sp-summary) .sr-table tfoot td:first-child { left: 0; z-index: 35; }
+:where(body.sp-summary) .sr-table tfoot td:last-child { right: 0; z-index: 35; }
+
+/* ── Status dot ── */
+:where(body.sp-summary) .sdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+:where(body.sp-summary) .sdot.ok { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
+:where(body.sp-summary) .sdot.new { background: #f59e0b; }
+:where(body.sp-summary) .sdot.auto { background: #3b82f6; box-shadow: 0 0 4px #3b82f6; }
+
+/* ── Toast ── */
+:where(body.sp-summary) .toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
+
+/* ── Legend ── */
+:where(body.sp-summary) .sr-leg {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-family: var(--font-m); font-size: .62rem; color: var(--subtext);
+  margin-bottom: 10px; align-items: center;
+}
+:where(body.sp-summary) .sr-leg span { display: flex; align-items: center; gap: 5px; }
+:where(body.sp-summary) .ld { display: inline-block; width: 9px; height: 9px; border-radius: 3px; }
+
+/* ── Controls row ── */
+:where(body.sp-summary) .sr-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+
+/* ── Scroll hint ── */
+:where(body.sp-summary) .scroll-hint {
+  font-family: var(--font-m); font-size: .62rem;
+  color: var(--subtext); text-align: center;
+  padding: 6px 12px; border-bottom: 1px solid var(--border);
+  background: #f8f9fb;
+}

@@ -372,179 +372,11 @@ if ($fStore !== 'Stella') $COLS = array_values(array_filter($COLS, fn($c) => $c[
 
 $pageTitle  = $fStore . ' Summary Report';
 $activePage = 'summary';
+$bodyClass  = 'sp-summary';
 include 'layout.php';
 ?>
 
-<style>
-/* ── Page content ── */
-.page-content { padding: 20px 24px !important; overflow-x: hidden; }
-
-/* ── Outer scroll container ── */
-.sr-outer {
-  width: 100%; max-width: 100%;
-  overflow-x: auto; overflow-y: auto;
-  max-height: calc(100vh - 330px); min-height: 300px;   /* table scrolls inside, so the header and the TOTAL row stay in view */
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #c1c7d0 #f1f3f5;
-  display: block;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-}
-.sr-outer::-webkit-scrollbar { height: 8px; }
-.sr-outer::-webkit-scrollbar-track { background: #f1f3f5; }
-.sr-outer::-webkit-scrollbar-thumb { background: #c1c7d0; border-radius: 4px; }
-.sr-outer::-webkit-scrollbar-thumb:hover { background: #9aa3af; }
-
-/* ── Table ── */
-.sr-table { border-collapse: collapse; width: max-content; font-size: .69rem; table-layout: fixed; }
-
-/* ── Header ── */
-.sr-table thead th {
-  background: #f4f5f7; color: #4b5563;
-  font-family: var(--font-m); font-size: .52rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .06em;
-  padding: 9px 6px; border: 1px solid #e3e6ea;
-  white-space: nowrap; text-align: center;
-  position: sticky; top: 0; z-index: 20;
-}
-.sr-table thead tr.grp-row th {
-  font-size: .5rem; padding: 4px 6px;
-  background: #ebedf0; letter-spacing: .05em; color: #374151;
-}
-/* Stella: keep BOTH header rows pinned — the column-name row sits just under
-   the group row instead of sliding over it (--grp-h is measured in JS) */
-.sr-table.sticky-2row thead tr.grp-row th { top: 0; z-index: 22; }
-.sr-table.sticky-2row thead tr:not(.grp-row) th { top: var(--grp-h, 21px); z-index: 21; }
-.sr-table.sticky-2row thead th.th-date,
-.sr-table.sticky-2row thead th.th-act { z-index: 30 !important; }
-/* Stella: show every day of the month (no inner vertical scroll) — the page scrolls,
-   and the header is pinned under the top bar by JS (see pinHeader below) */
-.sr-outer.all-rows { max-height: none; overflow-y: visible; }
-.sr-table.sticky-2row thead th { will-change: transform; }
-
-/* ── Sticky columns ── */
-.th-date {
-  position: sticky !important; left: 0; z-index: 30 !important;
-  width: 88px; min-width: 88px;
-  background: #ebedf0 !important; color: var(--accent) !important;
-  box-shadow: 2px 0 5px rgba(0,0,0,.07);
-}
-.th-act {
-  position: sticky !important; right: 0; z-index: 30 !important;
-  width: 66px; min-width: 66px;
-  background: #ebedf0 !important;
-  box-shadow: -2px 0 5px rgba(0,0,0,.07);
-}
-.td-date {
-  position: sticky; left: 0; z-index: 5;
-  background: #f8f9fb !important;
-  box-shadow: 2px 0 5px rgba(0,0,0,.06);
-  font-family: var(--font-m); font-size: .69rem;
-  color: var(--accent); font-weight: 600;
-  text-align: center; padding: 0 6px;
-  white-space: nowrap; width: 88px; min-width: 88px;
-}
-.td-act {
-  position: sticky; right: 0; z-index: 5;
-  background: #f8f9fb !important;
-  box-shadow: -2px 0 5px rgba(0,0,0,.06);
-  text-align: center; padding: 3px 5px;
-  width: 66px; min-width: 66px;
-}
-
-/* ── Column group colours ── */
-.g-income { background: #f0fdf4 !important; }
-.g-deduct { background: #fff7f7 !important; }
-.g-calc   { background: #eff6ff !important; }
-.g-text   { background: #faf5ff !important; }
-
-/* ── Column widths ── */
-.col-num  { width: 90px; min-width: 90px; }
-.col-text { width: 140px; min-width: 140px; }
-
-/* ── Body rows ── */
-.sr-table tbody tr { border-bottom: 1px solid #e8eaed; transition: background .1s; }
-.sr-table tbody tr:hover td { filter: brightness(.97); }
-.sr-table td { border: 1px solid #e8eaed; padding: 0; vertical-align: middle; }
-
-/* ── Inputs ── */
-.sri {
-  width: 100%; padding: 6px 6px;
-  background: transparent; border: none; outline: none;
-  color: #1a1d23; font-family: var(--font-m); font-size: .69rem;
-  text-align: right; transition: background .12s;
-  display: block; box-sizing: border-box;
-}
-.sri:focus { background: rgba(15,123,92,.07); outline: 1px solid rgba(15,123,92,.4); }
-.sri.calc  { color: #1d4ed8; background: rgba(37,99,235,.05); cursor: default; font-weight: 600; }
-.sri.txt   { text-align: left; font-family: var(--font-h); font-size: .69rem; }
-.sri.neg   { color: #be123c !important; font-weight: 600; }
-
-/* ── Save button ── */
-.asv { font-size:.68rem; font-weight:600; color:var(--subtext); }
-.asv.saving { color:#b45309; }
-.asv.ok { color:#15803d; }
-.asv.err { color:#be123c; }
-.bsr {
-  padding: 4px 8px; font-size: .6rem;
-  font-family: var(--font-m); font-weight: 700;
-  background: #f0fdf4; color: #15803d;
-  border: 1px solid #bbf7d0; border-radius: 5px;
-  cursor: pointer; white-space: nowrap;
-  transition: all .13s; letter-spacing: .02em; width: 56px;
-}
-.bsr:hover  { background: #dcfce7; border-color: #86efac; }
-.bsr.saving { opacity: .5; pointer-events: none; }
-.bsr.ok     { background: #dcfce7; color: #15803d; border-color: #86efac; }
-.bsr.err    { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
-
-/* ── Totals row ── */
-.sr-table tfoot td {
-  padding: 8px 6px; font-family: var(--font-m); font-size: .69rem; font-weight: 700;
-  text-align: right; border: 1px solid #d1d5db;
-  background: #f0f2f5; color: #1a1d23;
-  position: sticky; bottom: 0; z-index: 15;           /* TOTAL row stays at the bottom while you scroll */
-  box-shadow: 0 -2px 5px rgba(0,0,0,.08);
-}
-.sr-table tfoot td.tfl {
-  text-align: center; color: var(--accent);
-  font-size: .6rem; text-transform: uppercase; letter-spacing: .06em;
-}
-.sr-table tfoot td:first-child { left: 0; z-index: 35; }
-.sr-table tfoot td:last-child  { right: 0; z-index: 35; }
-
-/* ── Status dot ── */
-.sdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
-.sdot.ok   { background: #22c55e; box-shadow: 0 0 4px #22c55e; }
-.sdot.new  { background: #f59e0b; }
-.sdot.auto { background: #3b82f6; box-shadow: 0 0 4px #3b82f6; }
-
-/* ── Toast ── */
-.toast { position: fixed; top: 68px; right: 22px; z-index: 9999; max-width: 320px; animation: fadeSlideDown .3s ease; }
-
-/* ── Legend ── */
-.sr-leg {
-  display: flex; gap: 12px; flex-wrap: wrap;
-  font-family: var(--font-m); font-size: .62rem; color: var(--subtext);
-  margin-bottom: 10px; align-items: center;
-}
-.sr-leg span { display: flex; align-items: center; gap: 5px; }
-.ld { display: inline-block; width: 9px; height: 9px; border-radius: 3px; }
-
-/* ── Controls row ── */
-.sr-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-
-/* ── Scroll hint ── */
-.scroll-hint {
-  font-family: var(--font-m); font-size: .62rem;
-  color: var(--subtext); text-align: center;
-  padding: 6px 12px; border-bottom: 1px solid var(--border);
-  background: #f8f9fb;
-}
-</style>
+<link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= @filemtime(__DIR__ . '/assets/css/style.css') ?: time() ?>">
 
 <!-- Header -->
 <div class="section-header">
@@ -760,24 +592,32 @@ const STORE = <?=json_encode($fStore)?>;
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(setH);
 
   // All dates are shown, so the PAGE scrolls (not the table box). Slide the header
-  // cells down so they stay just under the top bar until the table ends.
+  // cells down so they stay at the top of the screen, and the TOTAL cells up so they
+  // stay at the bottom of the screen, while the table is in view.
   const thead = t.tHead, tfoot = t.tFoot;
   const ths = [...thead.querySelectorAll('th')];
+  const tds = tfoot ? [...tfoot.querySelectorAll('td')] : [];
   const topbar = document.querySelector('.topbar');
   let ticking = false;
-  function pinHeader() {
+  function pinRows() {
     ticking = false;
     const barH = topbar ? Math.max(0, topbar.getBoundingClientRect().bottom) : 0;
-    const headTop = t.getBoundingClientRect().top;        // header's natural position = table top
+    const box = t.getBoundingClientRect();                // header starts at the table top, TOTAL ends at its bottom
     const maxShift = t.offsetHeight - thead.offsetHeight - (tfoot ? tfoot.offsetHeight : 0);
-    const shift = Math.max(0, Math.min(barH - headTop, maxShift));
+    const shift = Math.max(0, Math.min(barH - box.top, maxShift));
     const v = shift > 0 ? 'translateY(' + shift + 'px)' : '';
     ths.forEach(th => { th.style.transform = v; });
+
+    const lift = Math.max(0, Math.min(box.bottom - document.documentElement.clientHeight, maxShift));
+    const fv = lift > 0 ? 'translateY(' + (-lift) + 'px)' : '';
+    tds.forEach(td => { td.style.transform = fv; });
   }
-  const req = () => { if (!ticking) { ticking = true; requestAnimationFrame(pinHeader); } };
-  window.addEventListener('scroll', req, {passive: true});
+  const req = () => { if (!ticking) { ticking = true; requestAnimationFrame(pinRows); } };
+  window.addEventListener('scroll', req, {passive: true, capture: true});
   window.addEventListener('resize', req);
-  pinHeader();
+  window.addEventListener('load', req);
+  if (window.ResizeObserver) new ResizeObserver(req).observe(t);
+  pinRows();
 })();
 const COLS  = <?=json_encode(array_map(fn($c)=>['key'=>$c[0],'grp'=>$c[2],'comp'=>$c[3]],$COLS))?>;
 
