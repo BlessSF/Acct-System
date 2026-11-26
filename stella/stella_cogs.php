@@ -91,8 +91,7 @@ function cogsSuggest(PDO $pdo, string $date): array {
         $q = $pdo->prepare("SELECT end_inv FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date DESC, id DESC LIMIT 1");
         $q->execute([$py, $pm]); $v = $q->fetchColumn();
         if ($v === false) {
-            $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
-            $q->execute([$py, $pm]); $v = $q->fetchColumn();
+            $v = function_exists('stellaMeiGrandTotal') ? (stellaMeiGrandTotal($pdo, $py, $pm) ?? 0) : 0;
         }
         $beg = (float)$v; $lower = date('Y-m-d', strtotime($ms . ' -1 day'));
     }
@@ -100,8 +99,7 @@ function cogsSuggest(PDO $pdo, string $date): array {
     $w->execute([$lower, $date]); $purc = round((float)$w->fetchColumn(), 2);
     $end = 0.0;
     if ($date === date('Y-m-t', strtotime($ms))) {      // month-end row → suggest the Month End Inventory total
-        $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
-        $q->execute([$y, $m]); $end = (float)$q->fetchColumn();
+        $end = function_exists('stellaMeiGrandTotal') ? (float)(stellaMeiGrandTotal($pdo, $y, $m) ?? 0) : 0.0;
     }
     return ['beg' => round($beg, 2), 'purc' => $purc, 'end_inv' => round($end, 2)];
 }
@@ -151,6 +149,12 @@ function cogsApplyChain(PDO $pdo, int $y, int $m): void {
 }
 
 try { cogsMergeMonth($pdo, $fYear, $fMonth); } catch (Throwable $e) {}
+// END. = Month End Inventory grand total (last month first, so this month's BEG. follows it too)
+if (function_exists('stellaCogsSyncEnd')) {
+    $__py = $fYear; $__pm = $fMonth - 1; if ($__pm < 1) { $__pm = 12; $__py--; }
+    stellaCogsSyncEnd($pdo, $__py, $__pm);
+    stellaCogsSyncEnd($pdo, $fYear, $fMonth);
+}
 try { cogsApplyChain($pdo, $fYear, $fMonth); } catch (Throwable $e) {}
 try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
 
@@ -188,6 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         // BEG. always follows last month's END. when last month has been saved
         $chainBeg = cogsPrevEnd($pdo, $yr, $mo);
         if ($chainBeg !== null) $beg = $chainBeg;
+        // END. always follows the Month End Inventory grand total once that month has inventory entries
+        $meiEnd = function_exists('stellaMeiGrandTotal') ? stellaMeiGrandTotal($pdo, $yr, $mo) : null;
+        if ($meiEnd !== null) $end = $meiEnd;
         $cos   = $beg + $purc - $mktg - $end;   // COS = BEG + PURC - MKTG COST - END
 
         $rowId = (int)($_POST['row_id'] ?? 0);
@@ -314,10 +321,10 @@ if (isset($_GET['export_csv'])) {
 }
 
 // ── Fetch Month End Inv grand total for selected month ─────
-// Sum all total_amount entries from stella_month_end_inv for any day in selected month/year
-$meiStmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) AS grand_total FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
-$meiStmt->execute([$fYear,$fMonth]);
-$meiTotal = (float)$meiStmt->fetchColumn();
+// = the GRAND TOTAL of the last inventory day of the month (null → no entries yet, END. stays typeable)
+$meiGrand = function_exists('stellaMeiGrandTotal') ? stellaMeiGrandTotal($pdo, $fYear, $fMonth) : null;
+$meiHas   = $meiGrand !== null;
+$meiTotal = (float)($meiGrand ?? 0);
 
 // ── Materials Purchases (Consumables/CGS) grand total for selected month ─
 // Pulled live from the Stella Expenses ledger's Purchases total — auto-suggests
@@ -346,9 +353,7 @@ if ($prevCogsEnd !== false) {
     $prevEndSource = 'COGS';
 } else {
     // Fallback: no COGS entry saved for last month yet — use Month End Inventory
-    $prevMeiStmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) AS grand_total FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
-    $prevMeiStmt->execute([$prevYear,$prevMonth]);
-    $prevEndInv = (float)$prevMeiStmt->fetchColumn();
+    $prevEndInv = (float)(function_exists('stellaMeiGrandTotal') ? (stellaMeiGrandTotal($pdo, $prevYear, $prevMonth) ?? 0) : 0);
     $prevEndSource = 'MEI';
 }
 
@@ -477,14 +482,15 @@ include '../layout.php';
 <div class="sx-13" style="background:#fffbeb;display:flex;color:#92400e">
   <span class="sx-10">📦</span>
   <span>
-    <strong>END. Inventory</strong> is auto-suggested from the
-    <strong>Month End Inventory grand total</strong> for
+    <strong>END. Inventory</strong> is automatic from the
+    <strong>Month End Inventory GRAND TOTAL</strong> for
     <?= $months[$fMonth-1] . ' ' . $fYear ?>:
     <strong style="color:#b45309"><?= number_format($meiTotal,2) ?></strong>
-    <?php if ($meiTotal == 0): ?>
-      <span style="color:#dc3545"> — No inventory entries found for this month yet.</span>
+    <?php if (!$meiHas): ?>
+      <span style="color:#dc3545"> — No inventory entries found for this month yet, so you can type END. yourself.</span>
+    <?php else: ?>
+      — it also becomes next month's BEG.
     <?php endif; ?>
-    — you can still edit it.
   </span>
 </div>
 
@@ -627,12 +633,20 @@ include '../layout.php';
           <?php endif; ?>
           <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input purc-auto-field" value="<?= number_format((float)$r['purc'],2) ?>"
                      placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9"></td>
-          <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
+          <?php if ($meiHas): ?>
+          <td title="Auto: Month End Inventory GRAND TOTAL (<?= number_format($meiTotal,2) ?>) — change it in Month End Inv.">
+            <input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input end-auto-field"
+                   value="<?= number_format((float)$r['end_inv'],2) ?>" readonly tabindex="-1"
+                   style="background:#fff8e1;color:#b45309">
+          </td>
+          <?php else: ?>
+          <td title="No Month End Inventory entries for this month yet — type END. here">
             <input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input end-auto-field"
                    value="<?= number_format((float)$r['end_inv'],2) ?>"
                    oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"
                    style="background:#fff8e1;color:#b45309">
           </td>
+          <?php endif; ?>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input cos-field" value="<?= number_format((float)$r['cos'],2) ?>"
                      readonly tabindex="-1"></td>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input mktg-field" value="<?= number_format((float)$r['mktg_cost'],2) ?>"

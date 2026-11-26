@@ -283,6 +283,36 @@ function expCommiAutoTotal(PDO $pdo, string $cogsTable, int $y, int $m): float {
     } catch (Throwable $e) { return 0.0; }
 }
 
+// ── Stella: Month End Inventory GRAND TOTAL → COGS END. (and next month's BEG.) ──
+// The grand total is the one for the LAST day of the month that has inventory entries
+// (the page keeps one list per day, and "Duplicate to Other Days" copies it, so the days must not be added up).
+// Returns null when the month has no inventory entries yet.
+function stellaMeiGrandTotal(PDO $pdo, int $y, int $m): ?float {
+    try {
+        $q = $pdo->prepare("SELECT MAX(inv_date) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_year=? AND inv_month=?");
+        $q->execute([$y, $m]);
+        $d = $q->fetchColumn();
+        if (!$d) return null;
+        $q = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM stella_month_end_inv WHERE store_name='Stella' AND inv_date=?");
+        $q->execute([$d]);
+        return round((float)$q->fetchColumn(), 2);
+    } catch (Throwable $e) { return null; }
+}
+// Puts the grand total into that month's COGS END. (recomputing COS), then copies it into next month's BEG.
+function stellaCogsSyncEnd(PDO $pdo, int $y, int $m): void {
+    $end = stellaMeiGrandTotal($pdo, $y, $m);
+    if ($end === null) return;
+    try {
+        $pdo->prepare("UPDATE stella_cogs SET end_inv=?, cos=beg + purc - mktg_cost - ?
+                       WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? AND ABS(end_inv - ?) > 0.004")
+            ->execute([$end, $end, $y, $m, $end]);
+        $ny = $y; $nm = $m + 1; if ($nm > 12) { $nm = 1; $ny++; }
+        $pdo->prepare("UPDATE stella_cogs SET beg=?, cos=? + purc - mktg_cost - end_inv
+                       WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? AND ABS(beg - ?) > 0.004")
+            ->execute([$end, $end, $ny, $nm, $end]);
+    } catch (Throwable $e) {}
+}
+
 function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, string $store,
                               ?string $date = null, bool $create = true, string $meiTable = '', string $disTable = ''): void {
     $cogsTable = preg_replace('/[^a-z0-9_]/i', '', $cogsTable);

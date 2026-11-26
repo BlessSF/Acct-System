@@ -114,6 +114,21 @@ $selectedDate = date('Y-m-d', mktime(0,0,0,$fMonth,$fDay,$fYear));
 $lastDay      = $selectedDate; // used for saving
 $displayDate  = $months[$fMonth-1] . ' ' . str_pad($fDay,2,'0',STR_PAD_LEFT) . ', ' . $fYear;
 
+// The GRAND TOTAL here is COGS END. (and next month's BEG.) → after any change, refresh COGS
+// (runs after the JSON reply is sent; months done oldest first so each BEG. follows the END. before it).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_intersect(array_keys($_POST), ['ajax_save','ajax_delete','ajax_delete_category','ajax_duplicate_day'])) {
+    register_shutdown_function(function () use ($pdo) {
+        $f = __DIR__ . '/../lib/expense_sync.php';
+        if (!is_file($f)) return;
+        require_once $f;
+        if (!function_exists('stellaCogsSyncEnd')) return;
+        try {
+            $ms = $pdo->query("SELECT DISTINCT inv_year y, inv_month m FROM stella_month_end_inv WHERE store_name='Stella' ORDER BY inv_year, inv_month")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($ms as $r) stellaCogsSyncEnd($pdo, (int)$r['y'], (int)$r['m']);
+        } catch (Throwable $e) {}
+    });
+}
+
 // ── AJAX: Save row ────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     header('Content-Type: application/json');
