@@ -415,18 +415,34 @@ function impParse(array $grid, string $defaultSection): array {
     }
     return ['items' => $items, 'excelTotal' => $excelTotal, 'sections' => $sections];
 }
-function impGuessDate(string $name, int $defYear): string {
+function impGuessParts(string $name): ?array {
     $months = ['JAN'=>1,'FEB'=>2,'MAR'=>3,'APR'=>4,'MAY'=>5,'JUN'=>6,'JUL'=>7,'AUG'=>8,'SEP'=>9,'OCT'=>10,'NOV'=>11,'DEC'=>12];
     $u = strtoupper($name); $m = 0;
-    foreach ($months as $k => $n) { if (preg_match('/' . $k . '/', $u)) { $m = $n; break; } }
-    if (!$m) return '';
-    $year = $defYear;
+    foreach ($months as $k => $n) { if (strpos($u, $k) !== false) { $m = $n; break; } }
+    if (!$m) return null;
+    $year = null;
     if (preg_match('/(20\d\d)/', $u, $y)) $year = (int)$y[1];
     elseif (preg_match('/2K(\d\d)/', $u, $y)) $year = 2000 + (int)$y[1];
     $rest = preg_replace('/(20\d\d)|2K\d\d/', '', $u);
-    $dim = (int)date('t', mktime(0, 0, 0, $m, 1, $year)); $day = $dim;
-    if (preg_match('/(\d{1,2})/', $rest, $d) && (int)$d[1] >= 1 && (int)$d[1] <= $dim) $day = (int)$d[1];
-    return sprintf('%04d-%02d-%02d', $year, $m, $day);
+    $day = (preg_match('/(\d{1,2})/', $rest, $d) && (int)$d[1] >= 1 && (int)$d[1] <= 31) ? (int)$d[1] : null;
+    return ['m' => $m, 'd' => $day, 'y' => $year];
+}
+// The workbook lists the newest sheet first. A sheet name without a year (e.g. "OCTOBER 30") takes the year of the
+// sheet before it, going back one year when the month goes up (… JAN 2025, DECEMBER 28 → 2024).
+function impGuessDates(array $names, int $defYear): array {
+    $out = []; $lastY = $defYear; $lastM = 12; $first = true;
+    foreach ($names as $name) {
+        $g = impGuessParts($name);
+        if (!$g) { $out[] = ['date' => '', 'explicit' => false]; continue; }
+        $explicit = $g['y'] !== null;
+        if ($explicit) $y = $g['y'];
+        else { $y = $lastY; if (!$first && $g['m'] > $lastM) $y = $lastY - 1; }
+        $lastY = $y; $lastM = $g['m']; $first = false;
+        $dim = (int)date('t', mktime(0, 0, 0, $g['m'], 1, $y));
+        $d = ($g['d'] !== null && $g['d'] <= $dim) ? $g['d'] : $dim;
+        $out[] = ['date' => sprintf('%04d-%02d-%02d', $y, $g['m'], $d), 'explicit' => $explicit];
+    }
+    return $out;
 }
 function impOpenUpload(?string &$err): ?ZipArchive {
     if (!class_exists('ZipArchive')) { $err = 'This server cannot read .xlsx files (the PHP "zip" extension is off). Ask Hostinger to enable it.'; return null; }
@@ -446,7 +462,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_import_inspect']
         $err = null; $z = impOpenUpload($err);
         if (!$z) { echo json_encode(['ok' => false, 'msg' => $err]); exit; }
         $sheets = [];
-        foreach (impSheets($z) as $sh) $sheets[] = ['name' => $sh['name'], 'date' => impGuessDate($sh['name'], $fYear)];
+        $shs = impSheets($z); $guess = impGuessDates(array_column($shs, 'name'), $fYear);
+        foreach ($shs as $i => $sh) $sheets[] = ['name' => $sh['name'], 'date' => $guess[$i]['date'], 'explicit' => $guess[$i]['explicit']];
         $z->close();
         echo json_encode(['ok' => true, 'sheets' => $sheets]);
     } catch (Throwable $e) { echo json_encode(['ok' => false, 'msg' => 'Could not read the file: ' . $e->getMessage()]); }
@@ -1461,8 +1478,9 @@ document.getElementById('impFile').addEventListener('change', async function () 
     let pick = 0, best = -1;
     impSheets.forEach((s, i) => {
       sel.appendChild(new Option(s.name + (s.date ? '  →  ' + s.date : ''), s.name));
+      // prefer a sheet whose name carries the year (e.g. "OCTOBER 31 2026"); the first sheet of the workbook is the newest
       let score = 0;
-      if (s.date === INV_DATE) score = 2; else if (s.date && s.date.slice(0, 7) === INV_DATE.slice(0, 7)) score = 1;
+      if (s.explicit && s.date === INV_DATE) score = 3; else if (s.explicit && s.date.slice(0, 7) === INV_DATE.slice(0, 7)) score = 2;
       if (score > best) { best = score; pick = i; }
     });
     sel.selectedIndex = pick;
