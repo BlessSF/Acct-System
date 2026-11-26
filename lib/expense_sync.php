@@ -292,6 +292,17 @@ function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, str
     if ($date && preg_match('/^(\d{4})-(\d{2})-\d{2}$/', $date, $mm)) {
         $months[(int)$mm[1] . '-' . (int)$mm[2]] = [(int)$mm[1], (int)$mm[2], $create];
     }
+    // Optional "Purchases by Commi" table (<cogsTable>_commi, e.g. stella_cogs_commi): its month net
+    // (Add rows minus Less rows) is added on top of the Disbursement purchases in the month-end row's PURC.
+    $commiTable = $cogsTable . '_commi';
+    $hasCommi = false;
+    try { $hasCommi = (bool)$pdo->query("SHOW TABLES LIKE " . $pdo->quote($commiTable))->fetchColumn(); } catch (Throwable $e) {}
+    $commiNet = function (int $y, int $m) use ($pdo, $commiTable, $hasCommi): float {
+        if (!$hasCommi) return 0.0;
+        $q = $pdo->prepare("SELECT COALESCE(SUM(sign * amount),0) FROM `$commiTable` WHERE c_year=? AND c_month=?");
+        $q->execute([$y, $m]);
+        return round((float)$q->fetchColumn(), 2);
+    };
     foreach ($months as [$y, $m, $mayCreate]) {
         $total = $purcSum(sprintf('%04d-%02d-01', $y, $m), date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $y, $m))));
 
@@ -311,6 +322,7 @@ function expSyncCogsPurchases(PDO $pdo, string $cogsTable, string $expTable, str
                 // the last row takes the rest of the month — unless it is only a mid-month (15th or earlier) row
                 $upper = ($i === $n - 1 && (int)date('j', strtotime($rows[$i]['cogs_date'])) > 15) ? $monthEnd : $rows[$i]['cogs_date'];
                 $purc = $purcSum(date('Y-m-d', strtotime($lower . ' +1 day')), $upper);
+                if ($i === $n - 1 && $upper === $monthEnd) $purc = round($purc + $commiNet($y, $m), 2);
                 $r = $rows[$i];
                 $cos = round((float)$r['beg'] + $purc - (float)$r['end_inv'] - (float)$r['mktg_cost'], 2);
                 if ((float)$r['purc'] === $purc && (float)$r['cos'] === $cos) continue;

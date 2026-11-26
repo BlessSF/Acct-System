@@ -32,6 +32,22 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS `stella_cogs` (
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
+// ── PURCHASES BY COMMI — per-month list (STELLA, HERO, MRKTG EXPENSES …). Its net
+//    (Add rows − Less rows) + the Disbursement purchases = this month's PURC. (see lib/expense_sync.php)
+$pdo->exec("CREATE TABLE IF NOT EXISTS `stella_cogs_commi` (
+    `id`         int(11) NOT NULL AUTO_INCREMENT,
+    `c_year`     int(4) NOT NULL,
+    `c_month`    tinyint(2) NOT NULL,
+    `label`      varchar(120) NOT NULL DEFAULT '',
+    `sign`       tinyint(2) NOT NULL DEFAULT 1 COMMENT '1 = add, -1 = less',
+    `amount`     decimal(14,2) NOT NULL DEFAULT 0.00,
+    `sort_order` int(11) NOT NULL DEFAULT 0,
+    `saved_by`   varchar(100) DEFAULT NULL,
+    `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    PRIMARY KEY (`id`),
+    KEY `ym` (`c_year`,`c_month`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
 // ── Self-repair: a table copied from a database export can lose its PRIMARY KEY / AUTO_INCREMENT on `id`.
 //    Then every new row gets id 0, "Delete" removes nothing and edits hit every row at once.
 try {
@@ -202,6 +218,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
     exit;
 }
 
+// ── AJAX: Purchases by Commi — save / delete one line ────────
+function commiNet(PDO $pdo, int $y, int $m): float {
+    $q = $pdo->prepare("SELECT COALESCE(SUM(sign * amount),0) FROM stella_cogs_commi WHERE c_year=? AND c_month=?");
+    $q->execute([$y, $m]);
+    return round((float)$q->fetchColumn(), 2);
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['ajax_commi_save']) || isset($_POST['ajax_commi_delete']))) {
+    header('Content-Type: application/json');
+    try {
+        $y  = (int)($_POST['year'] ?? 0); $m = (int)($_POST['month'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
+        if ($y < 2000 || $m < 1 || $m > 12) { echo json_encode(['ok'=>false,'msg'=>'Invalid month']); exit; }
+        if (isset($_POST['ajax_commi_delete'])) {
+            if ($id > 0) $pdo->prepare("DELETE FROM stella_cogs_commi WHERE id=? AND c_year=? AND c_month=?")->execute([$id, $y, $m]);
+            $id = 0;
+        } else {
+            $label = mb_substr(trim($_POST['label'] ?? ''), 0, 120);
+            $sign  = ((int)($_POST['sign'] ?? 1)) < 0 ? -1 : 1;
+            $amt   = round((float)str_replace(',', '', $_POST['amount'] ?? '0'), 2);
+            $sort  = (int)($_POST['sort_order'] ?? 0);
+            if ($id > 0) {
+                $pdo->prepare("UPDATE stella_cogs_commi SET label=?, sign=?, amount=?, sort_order=?, saved_by=? WHERE id=? AND c_year=? AND c_month=?")
+                    ->execute([$label, $sign, $amt, $sort, $user['name'], $id, $y, $m]);
+            } else {
+                $pdo->prepare("INSERT INTO stella_cogs_commi (c_year, c_month, label, sign, amount, sort_order, saved_by) VALUES (?,?,?,?,?,?,?)")
+                    ->execute([$y, $m, $label, $sign, $amt, $sort, $user['name']]);
+                $id = (int)$pdo->lastInsertId();
+            }
+        }
+        // PURC. (and COS) of the month pick up the new commi total right away
+        try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
+        // that month's COS changed, not its END., so next month's BEG. is unaffected
+        echo json_encode(['ok'=>true, 'id'=>$id, 'net'=>commiNet($pdo, $y, $m), 'rows'=>cogsMonthState($pdo, $y, $m)]);
+    } catch (Throwable $e) {
+        echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
+    }
+    exit;
+}
+
 // ── AJAX: Delete row ──────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_delete'])) {
     header('Content-Type: application/json');
@@ -292,6 +347,19 @@ if ($prevCogsEnd !== false) {
     $prevEndSource = 'MEI';
 }
 
+// ── Purchases by Commi lines for the selected month ──────────
+$commiStmt = $pdo->prepare("SELECT id, label, sign, amount FROM stella_cogs_commi WHERE c_year=? AND c_month=? ORDER BY sort_order, id");
+$commiStmt->execute([$fYear, $fMonth]);
+$commiRows = $commiStmt->fetchAll(PDO::FETCH_ASSOC);
+if (!$commiRows) {   // starting lines, same as the Excel (saved once an amount is typed)
+    $commiRows = [
+        ['id'=>0, 'label'=>'STELLA',         'sign'=>1,  'amount'=>0],
+        ['id'=>0, 'label'=>'HERO',           'sign'=>-1, 'amount'=>0],
+        ['id'=>0, 'label'=>'MRKTG EXPENSES', 'sign'=>-1, 'amount'=>0],
+    ];
+}
+$commiNetNow = commiNet($pdo, $fYear, $fMonth);
+
 // ── Load rows for selected month ──────────────────────────
 $stmt = $pdo->prepare("SELECT * FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date ASC");
 $stmt->execute([$fYear,$fMonth]);
@@ -336,7 +404,7 @@ include '../layout.php';
   </div>
   <div class="sx-25 kpi-card" >
     <div class="kpi-label">Purchases</div>
-    <div class="kpi-val purple" id="kpi_purc"><?= number_format($rows ? $totals['purc'] : $purcAuto,2) ?></div>
+    <div class="kpi-val purple" id="kpi_purc"><?= number_format($rows ? $totals['purc'] : $purcAuto + $commiNetNow,2) ?></div>
   </div>
   <div class="sx-24 kpi-card" >
     <div class="kpi-label">End. Inventory</div>
@@ -443,6 +511,79 @@ include '../layout.php';
   </span>
 </div>
 
+<!-- Purchases by Commi -->
+<style>
+.commi-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 1px 4px rgba(0,0,0,.05); margin-bottom:16px; overflow:hidden; }
+.commi-head { background:#0f3d2e; color:#fff; padding:9px 16px; font-family:var(--font-m); font-size:.66rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+.commi-head span { color:rgba(255,255,255,.55); font-weight:500; letter-spacing:.03em; text-transform:none; }
+.commi-wrap { overflow-x:auto; }
+.commi-tbl { width:100%; border-collapse:collapse; font-family:var(--font-m); font-size:.78rem; min-width:620px; }
+.commi-tbl th { background:#f4f5f7; color:#4b5563; font-size:.6rem; text-transform:uppercase; letter-spacing:.07em; padding:8px 10px; text-align:left; border-bottom:1px solid var(--border); }
+.commi-tbl th.num, .commi-tbl td.num { text-align:right; }
+.commi-tbl td { border-bottom:1px solid #eef0f2; padding:0; }
+.commi-tbl input, .commi-tbl select { width:100%; border:none; background:transparent; padding:8px 10px; font-family:var(--font-m); font-size:.78rem; outline:none; box-sizing:border-box; }
+.commi-tbl input:focus, .commi-tbl select:focus { background:rgba(15,123,92,.07); }
+.commi-tbl input.amt { text-align:right; }
+.commi-tbl tr.less input.amt { color:#be123c; }
+.commi-tbl td.ro { padding:8px 10px; text-align:right; color:#6d28d9; background:#f5f3ff; }
+.commi-tbl td.st { padding:0 10px; font-size:.64rem; color:var(--subtext); white-space:nowrap; text-align:center; }
+.commi-tbl tfoot td { padding:9px 10px; font-weight:800; background:#f0f2f5; border-top:1px solid #d1d5db; }
+.commi-tbl .grand { color:#0f7b5c; font-size:.88rem; }
+.commi-del { border:1px solid #fecdd3; background:#fff1f2; color:#be123c; border-radius:5px; cursor:pointer; padding:2px 8px; font-size:.7rem; }
+.commi-add { margin:10px 12px; }
+</style>
+<div class="commi-card">
+  <div class="commi-head">
+    Purchases by Commi — <?= strtoupper($months[$fMonth-1]) ?> <?= $fYear ?>
+    <span>Commi total (Add − Less) + Other Purchases from the Disbursement = this month's PURC.</span>
+  </div>
+  <div class="commi-wrap">
+  <table class="commi-tbl" id="commiTbl">
+    <thead>
+      <tr>
+        <th style="width:38%">Purchases by Commi</th>
+        <th style="width:110px">Add / Less</th>
+        <th class="num">Amount</th>
+        <th class="num">Other Purchases</th>
+        <th class="num">Total</th>
+        <th style="width:90px"></th>
+      </tr>
+    </thead>
+    <tbody id="commiBody">
+      <?php foreach ($commiRows as $i => $c): $less = (int)$c['sign'] < 0; ?>
+      <tr data-id="<?= (int)$c['id'] ?>" class="<?= $less ? 'less' : '' ?>">
+        <td><input type="text" class="lbl" value="<?= htmlspecialchars($c['label']) ?>" placeholder="Name (e.g. STELLA)" oninput="commiChanged(this)"></td>
+        <td><select class="sgn" onchange="commiChanged(this)">
+              <option value="1" <?= $less ? '' : 'selected' ?>>+ Add</option>
+              <option value="-1" <?= $less ? 'selected' : '' ?>>− Less</option>
+            </select></td>
+        <td><input type="text" class="amt" inputmode="decimal" autocomplete="off" placeholder="0.00"
+                   value="<?= (float)$c['amount'] != 0 ? number_format((float)$c['amount'],2) : '' ?>"
+                   oninput="commaLive(this);commiChanged(this)" onblur="fmtBlur(this)" onfocus="this.select()"></td>
+        <?php if ($i === 0): ?>
+        <td class="ro" id="commiOther"><?= number_format($purcAuto,2) ?></td>
+        <td class="ro" id="commiRowTotal" style="color:#0f3d2e;background:#f0fdf4"></td>
+        <?php else: ?>
+        <td></td><td></td>
+        <?php endif; ?>
+        <td class="st"><button class="commi-del" onclick="commiDelete(this)" title="Remove this line">✕</button> <span class="cst"><?= (int)$c['id'] ? '✓' : '' ?></span></td>
+      </tr>
+      <?php endforeach; ?>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">TOTAL</td>
+        <td class="num" id="commiNet"><?= number_format($commiNetNow,2) ?></td>
+        <td class="num" style="color:#6d28d9"><?= number_format($purcAuto,2) ?></td>
+        <td class="num grand" id="commiGrand"><?= number_format($commiNetNow + $purcAuto,2) ?></td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+  <button class="btn btn-ghost btn-sm commi-add" onclick="commiAdd()">+ Add line</button>
+</div>
+
 <!-- Table -->
 <div class="sx-9 card" >
   <table class="cogs-tbl" id="cogsTable">
@@ -516,7 +657,7 @@ include '../layout.php';
 
 <div class="sx-7" style="display:flex">
   <button class="btn btn-primary addMonthBtn" onclick="addRow()" style="<?= $rows ? 'display:none' : '' ?>">+ Add <?= $months[$fMonth-1] ?> COGS</button>
-  <span class="sx-6" style="color:var(--subtext)">One BEG. and one END. per month · changes save automatically · PURC. = this month's purchases from the Disbursement</span>
+  <span class="sx-6" style="color:var(--subtext)">One BEG. and one END. per month · changes save automatically · PURC. = this month's purchases from the Disbursement + Purchases by Commi total</span>
 </div>
 
   </div></div>
@@ -530,7 +671,96 @@ const MEI_TOTAL  = <?= $meiTotal ?>;
 const PREV_END_INV = <?= $prevEndInv ?>;
 // This month's Purchases total (from Stella Expenses ledger's Purchases total) — auto-suggests PURC. on a new row
 const PURC_AUTO = <?= $purcNew ?>;
-const PURC_LEDGER = <?= $purcAuto ?>;
+let PURC_LEDGER = <?= $purcAuto + $commiNetNow ?>;   // Disbursement purchases + Purchases by Commi
+const OTHER_PURC = <?= $purcAuto ?>;
+
+// ── Purchases by Commi ────────────────────────────────────
+function commiRecalc() {
+  let net = 0, first = null;
+  document.querySelectorAll('#commiBody tr').forEach(tr => {
+    const s = parseInt(tr.querySelector('.sgn').value, 10) < 0 ? -1 : 1;
+    const a = numOf(tr.querySelector('.amt').value);
+    tr.classList.toggle('less', s < 0);
+    if (!first) first = a * s;
+    net += s * a;
+  });
+  document.getElementById('commiNet').textContent = fmtN(net);
+  document.getElementById('commiGrand').textContent = fmtN(net + OTHER_PURC);
+  const rt = document.getElementById('commiRowTotal');
+  if (rt) rt.textContent = first ? fmtN(first + OTHER_PURC) : '';
+  PURC_LEDGER = net + OTHER_PURC;
+  return net;
+}
+function commiChanged(el) {
+  const tr = el.closest('tr');
+  commiRecalc();
+  const st = tr.querySelector('.cst'); if (st) st.textContent = '…';
+  clearTimeout(tr._t);
+  tr._t = setTimeout(() => { tr._t = null; commiSave(tr); }, 600);
+}
+async function commiSave(tr) {
+  const id = parseInt(tr.dataset.id, 10) || 0;
+  const label = tr.querySelector('.lbl').value.trim(), amt = numOf(tr.querySelector('.amt').value);
+  if (!id && amt === 0) { const st = tr.querySelector('.cst'); if (st) st.textContent = ''; return; }   // empty starter line → nothing to save
+  if (tr._saving) { tr._again = true; return; }
+  tr._saving = true;
+  const fd = new FormData();
+  fd.append('ajax_commi_save', '1'); fd.append('year', CURR_YEAR); fd.append('month', CURR_MONTH);
+  fd.append('id', id); fd.append('label', label); fd.append('amount', amt);
+  fd.append('sign', tr.querySelector('.sgn').value);
+  fd.append('sort_order', [...tr.parentNode.children].indexOf(tr));
+  const st = tr.querySelector('.cst');
+  try {
+    const j = await (await fetch('stella_cogs.php', {method: 'POST', body: fd})).json();
+    if (j.ok) { tr.dataset.id = j.id; if (st) st.textContent = '✓'; applyState(j.rows); }
+    else if (st) st.textContent = '❌';
+  } catch (e) { if (st) st.textContent = '❌'; }
+  tr._saving = false;
+  if (tr._again) { tr._again = false; commiSave(tr); }
+}
+async function commiDelete(btn) {
+  const tr = btn.closest('tr'), id = parseInt(tr.dataset.id, 10) || 0;
+  if (id > 0 && btn.dataset.sure !== '1') {      // two-click confirm inside the page
+    btn.dataset.sure = '1'; btn.textContent = 'Delete?';
+    setTimeout(() => { btn.dataset.sure = ''; btn.textContent = '✕'; }, 3000);
+    return;
+  }
+  clearTimeout(tr._t);
+  if (id > 0) {
+    const fd = new FormData();
+    fd.append('ajax_commi_delete', '1'); fd.append('year', CURR_YEAR); fd.append('month', CURR_MONTH); fd.append('id', id);
+    try { const j = await (await fetch('stella_cogs.php', {method: 'POST', body: fd})).json(); if (!j.ok) return; applyState(j.rows); } catch (e) { return; }
+  }
+  const body = tr.parentNode;
+  const wasFirst = tr === body.firstElementChild;
+  tr.remove();
+  // keep the Other Purchases / Total cells on the first line
+  if (wasFirst && body.firstElementChild) {
+    const f = body.firstElementChild, tds = f.children;
+    tds[3].className = 'ro'; tds[3].id = 'commiOther'; tds[3].textContent = fmtN(OTHER_PURC);
+    tds[4].className = 'ro'; tds[4].id = 'commiRowTotal'; tds[4].style.cssText = 'color:#0f3d2e;background:#f0fdf4';
+  }
+  commiRecalc(); updateKPIs();
+}
+function commiAdd() {
+  const body = document.getElementById('commiBody');
+  const tr = document.createElement('tr');
+  tr.dataset.id = '0';
+  tr.className = 'less';
+  tr.innerHTML = `
+    <td><input type="text" class="lbl" value="" placeholder="Name" oninput="commiChanged(this)"></td>
+    <td><select class="sgn" onchange="commiChanged(this)"><option value="1">+ Add</option><option value="-1" selected>− Less</option></select></td>
+    <td><input type="text" class="amt" inputmode="decimal" autocomplete="off" placeholder="0.00" oninput="commaLive(this);commiChanged(this)" onblur="fmtBlur(this)" onfocus="this.select()"></td>
+    <td></td><td></td>
+    <td class="st"><button class="commi-del" onclick="commiDelete(this)" title="Remove this line">✕</button> <span class="cst"></span></td>`;
+  if (!body.firstElementChild) {   // the very first line carries the Other Purchases / Total cells
+    tr.children[3].className = 'ro'; tr.children[3].id = 'commiOther'; tr.children[3].textContent = fmtN(OTHER_PURC);
+    tr.children[4].className = 'ro'; tr.children[4].id = 'commiRowTotal'; tr.children[4].style.cssText = 'color:#0f3d2e;background:#f0fdf4';
+  }
+  body.appendChild(tr);
+  tr.querySelector('.lbl').focus();
+}
+document.addEventListener('DOMContentLoaded', commiRecalc);
 
 const pad2 = n => String(n).padStart(2,'0');
 function dateFor(kind) {
@@ -706,7 +936,7 @@ async function deleteRow(btn) {
       if (!j.ok) { tr._deleted = false; btn.disabled = false; setStatus(tr, '❌ ' + (j.msg || 'not deleted'), 'var(--accent2)'); return; }
     } catch(e) { tr._deleted = false; btn.disabled = false; setStatus(tr, '❌ not deleted (network)', 'var(--accent2)'); return; }
   }
-
+ 
   tr.remove();
   if (!document.querySelector('#cogsBody tr')) {
     const tbody = document.getElementById('cogsBody');
