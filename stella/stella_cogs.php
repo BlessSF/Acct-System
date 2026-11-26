@@ -116,7 +116,26 @@ function cogsMonthState(PDO $pdo, int $y, int $m): array {
     return $q->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// ── BEG. chain: each month's BEG. = the previous month's saved END. ──
+// Returns the previous month's END. (or null when that month has no COGS row yet).
+function cogsPrevEnd(PDO $pdo, int $y, int $m): ?float {
+    $py = $y; $pm = $m - 1; if ($pm < 1) { $pm = 12; $py--; }
+    $q = $pdo->prepare("SELECT end_inv FROM stella_cogs WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? ORDER BY cogs_date DESC, id DESC LIMIT 1");
+    $q->execute([$py, $pm]);
+    $v = $q->fetchColumn();
+    return $v === false ? null : round((float)$v, 2);
+}
+// Copies the previous month's END. into this month's BEG. (and recomputes COS) when they differ.
+function cogsApplyChain(PDO $pdo, int $y, int $m): void {
+    $prevEnd = cogsPrevEnd($pdo, $y, $m);
+    if ($prevEnd === null) return;
+    $pdo->prepare("UPDATE stella_cogs SET beg=?, cos=? + purc - mktg_cost - end_inv
+                   WHERE store_name='Stella' AND cogs_year=? AND cogs_month=? AND ABS(beg - ?) > 0.004")
+        ->execute([$prevEnd, $prevEnd, $y, $m, $prevEnd]);
+}
+
 try { cogsMergeMonth($pdo, $fYear, $fMonth); } catch (Throwable $e) {}
+try { cogsApplyChain($pdo, $fYear, $fMonth); } catch (Throwable $e) {}
 try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
 
 // ── AJAX: suggestion for a new row ───────────────────────────
@@ -146,11 +165,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         $purc  = (float)($_POST['purc']      ?? 0);
         $end   = (float)($_POST['end_inv']   ?? 0);
         $mktg  = (float)($_POST['mktg_cost'] ?? 0);
-        $cos   = $beg + $purc - $mktg - $end;   // COS = BEG + PURC - MKTG COST - END
-
         $date = date('Y-m-t', strtotime($date));            // one row per month, dated the last day
         $yr  = (int)date('Y', strtotime($date));
         $mo  = (int)date('n', strtotime($date));
+
+        // BEG. always follows last month's END. when last month has been saved
+        $chainBeg = cogsPrevEnd($pdo, $yr, $mo);
+        if ($chainBeg !== null) $beg = $chainBeg;
+        $cos   = $beg + $purc - $mktg - $end;   // COS = BEG + PURC - MKTG COST - END
 
         $rowId = (int)($_POST['row_id'] ?? 0);
         // only ONE row per month: a "new" row for a month that already has one updates that row instead
@@ -170,7 +192,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_save'])) {
         }
         // re-split PURC. between the rows of the month (15th / last day) and refresh COS
         try { if (function_exists('expSyncCogsPurchases')) expSyncCogsPurchases($pdo, 'stella_cogs', 'stella_expenses', 'Stella', null, false); } catch (Throwable $e) {}
-        echo json_encode(['ok'=>true, 'id'=>$outId, 'rows'=>cogsMonthState($pdo, $yr, $mo)]);
+        // this month's END. is next month's BEG. → update next month's row right away
+        $ny = $yr; $nm = $mo + 1; if ($nm > 12) { $nm = 1; $ny++; }
+        try { cogsApplyChain($pdo, $ny, $nm); } catch (Throwable $e) {}
+        echo json_encode(['ok'=>true, 'id'=>$outId, 'beg'=>round($beg, 2), 'rows'=>cogsMonthState($pdo, $yr, $mo)]);
     } catch (Throwable $e) {
         echo json_encode(['ok'=>false,'msg'=>$e->getMessage()]);
     }
@@ -440,8 +465,13 @@ include '../layout.php';
             <input type="date" class="sx-5 date-input" value="<?= htmlspecialchars($r['cogs_date']) ?>"
                    readonly tabindex="-1" title="Month-end date (one row per month)" >
           </td>
+          <?php if ($prevEndSource === 'COGS'): ?>
+          <td title="Auto: <?= $months[$prevMonth-1] . ' ' . $prevYear ?>'s END. (<?= number_format($prevEndInv,2) ?>) — change it there"><input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input" value="<?= number_format((float)$r['beg'],2) ?>"
+                     placeholder="0.00" readonly tabindex="-1" style="background:#eff6ff;color:#1d4ed8"></td>
+          <?php else: ?>
           <td><input type="text" inputmode="decimal" autocomplete="off" class="cogs-input" value="<?= number_format((float)$r['beg'],2) ?>"
                      placeholder="0.00" oninput="changed(this)" onblur="fmtBlur(this)" onfocus="this.select()" onkeydown="autoKey(this,event)"></td>
+          <?php endif; ?>
           <td title="Auto from Disbursement (Purchases - Non-Vat / Vatable)"><input type="text" inputmode="decimal" autocomplete="off" class="sx-4 cogs-input purc-auto-field" value="<?= number_format((float)$r['purc'],2) ?>"
                      placeholder="0.00" readonly tabindex="-1" style="background:#f5f3ff;color:#6d28d9"></td>
           <td title="Auto-suggested from Month End Inventory grand total (<?= number_format($meiTotal,2) ?>) — editable">
