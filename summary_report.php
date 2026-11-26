@@ -420,6 +420,10 @@ include 'layout.php';
 .sr-table.sticky-2row thead tr:not(.grp-row) th { top: var(--grp-h, 21px); z-index: 21; }
 .sr-table.sticky-2row thead th.th-date,
 .sr-table.sticky-2row thead th.th-act { z-index: 30 !important; }
+/* Stella: show every day of the month (no inner vertical scroll) — the page scrolls,
+   and the header is pinned under the top bar by JS (see pinHeader below) */
+.sr-outer.all-rows { max-height: none; overflow-y: visible; }
+.sr-table.sticky-2row thead th { will-change: transform; }
 
 /* ── Sticky columns ── */
 .th-date {
@@ -588,7 +592,7 @@ include 'layout.php';
 </div>
 
 <!-- Spreadsheet -->
-<div class="sr-outer">
+<div class="sr-outer<?= $fStore === 'Stella' ? ' all-rows' : '' ?>">
 <div class="scroll-hint">← Scroll horizontally to see all columns →</div>
 <table class="sr-table<?= $fStore === 'Stella' ? ' sticky-2row' : '' ?>" id="srt">
   <thead>
@@ -754,6 +758,26 @@ const STORE = <?=json_encode($fStore)?>;
   setH();
   window.addEventListener('resize', setH);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(setH);
+
+  // All dates are shown, so the PAGE scrolls (not the table box). Slide the header
+  // cells down so they stay just under the top bar until the table ends.
+  const thead = t.tHead, tfoot = t.tFoot;
+  const ths = [...thead.querySelectorAll('th')];
+  const topbar = document.querySelector('.topbar');
+  let ticking = false;
+  function pinHeader() {
+    ticking = false;
+    const barH = topbar ? Math.max(0, topbar.getBoundingClientRect().bottom) : 0;
+    const headTop = t.getBoundingClientRect().top;        // header's natural position = table top
+    const maxShift = t.offsetHeight - thead.offsetHeight - (tfoot ? tfoot.offsetHeight : 0);
+    const shift = Math.max(0, Math.min(barH - headTop, maxShift));
+    const v = shift > 0 ? 'translateY(' + shift + 'px)' : '';
+    ths.forEach(th => { th.style.transform = v; });
+  }
+  const req = () => { if (!ticking) { ticking = true; requestAnimationFrame(pinHeader); } };
+  window.addEventListener('scroll', req, {passive: true});
+  window.addEventListener('resize', req);
+  pinHeader();
 })();
 const COLS  = <?=json_encode(array_map(fn($c)=>['key'=>$c[0],'grp'=>$c[2],'comp'=>$c[3]],$COLS))?>;
 
