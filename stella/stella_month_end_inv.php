@@ -761,7 +761,6 @@ foreach ($UNITS as $u) $unitOpts .= "<option value=\"$u\">$u</option>";
         <div class="inv-cell inv-action-cell">
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
             <div style="display:flex;gap:3px">
-              <button class="btn-inv-save" onclick="saveRow(this,'<?= htmlspecialchars($cat) ?>',<?= $catIdx ?>)">Save</button>
               <button class="btn-inv-del"  onclick="deleteRow(this,<?= $catIdx ?>)">✕</button>
             </div>
             <div class="row-status"></div>
@@ -979,10 +978,15 @@ async function autoSaveRow(row) {
   }
   row._saving = true;
   const section = row.closest('.inv-section');
-  await saveRow(row.querySelector('.btn-inv-save'), section ? section.dataset.cat : '', parseInt(row.dataset.cat), true);
+  await saveRow(row, section ? section.dataset.cat : '', parseInt(row.dataset.cat), true);
   row._saving = false;
   if (row._again) { row._again = false; scheduleAutoSave(row); } else pendingRows.delete(row);
 }
+// leaving a field saves its row right away (no need to wait for the pause)
+document.addEventListener('focusout', e => {
+  const row = e.target.closest && e.target.closest('.inv-row[data-id]');
+  if (row && pendingRows.has(row) && !row._saving) { clearTimeout(row._autoT); autoSaveRow(row); }
+});
 window.addEventListener('beforeunload', e => { if (pendingRows.size) { e.preventDefault(); e.returnValue = ''; } });
 
 function refreshCatTotal(catIdx) {
@@ -1134,7 +1138,6 @@ function addRow(catIdx, catName) {
     <div class="inv-cell inv-action-cell">
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <div style="display:flex;gap:3px">
-          <button class="btn-inv-save" onclick="saveRow(this,'${catName.replace(/'/g,"\\'")}',${catIdx})">Save</button>
           <button class="btn-inv-del" onclick="deleteRow(this,${catIdx})">✕</button>
         </div>
         <div class="row-status"></div>
